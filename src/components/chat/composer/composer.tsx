@@ -226,7 +226,7 @@ export function Composer({
 							rows={1}
 							className={cn(
 								"max-h-40 min-h-9 w-full resize-none border-0 bg-transparent py-2 shadow-none [field-sizing:content] focus-visible:ring-0 dark:bg-transparent",
-								expanded ? "px-4" : "pl-12 pr-24",
+								expanded ? "px-4" : canAttach ? "pl-12 pr-24" : "pl-4 pr-24",
 							)}
 						/>
 
