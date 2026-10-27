@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { AppToaster } from "#/components/common/app-toaster/app-toaster";
+import { SoundEffects } from "#/components/common/sound/sound";
 import { XmppErrorToaster } from "#/components/common/xmpp-error-toaster/xmpp-error-toaster";
 import { TooltipProvider } from "#/components/ui/tooltip";
 import { XmppProvider } from "#/providers/xmpp-provider";
@@ -54,10 +55,12 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<body>
 				<div className="root min-h-svh">
 					<TooltipProvider>
-						<XmppProvider>
-							{children}
-							<XmppErrorToaster />
-						</XmppProvider>
+						<SoundEffects>
+							<XmppProvider>
+								{children}
+								<XmppErrorToaster />
+							</XmppProvider>
+						</SoundEffects>
 					</TooltipProvider>
 					<AppToaster />
 				</div>

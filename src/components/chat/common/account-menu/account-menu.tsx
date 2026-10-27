@@ -1,4 +1,4 @@
-import { RiLogoutBoxRLine } from "@remixicon/react";
+import { RiLogoutBoxRLine, RiSettings3Line } from "@remixicon/react";
 import { ConnectionBadge } from "#/components/common/connection-badge/connection-badge";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
 import { Button } from "#/components/ui/button";
@@ -13,10 +13,12 @@ import {
 } from "#/components/ui/dropdown-menu";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { displayJidName } from "#/lib/xmpp/jid";
+import { useSettings } from "#/providers/settings-provider";
 
 export function AccountMenu({ onOpen }: { onOpen?: () => void }) {
 	const state = useXmppState();
 	const actions = useXmppActions();
+	const { setOpen: setSettingsOpen } = useSettings();
 	const jid = state.account?.bareJid ?? state.connection.jid ?? "";
 	const name = displayJidName(jid);
 
@@ -50,6 +52,11 @@ export function AccountMenu({ onOpen }: { onOpen?: () => void }) {
 							className="mt-1"
 						/>
 					</DropdownMenuLabel>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onClick={() => setSettingsOpen(true)}>
+						<RiSettings3Line />
+						Settings
+					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem onClick={() => void actions.disconnect()}>
 						<RiLogoutBoxRLine />

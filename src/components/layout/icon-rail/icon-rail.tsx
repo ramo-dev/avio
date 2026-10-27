@@ -1,4 +1,8 @@
-import { RiChat3Line, RiChatSmile2Line } from "@remixicon/react";
+import {
+	RiChat3Line,
+	RiChatSmile2Line,
+	RiSettings3Line,
+} from "@remixicon/react";
 import { useNavigate } from "@tanstack/react-router";
 import { AccountMenu } from "#/components/chat/common/account-menu/account-menu";
 import { Button } from "#/components/ui/button";
@@ -7,9 +11,11 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "#/components/ui/tooltip";
+import { useSettings } from "#/providers/settings-provider";
 
 export function IconRail({ onAction }: { onAction?: () => void }) {
 	const navigate = useNavigate();
+	const { setOpen } = useSettings();
 
 	return (
 		<nav
@@ -52,6 +58,25 @@ export function IconRail({ onAction }: { onAction?: () => void }) {
 			</Tooltip>
 
 			<div className="mt-auto flex flex-col items-center gap-3">
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								variant="ghost"
+								size="icon-lg"
+								className="size-10"
+								aria-label="Settings"
+								onClick={() => {
+									onAction?.();
+									setOpen(true);
+								}}
+							/>
+						}
+					>
+						<RiSettings3Line className="size-5" />
+					</TooltipTrigger>
+					<TooltipContent side="right">Settings</TooltipContent>
+				</Tooltip>
 				<AccountMenu onOpen={onAction} />
 			</div>
 		</nav>

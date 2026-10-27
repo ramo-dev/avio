@@ -155,6 +155,7 @@
 	--color-sidebar-ring: var(--sidebar-ring);
 
 	--font-sans: var(--font-sans);
+	--font-heading: var(--font-sans);
 	--font-mono: var(--font-mono);
 	--font-serif: var(--font-serif);
 

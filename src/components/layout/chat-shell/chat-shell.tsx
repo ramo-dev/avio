@@ -3,11 +3,13 @@ import { useEffect } from "react";
 import { IconRail } from "#/components/layout/icon-rail/icon-rail";
 import { RightSidebarCard } from "#/components/layout/right-sidebar/right-sidebar-card/right-sidebar-card";
 import { RightSidebarDrawer } from "#/components/layout/right-sidebar/right-sidebar-drawer/right-sidebar-drawer";
+import { SettingsHost } from "#/components/settings/settings-host/settings-host";
 import { useMediaQuery } from "#/hooks/use-media-query";
 import {
 	RightSidebarProvider,
 	useRightSidebar,
 } from "#/providers/right-sidebar-provider";
+import { SettingsProvider } from "#/providers/settings-provider";
 
 export function ChatShell({
 	children,
@@ -17,9 +19,12 @@ export function ChatShell({
 	showRail?: boolean;
 }) {
 	return (
-		<RightSidebarProvider>
-			<ChatShellFrame showRail={showRail}>{children}</ChatShellFrame>
-		</RightSidebarProvider>
+		<SettingsProvider>
+			<RightSidebarProvider>
+				<ChatShellFrame showRail={showRail}>{children}</ChatShellFrame>
+				<SettingsHost />
+			</RightSidebarProvider>
+		</SettingsProvider>
 	);
 }
 
