@@ -1,3 +1,4 @@
+import type { UploadService, UploadSlot } from "#/types/attachment";
 import type { XmppAdapter, XmppEvent } from "#/types/store";
 
 export function createLazyAdapter(): XmppAdapter {
@@ -45,6 +46,17 @@ export function createLazyAdapter(): XmppAdapter {
 		async getRoster() {
 			const adapter = await ensure();
 			return adapter.getRoster();
+		},
+		async getUploadService(): Promise<UploadService> {
+			const adapter = await ensure();
+			return adapter.getUploadService();
+		},
+		async getUploadSlot(
+			serviceJid: string,
+			request: { name: string; size: number; mediaType?: string },
+		): Promise<UploadSlot> {
+			const adapter = await ensure();
+			return adapter.getUploadSlot(serviceJid, request);
 		},
 		async addContact(jid) {
 			const adapter = await ensure();

@@ -1,7 +1,11 @@
 import { displayJidName } from "#/lib/xmpp/jid";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import { isSelfJid } from "#/lib/xmpp/reducers";
-import type { Conversation, ConversationSummary } from "#/types/chat";
+import type {
+	ChatMessage,
+	Conversation,
+	ConversationSummary,
+} from "#/types/chat";
 import type { XmppState } from "#/types/store";
 
 export function selectConversationSummaries(
@@ -43,4 +47,15 @@ function toSummary(
 		presence: contact?.presence ?? OFFLINE_PRESENCE,
 		typing: conversation?.typing ?? false,
 	};
+}
+
+export function findMessageById(
+	state: XmppState,
+	messageId: string,
+): ChatMessage | undefined {
+	for (const conversation of Object.values(state.conversations)) {
+		const message = conversation.messages.find((item) => item.id === messageId);
+		if (message) return message;
+	}
+	return undefined;
 }

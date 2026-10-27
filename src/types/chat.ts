@@ -1,3 +1,4 @@
+import type { MessageAttachment } from "#/types/attachment";
 import type { PresenceState } from "#/types/xmpp";
 
 export type MessageStatus =
@@ -18,6 +19,7 @@ export interface ChatMessage {
 	from: string;
 	to: string;
 	body: string;
+	attachments?: MessageAttachment[];
 	timestamp: number;
 	direction: MessageDirection;
 	status: MessageStatus;

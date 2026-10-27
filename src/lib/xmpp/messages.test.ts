@@ -63,6 +63,30 @@ describe("message helpers", () => {
 		expect(result?.isCarbon).toBe(true);
 	});
 
+	it("normalizes OOB link attachments", () => {
+		const result = normalizeMessage(
+			{
+				from: "bob@example.com/phone",
+				to: "alice@example.com/web",
+				body: "",
+				links: [
+					{
+						url: "https://cdn.example.com/photo.png",
+						description: "photo.png",
+					},
+				],
+			},
+			{ accountBareJid: "alice@example.com" },
+		);
+
+		expect(result?.body).toBe("");
+		expect(result?.attachments?.[0]).toMatchObject({
+			name: "photo.png",
+			url: "https://cdn.example.com/photo.png",
+			kind: "image",
+		});
+	});
+
 	it("ignores empty bodies", () => {
 		expect(
 			normalizeMessage(

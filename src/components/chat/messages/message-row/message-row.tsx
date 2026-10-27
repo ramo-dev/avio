@@ -1,4 +1,5 @@
 import { cn } from "cn";
+import { MessageAttachments } from "#/components/chat/messages/message-attachments/message-attachments";
 import { MessageBubble } from "#/components/chat/messages/message-bubble/message-bubble";
 import { MessageStatus } from "#/components/chat/messages/message-status/message-status";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
@@ -44,6 +45,12 @@ export function MessageRow({
 					: "bg-primary/20 text-inherit",
 			)
 		: message.body;
+	const showBody =
+		message.body.length > 0 &&
+		!message.attachments?.some(
+			(attachment) =>
+				attachment.name === message.body || attachment.url === message.body,
+		);
 
 	return (
 		<Message
@@ -86,7 +93,13 @@ export function MessageRow({
 						) : undefined
 					}
 				>
-					{body}
+					{showBody && <div>{body}</div>}
+					{message.attachments && message.attachments.length > 0 && (
+						<MessageAttachments
+							attachments={message.attachments}
+							outgoing={outgoing}
+						/>
+					)}
 				</MessageBubble>
 			</MessageContent>
 		</Message>

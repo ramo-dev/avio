@@ -72,5 +72,39 @@ export function useStagedFiles(canAttach: boolean, onFocus?: () => void) {
 		});
 	}, []);
 
-	return { staged, stage, unstage, clear };
+	const markUploading = useCallback(() => {
+		setStaged((current) =>
+			current.map((item) => ({ ...item, uploading: true, progress: 0 })),
+		);
+	}, []);
+
+	const setProgress = useCallback((index: number, percent: number) => {
+		setStaged((current) =>
+			current.map((item, itemIndex) =>
+				itemIndex === index
+					? { ...item, uploading: true, progress: percent }
+					: item,
+			),
+		);
+	}, []);
+
+	const resetUploading = useCallback(() => {
+		setStaged((current) =>
+			current.map((item) => ({
+				...item,
+				uploading: false,
+				progress: undefined,
+			})),
+		);
+	}, []);
+
+	return {
+		staged,
+		stage,
+		unstage,
+		clear,
+		markUploading,
+		setProgress,
+		resetUploading,
+	};
 }

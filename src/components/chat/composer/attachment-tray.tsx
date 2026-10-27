@@ -2,6 +2,7 @@ import { RiCloseLine, RiFileLine, RiPlayFill } from "@remixicon/react";
 import { useState } from "react";
 import { Button } from "#/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "#/components/ui/dialog";
+import { Progress } from "#/components/ui/progress";
 import { formatBytes } from "#/lib/chat/attachments";
 import { cn } from "#/lib/utils";
 import type { StagedFile } from "#/types/attachment";
@@ -39,7 +40,7 @@ export function AttachmentTray({
 								onClick={() => setActive(item)}
 								aria-label={previewable ? `Preview ${file.name}` : file.name}
 								className={cn(
-									"relative flex overflow-hidden rounded-xl border border-border bg-muted text-left outline-hidden focus-visible:ring-2 focus-visible:ring-ring/50",
+									"relative flex overflow-hidden rounded-md border border-border bg-muted text-left outline-hidden focus-visible:ring-2 focus-visible:ring-ring/50",
 									previewable
 										? "size-16 cursor-zoom-in"
 										: "h-16 max-w-52 cursor-default items-center gap-2 px-3",
@@ -79,13 +80,19 @@ export function AttachmentTray({
 									</>
 								)}
 							</button>
+							{item.uploading && (
+								<div className="pointer-events-none absolute inset-x-1 bottom-1">
+									<Progress value={item.progress ?? 0} className="h-1" />
+								</div>
+							)}
 							<Button
 								type="button"
 								variant="secondary"
 								size="icon"
+								disabled={item.uploading}
 								onClick={() => onRemove(id)}
 								aria-label={`Remove ${file.name}`}
-								className="absolute -right-1.5 -top-1.5 size-5 rounded-full border border-border opacity-0 shadow-sm transition-opacity focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
+								className="absolute -right-1.5 -top-1.5 size-5 rounded-full z-50 border border-border opacity-0 shadow-sm transition-opacity focus-visible:opacity-100 group-focus-within:opacity-100 group-hover:opacity-100"
 							>
 								<RiCloseLine className="size-3" />
 							</Button>

@@ -6,6 +6,7 @@ import { InThreadSearch } from "#/components/chat/conversation/search/in-thread-
 import { MessageList } from "#/components/chat/messages/message-list/message-list";
 import { Spinner } from "#/components/ui/spinner";
 import { useMediaQuery } from "#/hooks/use-media-query";
+import { useSendFiles } from "#/hooks/use-send-files";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { findMessageMatches } from "#/lib/chat/search";
 import { displayJidName } from "#/lib/xmpp/jid";
@@ -19,6 +20,7 @@ export function ConversationView({ jid }: { jid: string }) {
 	const actions = useXmppActions();
 	const navigate = useNavigate();
 	const isDesktop = useMediaQuery("(min-width: 768px)");
+	const sendFiles = useSendFiles(jid);
 	const contact = state.contacts[jid];
 	const conversation = state.conversations[jid];
 	const messages = conversation?.messages ?? EMPTY_MESSAGES;
@@ -123,7 +125,7 @@ export function ConversationView({ jid }: { jid: string }) {
 				/>
 			</div>
 
-			<Composer jid={jid} disabled={!connected} />
+			<Composer jid={jid} disabled={!connected} onSendFiles={sendFiles} />
 		</div>
 	);
 }

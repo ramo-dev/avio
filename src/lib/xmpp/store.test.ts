@@ -24,6 +24,14 @@ function createHarness() {
 				presence: { show: "offline" as const, priority: 0 },
 			},
 		]),
+		getUploadService: vi.fn(async () => ({
+			jid: "upload.example.com",
+			maxSize: 10 * 1024 * 1024,
+		})),
+		getUploadSlot: vi.fn(async () => ({
+			download: "https://cdn.example.com/file.png",
+			upload: { url: "https://upload.example.com/file.png" },
+		})),
 		addContact: vi.fn(async () => undefined),
 		acceptSubscription: vi.fn(async () => undefined),
 		subscribe: (next) => {
@@ -36,6 +44,16 @@ function createHarness() {
 
 	const store = createXmppStore({
 		adapter,
+		uploader: {
+			upload: vi.fn(async (file: File) => ({
+				id: "attachment-1",
+				url: "https://cdn.example.com/file.png",
+				name: file.name,
+				kind: "image" as const,
+				mimeType: file.type,
+				size: file.size,
+			})),
+		},
 		sessionStore,
 		now: () => 10_000,
 		idFactory: () => "fixed",
@@ -102,6 +120,24 @@ describe("xmpp store", () => {
 		expect(
 			store.getState().conversations["bob@example.com"]?.messages[0].status,
 		).toBe("delivered");
+	});
+
+	it("sends attachment-only messages and uploads files", async () => {
+		const { store, sent } = createHarness();
+		await store.connect(credentials);
+
+		const attachment = await store.uploadAttachment(
+			new File(["hello"], "note.txt", { type: "text/plain" }),
+		);
+		const message = await store.sendMessage("bob@example.com", "", [
+			attachment,
+		]);
+
+		expect(message?.body).toBe("");
+		expect(message?.attachments?.[0]?.name).toBe("note.txt");
+		expect(sent[0]?.attachments?.[0]?.url).toBe(
+			"https://cdn.example.com/file.png",
+		);
 	});
 
 	it("tracks unread messages until the conversation is opened", async () => {

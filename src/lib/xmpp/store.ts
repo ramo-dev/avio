@@ -1,3 +1,4 @@
+import { uploadAttachmentWithErrors } from "#/lib/xmpp/attachment-actions";
 import {
 	deleteConversationState,
 	ensureConversationState,
@@ -10,13 +11,16 @@ import {
 	normalizeXmppError,
 } from "#/lib/xmpp/errors";
 import { bareJid, isValidAccountJid, toAccount } from "#/lib/xmpp/jid";
+import { createOutgoingMessage } from "#/lib/xmpp/messages";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import {
 	createInitialState,
 	reduceActive,
 	reduceEvent,
 } from "#/lib/xmpp/reducers";
+import { findMessageById } from "#/lib/xmpp/selectors";
 import { restoreSavedSession } from "#/lib/xmpp/session-restore";
+import type { MessageAttachment } from "#/types/attachment";
 import type { ChatMessage } from "#/types/chat";
 import type {
 	ConnectionState,
@@ -148,9 +152,10 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	async function sendMessage(
 		to: string,
 		body: string,
+		attachments?: MessageAttachment[],
 	): Promise<ChatMessage | null> {
 		const trimmed = body.trim();
-		if (!trimmed) return null;
+		if (!trimmed && (!attachments || attachments.length === 0)) return null;
 		if (state.connection.status !== "connected") {
 			setError(createXmppError("not-connected"));
 			return null;
@@ -158,16 +163,15 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 
 		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
 		const id = `local-${idFactory()}`;
-		const message: ChatMessage = {
+		const message = createOutgoingMessage({
 			id,
 			conversationJid: bareJid(to),
 			from: accountJid,
 			to: bareJid(to),
 			body: trimmed,
+			attachments,
 			timestamp: now(),
-			direction: "outgoing",
-			status: "pending",
-		};
+		});
 		handleEvent({ type: "message", message });
 
 		try {
@@ -175,6 +179,7 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 				to: bareJid(to),
 				body: trimmed,
 				id,
+				attachments,
 			});
 			return message;
 		} catch (error) {
@@ -185,7 +190,7 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	}
 
 	async function retryMessage(messageId: string) {
-		const message = findMessage(state, messageId);
+		const message = findMessageById(state, messageId);
 		if (!message || message.direction !== "outgoing") return;
 
 		handleEvent({ type: "message-status", id: messageId, status: "pending" });
@@ -272,6 +277,13 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		restoreSession,
 		disconnect,
 		sendMessage,
+		uploadAttachment: (file, onProgress) =>
+			uploadAttachmentWithErrors({
+				uploader: deps.uploader,
+				file,
+				onProgress,
+				onError: setError,
+			}),
 		retryMessage,
 		sendTyping,
 		setActiveConversation,
@@ -283,12 +295,4 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		acceptSubscription,
 		clearError,
 	};
-}
-
-function findMessage(state: XmppState, messageId: string) {
-	for (const conversation of Object.values(state.conversations)) {
-		const message = conversation.messages.find((item) => item.id === messageId);
-		if (message) return message;
-	}
-	return undefined;
 }

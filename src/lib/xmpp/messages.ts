@@ -1,4 +1,6 @@
+import { fileNameFromUrl, kindFromName } from "#/lib/chat/attachments";
 import { bareJid } from "#/lib/xmpp/jid";
+import type { MessageAttachment } from "#/types/attachment";
 import type {
 	ChatMessage,
 	MessageDirection,
@@ -12,6 +14,7 @@ export interface RawMessage {
 	to: string;
 	body?: string;
 	delay?: { timestamp?: Date | string };
+	links?: Array<{ url?: string; description?: string }>;
 }
 
 export interface NormalizeMessageOptions {
@@ -34,8 +37,21 @@ export function normalizeMessage(
 	raw: RawMessage,
 	options: NormalizeMessageOptions,
 ): ChatMessage | null {
-	const body = raw.body?.trim();
-	if (!body) return null;
+	const body = raw.body?.trim() ?? "";
+	const attachments = (raw.links ?? [])
+		.filter((link): link is { url: string; description?: string } =>
+			Boolean(link.url),
+		)
+		.map((link) => {
+			const name = link.description?.trim() || fileNameFromUrl(link.url);
+			return {
+				id: `att-${hash(link.url)}`,
+				url: link.url,
+				name,
+				kind: kindFromName(name),
+			};
+		});
+	if (!body && attachments.length === 0) return null;
 
 	const direction =
 		options.direction ??
@@ -58,10 +74,37 @@ export function normalizeMessage(
 		from: raw.from,
 		to: raw.to,
 		body,
+		attachments: attachments.length > 0 ? attachments : undefined,
 		timestamp,
 		direction,
 		status: direction === "outgoing" ? "sent" : "delivered",
 		isCarbon: options.isCarbon,
+	};
+}
+
+export interface OutgoingMessageInput {
+	conversationJid: string;
+	from: string;
+	to: string;
+	body: string;
+	id: string;
+	timestamp: number;
+	attachments?: MessageAttachment[];
+}
+
+export function createOutgoingMessage(
+	input: OutgoingMessageInput,
+): ChatMessage {
+	return {
+		id: input.id,
+		conversationJid: input.conversationJid,
+		from: input.from,
+		to: input.to,
+		body: input.body,
+		attachments: input.attachments,
+		timestamp: input.timestamp,
+		direction: "outgoing",
+		status: "pending",
 	};
 }
 

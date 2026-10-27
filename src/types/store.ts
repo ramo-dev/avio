@@ -1,4 +1,10 @@
 import type {
+	AttachmentUploader,
+	MessageAttachment,
+	UploadService,
+	UploadSlot,
+} from "#/types/attachment";
+import type {
 	ChatMessage,
 	Contact,
 	Conversation,
@@ -60,6 +66,7 @@ export interface SendMessageInput {
 	to: string;
 	body: string;
 	id: string;
+	attachments?: MessageAttachment[];
 }
 
 export interface XmppAdapter {
@@ -68,6 +75,11 @@ export interface XmppAdapter {
 	sendMessage(input: SendMessageInput): Promise<void>;
 	sendChatState(to: string, state: ChatState): Promise<void>;
 	getRoster(): Promise<Contact[]>;
+	getUploadService(): Promise<UploadService>;
+	getUploadSlot(
+		serviceJid: string,
+		request: { name: string; size: number; mediaType?: string },
+	): Promise<UploadSlot>;
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
 	subscribe(listener: (event: XmppEvent) => void): () => void;
@@ -79,7 +91,15 @@ export interface XmppStore {
 	connect(credentials: ConnectCredentials): Promise<void>;
 	restoreSession(): Promise<void>;
 	disconnect(): Promise<void>;
-	sendMessage(to: string, body: string): Promise<ChatMessage | null>;
+	sendMessage(
+		to: string,
+		body: string,
+		attachments?: MessageAttachment[],
+	): Promise<ChatMessage | null>;
+	uploadAttachment(
+		file: File,
+		onProgress?: (percent: number) => void,
+	): Promise<MessageAttachment>;
 	retryMessage(messageId: string): Promise<void>;
 	sendTyping(to: string, typing: boolean): Promise<void>;
 	setActiveConversation(jid: string | null): void;
@@ -103,6 +123,7 @@ export interface SessionStore {
 
 export interface XmppStoreDeps {
 	adapter: XmppAdapter;
+	uploader: AttachmentUploader;
 	sessionStore: SessionStore;
 	now?: () => number;
 	idFactory?: () => string;

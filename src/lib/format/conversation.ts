@@ -20,8 +20,9 @@ export function conversationPreview(
 	}
 
 	const outgoing = message.direction === "outgoing";
+	const attachment = message.attachments?.[0];
 	return {
-		text: message.body,
+		text: message.body || (attachment ? `📎 ${attachment.name}` : summary.jid),
 		prefix: outgoing ? "You:" : undefined,
 		status: outgoing ? message.status : undefined,
 		typing: false,

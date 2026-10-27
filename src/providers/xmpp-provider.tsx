@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createSessionStore } from "#/lib/storage/session";
+import { createAttachmentUploader } from "#/lib/uploads/attachment-uploader";
 import { createLazyAdapter } from "#/lib/xmpp/lazy-adapter";
 import { createXmppStore } from "#/lib/xmpp/store";
 import type { XmppStore } from "#/types/store";
@@ -8,12 +9,14 @@ import type { XmppStore } from "#/types/store";
 const XmppContext = createContext<XmppStore | null>(null);
 
 export function XmppProvider({ children }: { children: ReactNode }) {
-	const [store] = useState(() =>
-		createXmppStore({
-			adapter: createLazyAdapter(),
+	const [store] = useState(() => {
+		const adapter = createLazyAdapter();
+		return createXmppStore({
+			adapter,
+			uploader: createAttachmentUploader(adapter),
 			sessionStore: createSessionStore(),
-		}),
-	);
+		});
+	});
 	const restored = useRef(false);
 
 	useEffect(() => {

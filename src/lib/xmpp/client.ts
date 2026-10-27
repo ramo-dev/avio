@@ -6,6 +6,7 @@ import { createXmppError, isXmppError } from "#/lib/xmpp/errors";
 import { bareJid, toAccount } from "#/lib/xmpp/jid";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
 import { mapHistory, mapRoster } from "#/lib/xmpp/stanza-mappers";
+import type { UploadService, UploadSlot } from "#/types/attachment";
 import type { Contact } from "#/types/chat";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
 import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
@@ -187,6 +188,10 @@ export function createStanzaAdapter(): XmppAdapter {
 			type: "chat",
 			receipt: { type: "request" },
 			marker: { type: "markable" },
+			links: input.attachments?.map((attachment) => ({
+				url: attachment.url,
+				description: attachment.name,
+			})),
 		});
 	}
 
@@ -199,6 +204,27 @@ export function createStanzaAdapter(): XmppAdapter {
 		if (!client) return [];
 		const roster = await client.getRoster();
 		return mapRoster(roster.items ?? []);
+	}
+
+	async function getUploadService(): Promise<UploadService> {
+		if (!client) throw createXmppError("not-connected");
+		const service = await client.getUploadService();
+		return { jid: service.jid, maxSize: service.maxSize };
+	}
+
+	async function getUploadSlot(
+		serviceJid: string,
+		request: { name: string; size: number; mediaType?: string },
+	): Promise<UploadSlot> {
+		if (!client) throw createXmppError("not-connected");
+		const slot = await client.getUploadSlot(serviceJid, request);
+		return {
+			download: slot.download,
+			upload: {
+				url: slot.upload.url,
+				headers: slot.upload.headers,
+			},
+		};
 	}
 
 	async function addContact(jid: string) {
@@ -217,6 +243,8 @@ export function createStanzaAdapter(): XmppAdapter {
 		sendMessage,
 		sendChatState,
 		getRoster,
+		getUploadService,
+		getUploadSlot,
 		addContact,
 		acceptSubscription,
 		subscribe(listener) {

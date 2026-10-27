@@ -9,7 +9,7 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Replies (XEP-0461)** — send and render quoted replies once the stanza format is added.
 - **Message corrections (XEP-0308)** — stanza emits `replace`; update the original message body and show an edited marker.
 - **Retractions (XEP-0424)** — remove or tombstone a message after a retraction event.
-- **Attachments / HTTP Upload (XEP-0363)** — request an upload slot, upload the file, send the URL as an OOB message, and render a download card.
+- **Upload cancellation and retry** — the XEP-0363 upload path now stages files, reports progress, sends OOB links, and renders image/file/video cards. Add per-file cancel/retry controls for failed uploads.
 - **Message search** — local search over the in-memory conversation store first, then MAM search.
 - **Delivery/read receipt parity** — verify server support and surface `marker:displayed` consistently for all clients.
 
