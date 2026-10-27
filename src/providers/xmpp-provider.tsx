@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createSessionStore } from "#/lib/storage/session";
 import { createLazyAdapter } from "#/lib/xmpp/lazy-adapter";
 import { createXmppStore } from "#/lib/xmpp/store";
@@ -14,6 +14,13 @@ export function XmppProvider({ children }: { children: ReactNode }) {
 			sessionStore: createSessionStore(),
 		}),
 	);
+	const restored = useRef(false);
+
+	useEffect(() => {
+		if (restored.current) return;
+		restored.current = true;
+		void store.restoreSession();
+	}, [store]);
 
 	return <XmppContext.Provider value={store}>{children}</XmppContext.Provider>;
 }

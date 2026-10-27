@@ -23,8 +23,10 @@ export interface ConnectionState {
 
 export interface XmppState {
 	connection: ConnectionState;
+	restorePending: boolean;
 	account: Account | null;
 	contacts: Record<string, Contact>;
+	presences: Record<string, Record<string, PresenceState>>;
 	conversations: Record<string, Conversation>;
 	activeJid: string | null;
 	subscriptionRequests: SubscriptionRequest[];
@@ -40,6 +42,7 @@ export type XmppEvent =
 	| { type: "roster"; contacts: Contact[] }
 	| { type: "presence"; jid: string; presence: PresenceState }
 	| { type: "message"; message: ChatMessage }
+	| { type: "history"; messages: ChatMessage[] }
 	| {
 			type: "message-status";
 			id?: string;
@@ -74,11 +77,16 @@ export interface XmppStore {
 	getState(): XmppState;
 	subscribe(listener: () => void): () => void;
 	connect(credentials: ConnectCredentials): Promise<void>;
+	restoreSession(): Promise<void>;
 	disconnect(): Promise<void>;
 	sendMessage(to: string, body: string): Promise<ChatMessage | null>;
 	retryMessage(messageId: string): Promise<void>;
 	sendTyping(to: string, typing: boolean): Promise<void>;
 	setActiveConversation(jid: string | null): void;
+	ensureConversation(jid: string): void;
+	markConversationUnread(jid: string): void;
+	markAllRead(): void;
+	deleteConversation(jid: string): void;
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
 	clearError(): void;
@@ -87,6 +95,9 @@ export interface XmppStore {
 export interface SessionStore {
 	load(): StoredSession | null;
 	save(session: StoredSession): void;
+	loadPassword(): string | null;
+	savePassword(password: string): void;
+	clearPassword(): void;
 	clear(): void;
 }
 

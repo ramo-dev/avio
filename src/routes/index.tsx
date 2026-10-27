@@ -9,7 +9,7 @@ function Home() {
 	const state = useXmppState();
 	const hydrated = useHydrated();
 
-	if (!hydrated) return <LoadingScreen />;
+	if (!hydrated || state.restorePending) return <LoadingScreen />;
 	if (state.connection.status === "connected") {
 		return <Navigate to="/chat" />;
 	}

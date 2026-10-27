@@ -2,21 +2,25 @@ import type { Agent } from "stanza";
 import * as XMPP from "stanza";
 import type * as StanzaProtocol from "stanza/protocol";
 import { reconnectDelay } from "#/lib/xmpp/backoff";
-import { createXmppError } from "#/lib/xmpp/errors";
+import { createXmppError, isXmppError } from "#/lib/xmpp/errors";
 import { bareJid, toAccount } from "#/lib/xmpp/jid";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
-import { mapRoster } from "#/lib/xmpp/stanza-mappers";
+import { mapHistory, mapRoster } from "#/lib/xmpp/stanza-mappers";
 import type { Contact } from "#/types/chat";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
-import type { ChatState, ConnectCredentials } from "#/types/xmpp";
+import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
 
 const CONNECT_TIMEOUT_MS = 30_000;
-const RESOURCE = "avio-web";
+const RESOURCE_PREFIX = "avio-web";
 
 interface PendingConnection {
 	resolve: () => void;
-	reject: (error: Error) => void;
+	reject: (error: Error | XmppError) => void;
 	timer: ReturnType<typeof setTimeout>;
+}
+
+function createResourceId(): string {
+	return `${RESOURCE_PREFIX}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
 export function createStanzaAdapter(): XmppAdapter {
@@ -33,7 +37,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		for (const listener of listeners) listener(event);
 	}
 
-	function clearPending(error?: Error) {
+	function clearPending(error?: Error | XmppError) {
 		if (!pending) return;
 		clearTimeout(pending.timer);
 		if (error) pending.reject(error);
@@ -63,12 +67,19 @@ export function createStanzaAdapter(): XmppAdapter {
 				emit({ type: "connection", status: "connected", jid: accountBareJid });
 				agent.sendPresence();
 				void agent.enableCarbons().catch(() => undefined);
+				void agent
+					.searchHistory({ paging: { max: 50, before: "" } })
+					.then((history) => {
+						const messages = mapHistory(history, accountBareJid);
+						if (messages.length > 0) emit({ type: "history", messages });
+					})
+					.catch(() => undefined);
 			},
 			onAuthFailed: () => {
 				manualDisconnect = true;
 				const error = createXmppError("auth-failed");
 				emit({ type: "connection", status: "error", error });
-				clearPending(new Error(error.message));
+				clearPending(error);
 			},
 			onStreamError: (streamError: StanzaProtocol.StreamError) => {
 				const error = createXmppError(
@@ -77,7 +88,7 @@ export function createStanzaAdapter(): XmppAdapter {
 					streamError.text ?? "The XMPP stream failed.",
 				);
 				emit({ type: "connection", status: "error", error });
-				clearPending(new Error(error.message));
+				clearPending(error);
 			},
 			onDisconnected: () => {
 				if (manualDisconnect) {
@@ -86,7 +97,9 @@ export function createStanzaAdapter(): XmppAdapter {
 				}
 				if (pending) {
 					clearPending(
-						new Error("The connection closed before the session started."),
+						new Error(
+							"The server closed the connection before login completed. Check the WebSocket URL and server settings.",
+						),
 					);
 				}
 				scheduleReconnect();
@@ -105,7 +118,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		const agent = XMPP.createClient({
 			jid: nextCredentials.jid,
 			password: nextCredentials.password,
-			resource: nextCredentials.resource || RESOURCE,
+			resource: nextCredentials.resource || createResourceId(),
 			transports: {
 				websocket: nextCredentials.websocketUrl || true,
 				bosh: nextCredentials.boshUrl || true,
@@ -131,11 +144,12 @@ export function createStanzaAdapter(): XmppAdapter {
 		});
 
 		try {
-			agent.connect();
+			await Promise.resolve(agent.connect());
 			await connected;
 		} catch (error) {
 			clearPending();
 			await disconnectClient();
+			if (isXmppError(error)) throw error;
 			throw createXmppError(
 				"connection-failed",
 				error,
@@ -153,7 +167,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		const current = client;
 		client = null;
 		current.removeAllListeners();
-		current.disconnect();
+		await Promise.resolve(current.disconnect());
 	}
 
 	async function disconnect(): Promise<void> {

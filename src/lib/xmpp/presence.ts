@@ -13,6 +13,22 @@ export interface PresenceInput {
 	available?: boolean;
 }
 
+export function pickBestPresence(presences: PresenceState[]): PresenceState {
+	const rank: Record<PresenceShow, number> = {
+		chat: 5,
+		available: 4,
+		away: 3,
+		dnd: 2,
+		xa: 1,
+		offline: 0,
+	};
+	let best = OFFLINE_PRESENCE;
+	for (const presence of presences) {
+		if (rank[presence.show] > rank[best.show]) best = presence;
+	}
+	return best;
+}
+
 export function normalizePresence(input: PresenceInput = {}): PresenceState {
 	if (input.available === false) {
 		return {

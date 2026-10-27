@@ -1,28 +1,37 @@
-import { RiChatSmile2Line } from "@remixicon/react";
 import { ConnectForm } from "#/components/auth/connect-form/connect-form";
 
 export function ConnectScreen() {
 	return (
-		<main className="relative flex min-h-svh flex-col items-center justify-center overflow-hidden bg-background px-4 py-10">
-			<div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,var(--accent),transparent_60%)]" />
-			<div className="relative flex w-full max-w-md flex-col items-center gap-6">
-				<div className="flex flex-col items-center gap-3 text-center">
-					<div className="flex size-12 items-center justify-center rounded-2xl bg-primary text-primary-foreground shadow-sm">
-						<RiChatSmile2Line className="size-6" />
-					</div>
-					<div className="space-y-1">
-						<h1 className="text-3xl font-semibold tracking-tight">Avio</h1>
-						<p className="text-sm text-muted-foreground">
-							A calm, focused XMPP client.
+		<main className="grid max-h-screen overflow-hidden bg-background lg:grid-cols-2">
+			<section className="relative m-3 rounded-md hidden h-full lg:block overflow-hidden">
+				<img
+					src="https://images.pexels.com/photos/10049469/pexels-photo-10049469.jpeg"
+					alt="Avio"
+					className="absolute mb-3 inset-0 h-full w-full object-cover"
+				/>
+				<div className="absolute inset-0 top-0 h-full bg-gradient-to-b from-transparent to-black" />
+			</section>
+
+			<section className="flex min-h-svh flex-col items-center justify-center px-6 py-12">
+				<div className="flex w-full max-w-sm flex-col gap-8">
+					<header className="space-y-2">
+						<h1 className="text-2xl font-semibold tracking-tight">
+							Connect to Avio
+						</h1>
+
+						<p className="text-sm leading-relaxed text-muted-foreground">
+							Connect your account to your XMPP server.
 						</p>
-					</div>
+					</header>
+
+					<ConnectForm />
+
+					<p className="text-center text-xs leading-relaxed text-muted-foreground">
+						Your connection goes directly to your XMPP server. Your password is
+						never stored in the browser.
+					</p>
 				</div>
-				<ConnectForm />
-				<p className="max-w-sm text-center text-xs leading-relaxed text-muted-foreground">
-					Avio talks to your XMPP server directly. Your password is never stored
-					in the browser.
-				</p>
-			</div>
+			</section>
 		</main>
 	);
 }

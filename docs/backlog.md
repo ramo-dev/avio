@@ -4,12 +4,20 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 
 ## Messaging
 
-- **MAM history (XEP-0313)** — call `client.searchHistory(jid, { max: 50 })`, merge with live messages, dedupe by stanza ID, and preserve scroll while prepending. `MessageScroller` already supports prepend preservation.
+- **MAM history pagination (XEP-0313)** — the client now loads the latest 50 archived messages on session start. Add older-page loading on scroll-top with `MessageScroller` prepend preservation.
+- **Reactions (XEP-0444)** — StanzaJS does not expose reactions; add a JXT plugin, reaction chips, and toggle commands.
+- **Replies (XEP-0461)** — send and render quoted replies once the stanza format is added.
 - **Message corrections (XEP-0308)** — stanza emits `replace`; update the original message body and show an edited marker.
 - **Retractions (XEP-0424)** — remove or tombstone a message after a retraction event.
 - **Attachments / HTTP Upload (XEP-0363)** — request an upload slot, upload the file, send the URL as an OOB message, and render a download card.
 - **Message search** — local search over the in-memory conversation store first, then MAM search.
 - **Delivery/read receipt parity** — verify server support and surface `marker:displayed` consistently for all clients.
+
+## Chat UI
+
+- **Server-side roster removal** — deleting a chat currently removes the local conversation/contact; add `removeRosterItem` so it stays gone after roster reload.
+- **Message hover toolbar** — add reply/reaction/copy/delete actions on hover and right-click. Reactions and replies need the protocol work below.
+- **Message virtualization** — add `@tanstack/react-virtual` to the list and thread once either exceeds roughly 200 items.
 
 ## Presence and roster
 

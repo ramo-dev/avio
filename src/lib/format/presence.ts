@@ -4,13 +4,14 @@ export function presenceDotClassName(show: PresenceShow): string {
 	switch (show) {
 		case "chat":
 		case "available":
-			return "bg-emerald-500";
+			return "bg-green-500";
 		case "away":
+			return "bg-zinc-500";
 		case "xa":
-			return "bg-amber-500";
+			return "bg-muted-foreground";
 		case "dnd":
 			return "bg-destructive";
 		default:
-			return "bg-muted-foreground/40";
+			return "bg-muted-foreground";
 	}
 }

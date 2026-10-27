@@ -1,5 +1,6 @@
 import { RiAddLine } from "@remixicon/react";
 import { useState } from "react";
+import { toast } from "react-hot-toast";
 import { Button } from "#/components/ui/button";
 import {
 	Dialog,
@@ -10,7 +11,7 @@ import {
 	DialogTitle,
 	DialogTrigger,
 } from "#/components/ui/dialog";
-import { Field, FieldError, FieldLabel } from "#/components/ui/field";
+import { Field, FieldLabel } from "#/components/ui/field";
 import { Input } from "#/components/ui/input";
 import { useXmppActions } from "#/hooks/xmpp/use-xmpp";
 import { isValidJid } from "#/lib/xmpp/jid";
@@ -19,17 +20,15 @@ export function AddContactDialog() {
 	const actions = useXmppActions();
 	const [open, setOpen] = useState(false);
 	const [jid, setJid] = useState("");
-	const [error, setError] = useState<string | null>(null);
 	const [submitting, setSubmitting] = useState(false);
 
 	async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		const value = jid.trim();
 		if (!isValidJid(value)) {
-			setError("Enter a valid JID, for example friend@example.com.");
+			toast.error("Enter a valid JID, for example friend@example.com.");
 			return;
 		}
-		setError(null);
 		setSubmitting(true);
 		try {
 			await actions.addContact(value);
@@ -44,7 +43,7 @@ export function AddContactDialog() {
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogTrigger
 				render={
-					<Button variant="ghost" size="icon-sm" aria-label="Add contact" />
+					<Button variant="secondary" size="icon" aria-label="Add contact" />
 				}
 			>
 				<RiAddLine />
@@ -57,7 +56,7 @@ export function AddContactDialog() {
 					</DialogDescription>
 				</DialogHeader>
 				<form onSubmit={handleSubmit} className="flex flex-col gap-4">
-					<Field data-invalid={Boolean(error)}>
+					<Field>
 						<FieldLabel htmlFor="contact-jid">JID</FieldLabel>
 						<Input
 							id="contact-jid"
@@ -67,7 +66,6 @@ export function AddContactDialog() {
 							autoComplete="off"
 							disabled={submitting}
 						/>
-						{error && <FieldError>{error}</FieldError>}
 					</Field>
 					<DialogFooter>
 						<Button type="submit" disabled={submitting}>

@@ -20,7 +20,13 @@
 		"enabled": true,
 		"indentStyle": "tab"
 	},
-	"assist": { "actions": { "source": { "organizeImports": "on" } } },
+	"assist": {
+		"actions": {
+			"source": {
+				"organizeImports": "on"
+			}
+		}
+	},
 	"linter": {
 		"enabled": true,
 		"rules": {
@@ -41,10 +47,15 @@
 		{
 			"includes": ["src/components/ui/**"],
 			"linter": {
+				"enabled": false
+			}
+		},
+		{
+			"includes": ["src/lib/highlighter.tsx"],
+			"linter": {
 				"rules": {
-					"a11y": {
-						"noLabelWithoutControl": "off",
-						"useSemanticElements": "off"
+					"suspicious": {
+						"noArrayIndexKey": "off"
 					}
 				}
 			}

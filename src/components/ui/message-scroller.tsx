@@ -1,5 +1,3 @@
-"use client";
-
 import { RiArrowDownLine } from "@remixicon/react";
 import {
 	MessageScroller as MessageScrollerPrimitive,
@@ -8,7 +6,7 @@ import {
 	useMessageScrollerVisibility,
 } from "@shadcn/react/message-scroller";
 import { cn } from "cn";
-import type * as React from "react";
+import * as React from "react";
 import { Button } from "#/components/ui/button.tsx";
 
 function MessageScrollerProvider(
@@ -56,7 +54,7 @@ function MessageScrollerContent({
 	return (
 		<MessageScrollerPrimitive.Content
 			data-slot="message-scroller-content"
-			className={cn("flex h-max min-h-full flex-col gap-6", className)}
+			className={cn("flex h-max min-h-full flex-col gap-8", className)}
 			{...props}
 		/>
 	);

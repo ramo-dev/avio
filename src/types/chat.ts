@@ -9,6 +9,8 @@ export type MessageStatus =
 
 export type MessageDirection = "incoming" | "outgoing";
 
+export type MessagePosition = "single" | "first" | "middle" | "last";
+
 export interface ChatMessage {
 	id: string;
 	stanzaId?: string;
@@ -57,4 +59,5 @@ export interface ConversationSummary {
 	unread: number;
 	lastActivity: number;
 	presence: PresenceState;
+	typing: boolean;
 }

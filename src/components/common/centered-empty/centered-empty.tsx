@@ -12,11 +12,13 @@ export function CenteredEmptyState({
 	icon,
 	title,
 	description,
+	action,
 	className,
 }: {
 	icon: ReactNode;
 	title: string;
 	description: string;
+	action?: ReactNode;
 	className?: string;
 }) {
 	return (
@@ -26,6 +28,7 @@ export function CenteredEmptyState({
 				<EmptyTitle>{title}</EmptyTitle>
 				<EmptyDescription>{description}</EmptyDescription>
 			</EmptyHeader>
+			{action}
 		</Empty>
 	);
 }

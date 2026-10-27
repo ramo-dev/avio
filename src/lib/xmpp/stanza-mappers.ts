@@ -26,6 +26,24 @@ export function normalizeStanzaMessage(
 	);
 }
 
+export function mapHistory(
+	fin: StanzaProtocol.MAMFin,
+	accountBareJid: string,
+): ChatMessage[] {
+	const messages: ChatMessage[] = [];
+	for (const result of fin.results ?? []) {
+		const message = result.item.message;
+		if (!message || message.type === "groupchat") continue;
+		const delay = result.item.delay?.timestamp ?? message.delay?.timestamp;
+		const normalized = normalizeStanzaMessage(
+			delay ? { ...message, delay: { timestamp: delay } } : message,
+			accountBareJid,
+		);
+		if (normalized) messages.push(normalized);
+	}
+	return messages.sort((a, b) => a.timestamp - b.timestamp);
+}
+
 export function withFallbackAddress(
 	message: StanzaProtocol.Message,
 	from: string,

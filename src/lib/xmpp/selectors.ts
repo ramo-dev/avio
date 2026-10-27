@@ -41,5 +41,6 @@ function toSummary(
 		unread: conversation?.unread ?? 0,
 		lastActivity: conversation?.lastActivity ?? 0,
 		presence: contact?.presence ?? OFFLINE_PRESENCE,
+		typing: conversation?.typing ?? false,
 	};
 }

@@ -116,16 +116,22 @@ Never import stanza types into components. Normalize at the adapter boundary.
 
 ### XMPP and security
 - Render message bodies as text. Never render XHTML-IM or raw HTML.
-- Never persist passwords in `localStorage`.
+- Never persist passwords in `localStorage`. The web client may keep a tab-scoped password in `sessionStorage` for refresh restore; clear it on logout and auth failure. Tauri must use the OS keychain.
 - Never log passwords or raw stanzas in production.
 - Normalize stanza events before storing them.
 - Deduplicate messages by stanza ID with a stable fallback key.
 - Every network action must have a typed error path.
 
+### Errors
+- Surface user-facing failures through `react-hot-toast`; the shared `XmppErrorToaster` bridges store errors.
+- Do not add inline error banners or alert blocks. Form validation also uses toasts.
+- Deduplicate toasts by message id so retries do not stack duplicates.
+
 ### Styling
 - Use semantic Tailwind tokens (`bg-background`, `text-muted-foreground`, `border-border`). No hardcoded hex colors.
 - Use `cn()` from `cn` / `#/lib/utils`.
 - Keep global CSS in `src/styles/*` and import it from `src/styles.css`.
+- Fonts are self-hosted in `src/assets/fonts` and declared with `@font-face` in `src/styles/fonts.css`. Never add Google Fonts or CDN font imports.
 - Base UI portals require the app root to have `isolation: isolate`.
 
 ## Backlog

@@ -6,6 +6,8 @@ import {
 	Scripts,
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
+import { AppToaster } from "#/components/common/app-toaster/app-toaster";
+import { XmppErrorToaster } from "#/components/common/xmpp-error-toaster/xmpp-error-toaster";
 import { TooltipProvider } from "#/components/ui/tooltip";
 import { XmppProvider } from "#/providers/xmpp-provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
@@ -52,21 +54,28 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 			<body>
 				<div className="root min-h-svh">
 					<TooltipProvider>
-						<XmppProvider>{children}</XmppProvider>
+						<XmppProvider>
+							{children}
+							<XmppErrorToaster />
+						</XmppProvider>
 					</TooltipProvider>
+					<AppToaster />
 				</div>
-				<TanStackDevtools
-					config={{
-						position: "bottom-right",
-					}}
-					plugins={[
-						{
-							name: "Tanstack Router",
-							render: <TanStackRouterDevtoolsPanel />,
-						},
-						TanStackQueryDevtools,
-					]}
-				/>
+				{import.meta.env.DEV && (
+					<TanStackDevtools
+						config={{
+							position: "bottom-right",
+							triggerHidden: true,
+						}}
+						plugins={[
+							{
+								name: "Tanstack Router",
+								render: <TanStackRouterDevtoolsPanel />,
+							},
+							TanStackQueryDevtools,
+						]}
+					/>
+				)}
 				<Scripts />
 			</body>
 		</html>

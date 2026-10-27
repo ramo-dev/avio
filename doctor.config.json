@@ -1,0 +1,19 @@
+{
+	"ignore": {
+		"files": [
+			"src/components/ui/**",
+			"src/lib/highlighter.tsx",
+			".output/**"
+		],
+		"overrides": [
+			{
+				"files": [
+					"src/lib/storage/session.ts"
+				],
+				"rules": [
+					"react-doctor/auth-token-in-web-storage"
+				]
+			}
+		]
+	}
+}

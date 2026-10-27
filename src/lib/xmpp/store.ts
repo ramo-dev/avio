@@ -1,4 +1,10 @@
 import {
+	deleteConversationState,
+	ensureConversationState,
+	markAllReadState,
+	markConversationUnreadState,
+} from "#/lib/xmpp/conversation-state";
+import {
 	createXmppError,
 	isXmppError,
 	normalizeXmppError,
@@ -10,6 +16,7 @@ import {
 	reduceActive,
 	reduceEvent,
 } from "#/lib/xmpp/reducers";
+import { restoreSavedSession } from "#/lib/xmpp/session-restore";
 import type { ChatMessage } from "#/types/chat";
 import type {
 	ConnectionState,
@@ -77,9 +84,11 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			boshUrl: credentials.boshUrl,
 			resource: credentials.resource,
 		});
+		deps.sessionStore.savePassword(credentials.password);
 
 		setState({
 			...createInitialState(),
+			restorePending: false,
 			account,
 			connection: { status: "connecting", error: null, jid: account.bareJid },
 		});
@@ -94,17 +103,31 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 				})
 				.catch(() => undefined);
 		} catch (error) {
+			const xmppError = isXmppError(error)
+				? error
+				: normalizeXmppError(error, "connection-failed");
+			if (xmppError.code === "auth-failed") {
+				deps.sessionStore.clearPassword();
+			}
 			setConnection({
 				status: "error",
-				error: isXmppError(error)
-					? error
-					: normalizeXmppError(error, "connection-failed"),
+				error: xmppError,
 				jid: account.bareJid,
 			});
 		}
 	}
 
+	async function restoreSession() {
+		await restoreSavedSession({
+			getState,
+			setState,
+			sessionStore: deps.sessionStore,
+			connect,
+		});
+	}
+
 	async function disconnect() {
+		deps.sessionStore.clearPassword();
 		try {
 			await deps.adapter.disconnect();
 		} catch {
@@ -192,6 +215,22 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		setState(reduceActive(state, jid));
 	}
 
+	function ensureConversation(jid: string) {
+		setState(ensureConversationState(state, jid));
+	}
+
+	function markConversationUnread(jid: string) {
+		setState(markConversationUnreadState(state, jid));
+	}
+
+	function markAllRead() {
+		setState(markAllReadState(state));
+	}
+
+	function deleteConversation(jid: string) {
+		setState(deleteConversationState(state, jid));
+	}
+
 	async function addContact(jid: string) {
 		const contactJid = bareJid(jid);
 		if (contactJid.toLowerCase() === state.account?.bareJid.toLowerCase())
@@ -230,11 +269,16 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		getState,
 		subscribe,
 		connect,
+		restoreSession,
 		disconnect,
 		sendMessage,
 		retryMessage,
 		sendTyping,
 		setActiveConversation,
+		ensureConversation,
+		markConversationUnread,
+		markAllRead,
+		deleteConversation,
 		addContact,
 		acceptSubscription,
 		clearError,

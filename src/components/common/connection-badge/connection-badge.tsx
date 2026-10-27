@@ -13,9 +13,9 @@ const LABELS: Record<ConnectionStatus, string> = {
 
 const DOTS: Record<ConnectionStatus, string> = {
 	idle: "bg-muted-foreground/40",
-	connecting: "bg-amber-500",
-	connected: "bg-emerald-500",
-	reconnecting: "bg-amber-500",
+	connecting: "bg-muted-foreground",
+	connected: "bg-primary",
+	reconnecting: "bg-muted-foreground",
 	disconnected: "bg-muted-foreground/40",
 	error: "bg-destructive",
 };

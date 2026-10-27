@@ -18,16 +18,21 @@ const LABELS: Record<MessageStatusValue, string> = {
 export function MessageStatus({
 	status,
 	onRetry,
+	tone = "default",
 }: {
 	status: MessageStatusValue;
 	onRetry?: () => void;
+	tone?: "default" | "inverse";
 }) {
 	if (status === "failed") {
 		return (
 			<button
 				type="button"
 				onClick={onRetry}
-				className="inline-flex items-center gap-1 text-destructive hover:underline"
+				className={cn(
+					"inline-flex items-center gap-1 hover:underline",
+					tone === "inverse" ? "text-primary-foreground" : "text-destructive",
+				)}
 				title={LABELS.failed}
 			>
 				<RiErrorWarningLine className="size-3.5" />
@@ -39,8 +44,12 @@ export function MessageStatus({
 	return (
 		<span
 			className={cn(
-				"inline-flex items-center text-muted-foreground",
-				status === "read" && "text-primary",
+				"inline-flex items-center",
+				tone === "inverse"
+					? "text-primary-foreground/80"
+					: "text-muted-foreground",
+				status === "read" &&
+					(tone === "inverse" ? "text-primary-foreground" : "text-primary"),
 			)}
 			title={LABELS[status]}
 		>

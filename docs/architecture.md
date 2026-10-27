@@ -57,7 +57,9 @@ Updates are immutable. Selectors in `lib/xmpp/selectors.ts` derive sidebar summa
 - The store is created during render but never opens a socket during SSR.
 - `connect()` dynamically imports the stanza adapter, so `stanza` is not evaluated on the server.
 - `MessageScroller` and Base UI portals run only in the browser.
-- Session persistence stores JID and transport URLs only. Passwords stay in memory.
+- Session persistence stores JID and transport URLs in `localStorage`. A tab-scoped password lives in `sessionStorage` so refresh can restore the session; it is cleared on logout and auth failure.
+- On session start the adapter loads the latest 50 MAM messages so the chat list and open conversation survive a refresh.
+- Presence is aggregated per resource, so a contact stays online while any of their resources is available.
 
 ## Tauri readiness
 

@@ -1,9 +1,11 @@
 import { Navigate, Outlet, useParams } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { ChatSidebar } from "#/components/chat/sidebar/chat-sidebar/chat-sidebar";
+import { ChatList } from "#/components/chat/list/chat-list/chat-list";
 import { LoadingScreen } from "#/components/common/loading-screen/loading-screen";
-import { AppShell } from "#/components/layout/app-shell/app-shell";
+import { ChatShell } from "#/components/layout/chat-shell/chat-shell";
+import { ChatWorkspace } from "#/components/layout/chat-workspace/chat-workspace";
 import { useHydrated } from "#/hooks/use-hydrated";
+import { useMediaQuery } from "#/hooks/use-media-query";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 
 export function ChatLayout() {
@@ -11,20 +13,40 @@ export function ChatLayout() {
 	const state = useXmppState();
 	const actions = useXmppActions();
 	const hydrated = useHydrated();
+	const isDesktop = useMediaQuery("(min-width: 768px)");
 	const activeJid = params.jid ?? null;
 
 	useEffect(() => {
 		actions.setActiveConversation(activeJid);
 	}, [actions, activeJid]);
 
-	if (!hydrated) return <LoadingScreen label="Opening Avio" />;
-	if (state.connection.status !== "connected") {
+	if (!hydrated || state.restorePending) {
+		return <LoadingScreen label="Restoring session" />;
+	}
+	const connectionLost =
+		state.connection.status === "idle" ||
+		state.connection.status === "disconnected" ||
+		state.connection.status === "error";
+
+	if (connectionLost) {
 		return <Navigate to="/connect" />;
 	}
 
+	if (isDesktop) {
+		return (
+			<ChatShell>
+				<ChatWorkspace list={<ChatList />}>
+					<Outlet />
+				</ChatWorkspace>
+			</ChatShell>
+		);
+	}
+
 	return (
-		<AppShell sidebar={<ChatSidebar />}>
-			<Outlet />
-		</AppShell>
+		<ChatShell showRail={false}>
+			<div className="flex min-h-0 w-full flex-col overflow-hidden bg-background">
+				{activeJid ? <Outlet /> : <ChatList />}
+			</div>
+		</ChatShell>
 	);
 }

@@ -1,10 +1,15 @@
+import {
+	createConversation,
+	ensureContact,
+	reduceHistory,
+} from "#/lib/xmpp/conversation-state";
 import { bareJid } from "#/lib/xmpp/jid";
 import {
 	appendMessage,
 	applyMessageStatus,
 	hasMessage,
 } from "#/lib/xmpp/messages";
-import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
+import { OFFLINE_PRESENCE, pickBestPresence } from "#/lib/xmpp/presence";
 import type { ChatMessage, Contact, Conversation } from "#/types/chat";
 import type { XmppEvent, XmppState } from "#/types/store";
 import type { PresenceState, SubscriptionRequest } from "#/types/xmpp";
@@ -14,21 +19,13 @@ const MAX_MESSAGES = 1000;
 export function createInitialState(): XmppState {
 	return {
 		connection: { status: "idle", error: null, jid: null },
+		restorePending: true,
 		account: null,
 		contacts: {},
+		presences: {},
 		conversations: {},
 		activeJid: null,
 		subscriptionRequests: [],
-	};
-}
-
-export function createConversation(jid: string): Conversation {
-	return {
-		jid,
-		messages: [],
-		unread: 0,
-		lastActivity: 0,
-		typing: false,
 	};
 }
 
@@ -42,6 +39,8 @@ export function reduceEvent(state: XmppState, event: XmppEvent): XmppState {
 			return reducePresence(state, event.jid, event.presence);
 		case "message":
 			return reduceMessage(state, event.message);
+		case "history":
+			return reduceHistory(state, event.messages);
 		case "message-status":
 			return reduceMessageStatus(state, event);
 		case "typing":
@@ -70,10 +69,22 @@ export function reduceConnection(
 		event.status === "connected" && state.account
 			? { ...state.account, jid: jid ?? state.account.jid }
 			: state.account;
+	const connectionLost =
+		event.status === "disconnected" || event.status === "error";
+	const contacts = connectionLost
+		? Object.fromEntries(
+				Object.entries(state.contacts).map(([key, contact]) => [
+					key,
+					{ ...contact, presence: OFFLINE_PRESENCE },
+				]),
+			)
+		: state.contacts;
 
 	return {
 		...state,
 		account,
+		contacts,
+		presences: connectionLost ? {} : state.presences,
 		connection: {
 			status: event.status,
 			error:
@@ -102,16 +113,35 @@ export function reducePresence(
 	presence: PresenceState,
 ): XmppState {
 	const key = bareJid(jid);
+	if (isSelfJid(state, key)) return state;
+
+	const resources = { ...state.presences[key] };
+	if (presence.show === "offline") {
+		delete resources[jid];
+	} else {
+		resources[jid] = presence;
+	}
+
+	const best = pickBestPresence(Object.values(resources));
+	const contactPresence =
+		best.show === "offline"
+			? {
+					...OFFLINE_PRESENCE,
+					lastSeen: presence.show === "offline" ? presence.lastSeen : undefined,
+				}
+			: best;
+
 	const existing = state.contacts[key];
 	return {
 		...state,
+		presences: { ...state.presences, [key]: resources },
 		contacts: {
 			...state.contacts,
 			[key]: {
 				jid: key,
 				name: existing?.name,
 				subscription: existing?.subscription ?? "none",
-				presence,
+				presence: contactPresence,
 			},
 		},
 	};
@@ -214,27 +244,4 @@ export function reduceSubscription(
 export function isSelfJid(state: XmppState, jid: string): boolean {
 	const own = state.account?.bareJid;
 	return Boolean(own && bareJid(jid).toLowerCase() === own.toLowerCase());
-}
-
-export function ensureContact(
-	contacts: Record<string, Contact>,
-	jid: string,
-	name?: string,
-): Record<string, Contact> {
-	const key = bareJid(jid);
-	const existing = contacts[key];
-	if (existing) {
-		if (!name || existing.name) return contacts;
-		return { ...contacts, [key]: { ...existing, name } };
-	}
-
-	return {
-		...contacts,
-		[key]: {
-			jid: key,
-			name,
-			subscription: "none",
-			presence: OFFLINE_PRESENCE,
-		},
-	};
 }

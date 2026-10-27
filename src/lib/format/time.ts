@@ -38,6 +38,16 @@ export function formatRelativeTime(
 	return `${days}d`;
 }
 
+export function formatLastSeen(timestamp: number, now = Date.now()): string {
+	const diff = Math.max(0, now - timestamp);
+	const minutes = Math.floor(diff / 60_000);
+	if (minutes < 1) return "last seen just now";
+	if (minutes < 60) return `last seen ${minutes}m ago`;
+	const hours = Math.floor(minutes / 60);
+	if (hours < 24) return `last seen ${hours}h ago`;
+	return `last seen ${dayFormatter.format(new Date(timestamp))}`;
+}
+
 export function isSameDay(a: Date, b: Date): boolean {
 	return (
 		a.getFullYear() === b.getFullYear() &&
