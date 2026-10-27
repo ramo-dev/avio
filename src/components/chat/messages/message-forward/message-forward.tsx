@@ -27,22 +27,36 @@ const triggerClassName =
 export function MessageForwardAction({
 	message,
 	onForwarded,
+	open: controlledOpen,
+	onOpenChange,
 }: {
 	message: ChatMessage;
 	onForwarded?: () => void;
+	open?: boolean;
+	onOpenChange?: (open: boolean) => void;
 }) {
 	const state = useXmppState();
 	const actions = useXmppActions();
 	const isDesktop = useMediaQuery("(min-width: 768px)");
-	const [open, setOpen] = useState(false);
+	const [internalOpen, setInternalOpen] = useState(false);
+	const open = controlledOpen ?? internalOpen;
+	const setOpen = onOpenChange ?? setInternalOpen;
 	const [query, setQuery] = useState("");
 
 	const recipients = useMemo(() => {
 		const account = state.account?.bareJid;
-		return selectConversationSummaries(state).filter(
+		const summaries = selectConversationSummaries(state).filter(
 			(summary) => summary.jid !== account,
 		);
-	}, [state]);
+		const current = summaries.find(
+			(summary) => summary.jid === message.conversationJid,
+		);
+		if (!current) return summaries;
+		return [
+			current,
+			...summaries.filter((summary) => summary.jid !== current.jid),
+		];
+	}, [state, message.conversationJid]);
 
 	const filtered = useMemo(() => {
 		const needle = query.trim().toLowerCase();

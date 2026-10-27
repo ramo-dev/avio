@@ -13,7 +13,7 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 ## Chat UI
 
 - **Server-side roster removal** — deleting a chat currently removes the local conversation/contact; add `removeRosterItem` so it stays gone after roster reload.
-- **Message actions polish** — hover, right-click, and touch long-press expose reply, reaction, forward, copy, edit, and local removal. Add swipe gestures, keyboard shortcuts, and review discoverability on touch.
+- **Message actions polish** — hover, right-click, long-press, and swipe gestures expose reply, reaction, forward, copy, edit, and local removal. Add keyboard shortcuts and review discoverability on touch.
 - **Message virtualization** — add `@tanstack/react-virtual` to the list and thread once either exceeds roughly 200 items.
 
 ## Presence and roster

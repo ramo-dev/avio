@@ -3,6 +3,7 @@ import { cn } from "cn";
 import {
 	type MouseEvent as ReactMouseEvent,
 	type PointerEvent as ReactPointerEvent,
+	useCallback,
 	useEffect,
 	useRef,
 	useState,
@@ -60,9 +61,11 @@ export function MessageRow({
 	onDelete?: (message: ChatMessage) => void;
 }) {
 	const [actionsOpen, setActionsOpen] = useState(false);
+	const [forwardOpen, setForwardOpen] = useState(false);
 	const rowRef = useRef<HTMLDivElement>(null);
 	const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const pressOrigin = useRef<{ x: number; y: number } | null>(null);
+	const swipeHandled = useRef(false);
 	const outgoing = message.direction === "outgoing";
 	const align = outgoing ? "end" : "start";
 	const body = highlightQuery
@@ -118,6 +121,8 @@ export function MessageRow({
 				}
 				forwardSource={message}
 				onForwarded={() => setActionsOpen(false)}
+				forwardOpen={forwardOpen}
+				onForwardOpenChange={setForwardOpen}
 			/>
 		) : undefined;
 
@@ -130,11 +135,15 @@ export function MessageRow({
 		}
 	}
 
-	function clearLongPress() {
+	const clearLongPressTimer = useCallback(() => {
 		if (longPressTimer.current) {
 			clearTimeout(longPressTimer.current);
 			longPressTimer.current = null;
 		}
+	}, []);
+
+	function resetPress() {
+		clearLongPressTimer();
 		pressOrigin.current = null;
 	}
 
@@ -142,7 +151,8 @@ export function MessageRow({
 		if (event.pointerType === "mouse") return;
 		const target = event.target as HTMLElement;
 		if (target.closest("a, button, input, textarea, [role=button]")) return;
-		clearLongPress();
+		resetPress();
+		swipeHandled.current = false;
 		pressOrigin.current = { x: event.clientX, y: event.clientY };
 		longPressTimer.current = setTimeout(() => {
 			longPressTimer.current = null;
@@ -153,11 +163,22 @@ export function MessageRow({
 	function trackLongPress(event: ReactPointerEvent<HTMLDivElement>) {
 		const origin = pressOrigin.current;
 		if (!origin) return;
-		if (
-			Math.abs(event.clientX - origin.x) > 10 ||
-			Math.abs(event.clientY - origin.y) > 10
-		) {
-			clearLongPress();
+		const dx = event.clientX - origin.x;
+		const dy = event.clientY - origin.y;
+
+		if (Math.abs(dx) > 10 || Math.abs(dy) > 10) clearLongPressTimer();
+		if (swipeHandled.current) return;
+		if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) {
+			resetPress();
+			return;
+		}
+
+		const swipeDistance = outgoing ? -dx : dx;
+		if (swipeDistance >= 56 && Math.abs(dx) > Math.abs(dy)) {
+			swipeHandled.current = true;
+			resetPress();
+			setActionsOpen(false);
+			setForwardOpen(true);
 		}
 	}
 
@@ -165,7 +186,7 @@ export function MessageRow({
 		const target = event.target as HTMLElement;
 		if (target.closest("a, button, input, textarea, [role=button]")) return;
 		event.preventDefault();
-		clearLongPress();
+		resetPress();
 		setActionsOpen(true);
 	}
 
@@ -182,9 +203,9 @@ export function MessageRow({
 
 	useEffect(
 		() => () => {
-			if (longPressTimer.current) clearTimeout(longPressTimer.current);
+			clearLongPressTimer();
 		},
-		[],
+		[clearLongPressTimer],
 	);
 
 	return (
@@ -192,12 +213,13 @@ export function MessageRow({
 			ref={rowRef}
 			align={align}
 			role="article"
+			className="touch-pan-y"
 			onContextMenu={openContextMenu}
 			onPointerDown={startLongPress}
 			onPointerMove={trackLongPress}
-			onPointerUp={clearLongPress}
-			onPointerCancel={clearLongPress}
-			onPointerLeave={clearLongPress}
+			onPointerUp={resetPress}
+			onPointerCancel={resetPress}
+			onPointerLeave={resetPress}
 			aria-label={`${senderName}, ${formatMessageTime(message.timestamp)}, ${outgoing ? message.status : "received"}`}
 		>
 			{!outgoing &&

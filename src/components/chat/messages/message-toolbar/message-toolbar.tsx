@@ -25,6 +25,8 @@ export function MessageToolbar({
 	onDelete,
 	forwardSource,
 	onForwarded,
+	forwardOpen,
+	onForwardOpenChange,
 }: {
 	onReply: () => void;
 	onEdit?: () => void;
@@ -33,6 +35,8 @@ export function MessageToolbar({
 	onDelete?: () => void;
 	forwardSource?: ChatMessage;
 	onForwarded?: () => void;
+	forwardOpen?: boolean;
+	onForwardOpenChange?: (open: boolean) => void;
 }) {
 	const [open, setOpen] = useState(false);
 
@@ -92,6 +96,8 @@ export function MessageToolbar({
 				<MessageForwardAction
 					message={forwardSource}
 					onForwarded={onForwarded}
+					open={forwardOpen}
+					onOpenChange={onForwardOpenChange}
 				/>
 			)}
 			<Popover open={open} onOpenChange={setOpen}>
