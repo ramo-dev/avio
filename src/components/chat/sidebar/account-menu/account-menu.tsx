@@ -5,6 +5,7 @@ import { Button } from "#/components/ui/button";
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
@@ -34,18 +35,23 @@ export function AccountMenu() {
 				<UserAvatar jid={jid} name={name} size="sm" />
 			</DropdownMenuTrigger>
 			<DropdownMenuContent align="end" className="w-60">
-				<DropdownMenuLabel className="flex flex-col gap-1">
-					<span className="font-medium text-foreground">{name}</span>
-					<span className="truncate text-xs font-normal text-muted-foreground">
-						{jid}
-					</span>
-					<ConnectionBadge status={state.connection.status} className="mt-1" />
-				</DropdownMenuLabel>
-				<DropdownMenuSeparator />
-				<DropdownMenuItem onClick={() => void actions.disconnect()}>
-					<RiLogoutBoxRLine />
-					Disconnect
-				</DropdownMenuItem>
+				<DropdownMenuGroup>
+					<DropdownMenuLabel className="flex flex-col gap-1">
+						<span className="font-medium text-foreground">{name}</span>
+						<span className="truncate text-xs font-normal text-muted-foreground">
+							{jid}
+						</span>
+						<ConnectionBadge
+							status={state.connection.status}
+							className="mt-1"
+						/>
+					</DropdownMenuLabel>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onClick={() => void actions.disconnect()}>
+						<RiLogoutBoxRLine />
+						Disconnect
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	);
