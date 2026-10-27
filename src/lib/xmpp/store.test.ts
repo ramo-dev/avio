@@ -176,6 +176,51 @@ describe("xmpp store", () => {
 		);
 	});
 
+	it("deletes a message locally", async () => {
+		const { store } = createStoreHarness();
+		await store.connect(credentials);
+		await store.sendMessage("bob@example.com", "Remove me");
+
+		store.deleteMessage("bob@example.com", "local-fixed");
+
+		const conversation = store.getState().conversations["bob@example.com"];
+		expect(conversation?.messages).toHaveLength(0);
+		expect(conversation?.lastActivity).toBe(0);
+	});
+
+	it("forwards a message to another conversation", async () => {
+		const { store, adapter } = createStoreHarness();
+		await store.connect(credentials);
+		const source: ChatMessage = {
+			id: "source-1",
+			stanzaId: "source-1",
+			conversationJid: "bob@example.com",
+			from: "bob@example.com/phone",
+			to: "alice@example.com/web",
+			body: "Forward this",
+			timestamp: 9_000,
+			direction: "incoming",
+			status: "delivered",
+		};
+
+		const forwarded = await store.forwardMessage("carol@example.com", source);
+
+		expect(adapter.forwardMessage).toHaveBeenCalledWith(
+			"carol@example.com",
+			source,
+		);
+		expect(forwarded).toMatchObject({
+			conversationJid: "carol@example.com",
+			body: "Forward this",
+			forwarded: true,
+			direction: "outgoing",
+		});
+		expect(
+			store.getState().conversations["carol@example.com"]?.messages[0]
+				?.forwarded,
+		).toBe(true);
+	});
+
 	it("sends attachment-only messages and uploads files", async () => {
 		const { store, sent } = createStoreHarness();
 		await store.connect(credentials);

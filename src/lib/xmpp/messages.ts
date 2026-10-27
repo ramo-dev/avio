@@ -17,6 +17,7 @@ export interface RawMessage {
 	delay?: { timestamp?: Date | string };
 	links?: Array<{ url?: string; description?: string }>;
 	reply?: { id?: string; to?: string };
+	forwarded?: boolean;
 }
 
 export interface NormalizeMessageOptions {
@@ -82,6 +83,7 @@ export function normalizeMessage(
 		body,
 		attachments: attachments.length > 0 ? attachments : undefined,
 		replyTo,
+		forwarded: raw.forwarded,
 		timestamp,
 		direction,
 		status: direction === "outgoing" ? "sent" : "delivered",

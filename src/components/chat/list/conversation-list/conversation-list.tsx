@@ -48,7 +48,7 @@ export function ConversationList({
 			<div
 				role="listbox"
 				aria-label="Conversations"
-				className="flex flex-col gap-1 p-2"
+				className="flex flex-col gap-1 md:p-2 p-3"
 				onKeyDown={handleListKeyDown}
 			>
 				{items.map((item) => (

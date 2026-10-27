@@ -1,11 +1,19 @@
-import { RiEditLine, RiEmotionLine, RiReplyLine } from "@remixicon/react";
+import {
+	RiDeleteBinLine,
+	RiEditLine,
+	RiEmotionLine,
+	RiFileCopyLine,
+	RiReplyLine,
+} from "@remixicon/react";
 import { useState } from "react";
+import { MessageForwardAction } from "#/components/chat/messages/message-forward/message-forward";
 import { Button } from "#/components/ui/button";
 import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
 } from "#/components/ui/popover";
+import type { ChatMessage } from "#/types/chat";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🎉"];
 
@@ -13,10 +21,18 @@ export function MessageToolbar({
 	onReply,
 	onEdit,
 	onReact,
+	onCopy,
+	onDelete,
+	forwardSource,
+	onForwarded,
 }: {
 	onReply: () => void;
 	onEdit?: () => void;
 	onReact: (emoji: string) => void;
+	onCopy?: () => void;
+	onDelete?: () => void;
+	forwardSource?: ChatMessage;
+	onForwarded?: () => void;
 }) {
 	const [open, setOpen] = useState(false);
 
@@ -45,6 +61,38 @@ export function MessageToolbar({
 				>
 					<RiEditLine className="size-3.5" />
 				</Button>
+			)}
+			{onCopy && (
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					aria-label="Copy message"
+					title="Copy message"
+					className="size-7 rounded-full text-muted-foreground"
+					onClick={onCopy}
+				>
+					<RiFileCopyLine className="size-3.5" />
+				</Button>
+			)}
+			{onDelete && (
+				<Button
+					type="button"
+					variant="ghost"
+					size="icon"
+					aria-label="Remove message locally"
+					title="Remove message locally"
+					className="size-7 rounded-full text-muted-foreground"
+					onClick={onDelete}
+				>
+					<RiDeleteBinLine className="size-3.5" />
+				</Button>
+			)}
+			{forwardSource && (
+				<MessageForwardAction
+					message={forwardSource}
+					onForwarded={onForwarded}
+				/>
 			)}
 			<Popover open={open} onOpenChange={setOpen}>
 				<PopoverTrigger

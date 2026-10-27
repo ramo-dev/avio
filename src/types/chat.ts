@@ -28,6 +28,7 @@ export interface ChatMessage {
 	replyTo?: MessageReply;
 	reactions?: Record<string, string[]>;
 	edited?: boolean;
+	forwarded?: boolean;
 	timestamp: number;
 	direction: MessageDirection;
 	status: MessageStatus;

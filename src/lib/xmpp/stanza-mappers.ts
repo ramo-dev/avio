@@ -3,6 +3,7 @@ import { bareJid } from "#/lib/xmpp/jid";
 import { normalizeMessage } from "#/lib/xmpp/messages";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import type { ChatMessage, Contact } from "#/types/chat";
+import type { XmppEvent } from "#/types/store";
 
 export function normalizeStanzaMessage(
 	message: StanzaProtocol.Message,
@@ -22,6 +23,7 @@ export function normalizeStanzaMessage(
 					? message.links
 					: forwarded?.links,
 			reply: message.reply ?? forwarded?.reply,
+			forwarded: Boolean(forwarded),
 		},
 		{
 			accountBareJid,
@@ -40,6 +42,7 @@ export function mapHistory(
 	for (const result of fin.results ?? []) {
 		const message = result.item.message;
 		if (!message || message.type === "groupchat") continue;
+		if (message.reactions || message.replace) continue;
 		const delay = result.item.delay?.timestamp ?? message.delay?.timestamp;
 		const normalized = normalizeStanzaMessage(
 			delay ? { ...message, delay: { timestamp: delay } } : message,
@@ -48,6 +51,48 @@ export function mapHistory(
 		if (normalized) messages.push(normalized);
 	}
 	return messages.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+export function mapHistoryActions(
+	fin: StanzaProtocol.MAMFin,
+	accountBareJid: string,
+): XmppEvent[] {
+	const events: XmppEvent[] = [];
+	const account = accountBareJid.toLowerCase();
+
+	for (const result of fin.results ?? []) {
+		const message = result.item.message;
+		if (!message) continue;
+		const from = message.from ?? "";
+		const outgoing = bareJid(from).toLowerCase() === account;
+		const jid = outgoing ? bareJid(message.to ?? "") : bareJid(from);
+		if (!jid) continue;
+
+		if (message.reactions?.id) {
+			events.push({
+				type: "reactions",
+				jid,
+				messageId: message.reactions.id,
+				senderJid: outgoing ? accountBareJid : bareJid(from),
+				reactions: message.reactions.reactions ?? [],
+			});
+			continue;
+		}
+
+		if (message.replace) {
+			const body = message.body?.trim();
+			if (body) {
+				events.push({
+					type: "edit",
+					jid,
+					messageId: message.replace,
+					body,
+				});
+			}
+		}
+	}
+
+	return events;
 }
 
 export function withFallbackAddress(

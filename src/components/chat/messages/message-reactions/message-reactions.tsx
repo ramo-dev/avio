@@ -54,8 +54,8 @@ export function MessageReactions({
 						className={cn(
 							"relative z-0 flex size-7 shrink-0 items-center justify-center rounded-full border text-sm leading-none transition-colors hover:z-10 focus-visible:z-10",
 							mine
-								? "border-primary/40 bg-primary/10 text-foreground"
-								: "border-border bg-muted/60 text-muted-foreground hover:bg-muted",
+								? "border-primary/40 bg-muted text-foreground"
+								: "border-border bg-muted text-muted-foreground hover:bg-muted",
 						)}
 					>
 						<span>{emoji}</span>

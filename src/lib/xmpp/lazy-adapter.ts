@@ -43,6 +43,10 @@ export function createLazyAdapter(): XmppAdapter {
 			const adapter = await ensure();
 			await adapter.sendReaction(to, messageId, reactions);
 		},
+		async forwardMessage(to, message) {
+			const adapter = await ensure();
+			await adapter.forwardMessage(to, message);
+		},
 		async sendChatState(to, state) {
 			const adapter = await ensure();
 			await adapter.sendChatState(to, state);

@@ -13,6 +13,7 @@ export function MessageGroupView({
 	onReply,
 	onEdit,
 	onReact,
+	onDelete,
 }: {
 	group: MessageGroup;
 	senderName: string;
@@ -24,6 +25,7 @@ export function MessageGroupView({
 	onReply?: (message: ChatMessage) => void;
 	onEdit?: (message: ChatMessage) => void;
 	onReact?: (message: ChatMessage, emoji: string) => void;
+	onDelete?: (message: ChatMessage) => void;
 }) {
 	return (
 		<MessageGroupShell className="gap-0.5">
@@ -61,6 +63,7 @@ export function MessageGroupView({
 						onReply={onReply}
 						onEdit={onEdit}
 						onReact={onReact}
+						onDelete={onDelete}
 						onRetry={
 							message.status === "failed"
 								? () => onRetry?.(message.id)

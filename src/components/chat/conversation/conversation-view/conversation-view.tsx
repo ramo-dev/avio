@@ -55,6 +55,12 @@ export function ConversationView({ jid }: { jid: string }) {
 		setEditing(null);
 	}
 
+	function deleteMessage(message: ChatMessage) {
+		if (replyTo?.id === message.id) setReplyTo(null);
+		if (editing?.id === message.id) setEditing(null);
+		actions.deleteMessage(jid, message.id);
+	}
+
 	useEffect(() => {
 		if (matchIndex >= matches.length) {
 			setMatchIndex(Math.max(0, matches.length - 1));
@@ -146,6 +152,7 @@ export function ConversationView({ jid }: { jid: string }) {
 					onReact={(message, emoji) =>
 						void actions.toggleReaction(jid, message.id, emoji)
 					}
+					onDelete={deleteMessage}
 				/>
 			</div>
 

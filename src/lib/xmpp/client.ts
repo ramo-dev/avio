@@ -4,11 +4,19 @@ import type * as StanzaProtocol from "stanza/protocol";
 import { reconnectDelay } from "#/lib/xmpp/backoff";
 import { createXmppError, isXmppError } from "#/lib/xmpp/errors";
 import { bareJid, toAccount } from "#/lib/xmpp/jid";
+import {
+	sendForwardedStanza,
+	sendReactionStanza,
+} from "#/lib/xmpp/message-stanzas";
 import { registerMessageExtensions } from "#/lib/xmpp/protocol";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
-import { mapHistory, mapRoster } from "#/lib/xmpp/stanza-mappers";
+import {
+	mapHistory,
+	mapHistoryActions,
+	mapRoster,
+} from "#/lib/xmpp/stanza-mappers";
 import type { UploadService, UploadSlot } from "#/types/attachment";
-import type { Contact } from "#/types/chat";
+import type { ChatMessage, Contact } from "#/types/chat";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
 import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
 
@@ -74,6 +82,9 @@ export function createStanzaAdapter(): XmppAdapter {
 					.then((history) => {
 						const messages = mapHistory(history, accountBareJid);
 						if (messages.length > 0) emit({ type: "history", messages });
+						for (const event of mapHistoryActions(history, accountBareJid)) {
+							emit(event);
+						}
 					})
 					.catch(() => undefined);
 			},
@@ -205,11 +216,15 @@ export function createStanzaAdapter(): XmppAdapter {
 		reactions: string[],
 	): Promise<void> {
 		if (!client) throw createXmppError("not-connected");
-		client.sendMessage({
-			to: bareJid(to),
-			type: "chat",
-			reactions: { id: messageId, reactions },
-		});
+		sendReactionStanza(client, to, messageId, reactions);
+	}
+
+	async function forwardMessage(
+		to: string,
+		source: ChatMessage,
+	): Promise<void> {
+		if (!client) throw createXmppError("not-connected");
+		sendForwardedStanza(client, to, source);
 	}
 
 	async function sendChatState(to: string, state: ChatState) {
@@ -259,6 +274,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		disconnect,
 		sendMessage,
 		sendReaction,
+		forwardMessage,
 		sendChatState,
 		getRoster,
 		getUploadService,

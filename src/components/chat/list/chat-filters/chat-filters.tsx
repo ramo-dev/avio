@@ -28,7 +28,7 @@ export function ChatFilters({
 	onSortChange: (sort: ChatSort) => void;
 }) {
 	return (
-		<div className="flex flex-wrap items-center justify-between gap-2 px-2 py-2">
+		<div className="flex flex-wrap items-center justify-between gap-2 md:px-2 px-3 py-2">
 			<ToggleGroup
 				size="sm"
 				variant="outline"

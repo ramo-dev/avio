@@ -1,6 +1,7 @@
 import { uploadAttachmentWithErrors } from "#/lib/xmpp/attachment-actions";
 import {
 	deleteConversationState,
+	deleteMessageState,
 	ensureConversationState,
 	markAllReadState,
 	markConversationUnreadState,
@@ -175,6 +176,10 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		setState(deleteConversationState(state, jid));
 	}
 
+	function deleteMessage(jid: string, messageId: string) {
+		setState(deleteMessageState(state, jid, messageId));
+	}
+
 	async function addContact(jid: string) {
 		const contactJid = bareJid(jid);
 		if (contactJid.toLowerCase() === state.account?.bareJid.toLowerCase())
@@ -228,6 +233,7 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		markConversationUnread,
 		markAllRead,
 		deleteConversation,
+		deleteMessage,
 		addContact,
 		acceptSubscription,
 		clearError,

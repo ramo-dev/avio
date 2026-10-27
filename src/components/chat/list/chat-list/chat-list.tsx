@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { ChatFilters } from "#/components/chat/list/chat-filters/chat-filters";
 import { ChatSearch } from "#/components/chat/list/chat-search/chat-search";
 import { ConversationList } from "#/components/chat/list/conversation-list/conversation-list";
-import { ConnectionFooter } from "#/components/chat/list/footer/connection-footer";
+//import { ConnectionFooter } from "#/components/chat/list/footer/connection-footer";
 import { ChatListHeader } from "#/components/chat/list/header/chat-list-header";
 import { SubscriptionRequests } from "#/components/chat/list/subscription-requests/subscription-requests";
 import { useChatPreferences } from "#/hooks/use-chat-preferences";
@@ -77,7 +77,7 @@ export function ChatList() {
 		<div className="flex h-full min-h-0 flex-col bg-card text-card-foreground">
 			<ChatListHeader count={allSummaries.length} />
 
-			<div className="shrink-0 px-2 pt-3">
+			<div className="shrink-0 md:px-2 px-3 pt-3">
 				<ChatSearch value={search} onChange={setSearch} />
 			</div>
 
@@ -101,7 +101,7 @@ export function ChatList() {
 				onDelete={handleDelete}
 			/>
 
-			<ConnectionFooter />
+			{/*<ConnectionFooter />*/}
 		</div>
 	);
 }

@@ -173,7 +173,7 @@ export function Composer({
 					event.preventDefault();
 					send();
 				}}
-				className="shrink-0 bg-background p-3 md:p-5"
+				className="shrink-0 bg-background p-3 md:p-5 md:pb-3 pb-8"
 			>
 				<div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
 					{contextActive && (

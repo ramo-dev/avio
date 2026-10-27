@@ -1,4 +1,13 @@
+import { RiShareForwardLine } from "@remixicon/react";
 import { cn } from "cn";
+import {
+	type MouseEvent as ReactMouseEvent,
+	type PointerEvent as ReactPointerEvent,
+	useEffect,
+	useRef,
+	useState,
+} from "react";
+import { toast } from "react-hot-toast";
 import { MessageAttachments } from "#/components/chat/messages/message-attachments/message-attachments";
 import { MessageBubble } from "#/components/chat/messages/message-bubble/message-bubble";
 import { MessageReactions } from "#/components/chat/messages/message-reactions/message-reactions";
@@ -12,6 +21,7 @@ import {
 	MessageContent,
 	MessageHeader,
 } from "#/components/ui/message";
+import { copyText } from "#/lib/chat/clipboard";
 import { highlightText } from "#/lib/format/highlight";
 import { formatMessageTime } from "#/lib/format/time";
 import type { ChatMessage, MessagePosition } from "#/types/chat";
@@ -31,6 +41,7 @@ export function MessageRow({
 	onReply,
 	onEdit,
 	onReact,
+	onDelete,
 }: {
 	message: ChatMessage;
 	senderName: string;
@@ -46,7 +57,12 @@ export function MessageRow({
 	onReply?: (message: ChatMessage) => void;
 	onEdit?: (message: ChatMessage) => void;
 	onReact?: (message: ChatMessage, emoji: string) => void;
+	onDelete?: (message: ChatMessage) => void;
 }) {
+	const [actionsOpen, setActionsOpen] = useState(false);
+	const rowRef = useRef<HTMLDivElement>(null);
+	const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+	const pressOrigin = useRef<{ x: number; y: number } | null>(null);
 	const outgoing = message.direction === "outgoing";
 	const align = outgoing ? "end" : "start";
 	const body = highlightQuery
@@ -64,19 +80,124 @@ export function MessageRow({
 			(attachment) =>
 				attachment.name === message.body || attachment.url === message.body,
 		);
+	const copyValue = message.body || message.attachments?.[0]?.url || "";
 	const toolbar =
 		onReply || onReact ? (
 			<MessageToolbar
-				onReply={() => onReply?.(message)}
-				onEdit={outgoing && onEdit ? () => onEdit(message) : undefined}
-				onReact={(emoji) => onReact?.(message, emoji)}
+				onReply={() => {
+					setActionsOpen(false);
+					onReply?.(message);
+				}}
+				onEdit={
+					outgoing && onEdit
+						? () => {
+								setActionsOpen(false);
+								onEdit(message);
+							}
+						: undefined
+				}
+				onReact={(emoji) => {
+					setActionsOpen(false);
+					onReact?.(message, emoji);
+				}}
+				onCopy={
+					copyValue
+						? () => {
+								setActionsOpen(false);
+								void copyMessage();
+							}
+						: undefined
+				}
+				onDelete={
+					onDelete
+						? () => {
+								setActionsOpen(false);
+								onDelete(message);
+							}
+						: undefined
+				}
+				forwardSource={message}
+				onForwarded={() => setActionsOpen(false)}
 			/>
 		) : undefined;
 
+	async function copyMessage() {
+		try {
+			await copyText(copyValue);
+			toast.success("Message copied");
+		} catch {
+			toast.error("Could not copy message");
+		}
+	}
+
+	function clearLongPress() {
+		if (longPressTimer.current) {
+			clearTimeout(longPressTimer.current);
+			longPressTimer.current = null;
+		}
+		pressOrigin.current = null;
+	}
+
+	function startLongPress(event: ReactPointerEvent<HTMLDivElement>) {
+		if (event.pointerType === "mouse") return;
+		const target = event.target as HTMLElement;
+		if (target.closest("a, button, input, textarea, [role=button]")) return;
+		clearLongPress();
+		pressOrigin.current = { x: event.clientX, y: event.clientY };
+		longPressTimer.current = setTimeout(() => {
+			longPressTimer.current = null;
+			setActionsOpen(true);
+		}, 500);
+	}
+
+	function trackLongPress(event: ReactPointerEvent<HTMLDivElement>) {
+		const origin = pressOrigin.current;
+		if (!origin) return;
+		if (
+			Math.abs(event.clientX - origin.x) > 10 ||
+			Math.abs(event.clientY - origin.y) > 10
+		) {
+			clearLongPress();
+		}
+	}
+
+	function openContextMenu(event: ReactMouseEvent<HTMLDivElement>) {
+		const target = event.target as HTMLElement;
+		if (target.closest("a, button, input, textarea, [role=button]")) return;
+		event.preventDefault();
+		clearLongPress();
+		setActionsOpen(true);
+	}
+
+	useEffect(() => {
+		function closeOnOutsidePress(event: PointerEvent) {
+			if (!rowRef.current?.contains(event.target as Node)) {
+				setActionsOpen(false);
+			}
+		}
+		document.addEventListener("pointerdown", closeOnOutsidePress);
+		return () =>
+			document.removeEventListener("pointerdown", closeOnOutsidePress);
+	}, []);
+
+	useEffect(
+		() => () => {
+			if (longPressTimer.current) clearTimeout(longPressTimer.current);
+		},
+		[],
+	);
+
 	return (
 		<Message
+			ref={rowRef}
 			align={align}
 			role="article"
+			onContextMenu={openContextMenu}
+			onPointerDown={startLongPress}
+			onPointerMove={trackLongPress}
+			onPointerUp={clearLongPress}
+			onPointerCancel={clearLongPress}
+			onPointerLeave={clearLongPress}
 			aria-label={`${senderName}, ${formatMessageTime(message.timestamp)}, ${outgoing ? message.status : "received"}`}
 		>
 			{!outgoing &&
@@ -98,6 +219,7 @@ export function MessageRow({
 					position={position}
 					active={active}
 					actions={toolbar}
+					actionsOpen={actionsOpen}
 					footer={
 						showMeta ? (
 							<>
@@ -116,6 +238,12 @@ export function MessageRow({
 						) : undefined
 					}
 				>
+					{message.forwarded && (
+						<div className="mb-1 flex items-center gap-1 text-[11px] font-medium opacity-70">
+							<RiShareForwardLine className="size-3" />
+							Forwarded
+						</div>
+					)}
 					{message.replyTo && (
 						<MessageReplyQuote
 							reply={message.replyTo}
@@ -137,7 +265,10 @@ export function MessageRow({
 						reactions={message.reactions}
 						currentUserJid={currentUserJid}
 						outgoing={outgoing}
-						onToggle={(emoji) => onReact?.(message, emoji)}
+						onToggle={(emoji) => {
+							setActionsOpen(false);
+							onReact?.(message, emoji);
+						}}
 					/>
 				)}
 			</MessageContent>

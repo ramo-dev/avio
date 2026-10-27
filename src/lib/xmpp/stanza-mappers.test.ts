@@ -1,6 +1,10 @@
 import type * as StanzaProtocol from "stanza/protocol";
 import { describe, expect, it } from "vitest";
-import { normalizeStanzaMessage } from "#/lib/xmpp/stanza-mappers";
+import {
+	mapHistory,
+	mapHistoryActions,
+	normalizeStanzaMessage,
+} from "#/lib/xmpp/stanza-mappers";
 
 function forwardedMessage(
 	overrides: Partial<StanzaProtocol.Message> = {},
@@ -37,6 +41,7 @@ describe("stanza mappers", () => {
 			conversationJid: "carol@example.com",
 			body: "Original",
 			direction: "incoming",
+			forwarded: true,
 		});
 	});
 
@@ -48,5 +53,70 @@ describe("stanza mappers", () => {
 
 		expect(result?.id).toBe("inner-1");
 		expect(result?.body).toBe("Forwarded");
+	});
+
+	it("replays archived reactions and corrections as events", () => {
+		const fin: StanzaProtocol.MAMFin = {
+			type: "result",
+			results: [
+				{
+					queryId: "q",
+					id: "1",
+					item: {
+						message: {
+							id: "m1",
+							from: "bob@example.com/phone",
+							to: "alice@example.com/web",
+							type: "chat",
+							body: "Hi",
+						},
+					},
+				},
+				{
+					queryId: "q",
+					id: "2",
+					item: {
+						message: {
+							id: "reaction-1",
+							from: "bob@example.com/phone",
+							to: "alice@example.com/web",
+							type: "chat",
+							reactions: { id: "m1", reactions: ["👍"] },
+						},
+					},
+				},
+				{
+					queryId: "q",
+					id: "3",
+					item: {
+						message: {
+							id: "edit-1",
+							from: "alice@example.com/web",
+							to: "bob@example.com",
+							type: "chat",
+							body: "Updated",
+							replace: "m1",
+						},
+					},
+				},
+			],
+		};
+
+		expect(mapHistory(fin, "alice@example.com")).toHaveLength(1);
+		expect(mapHistoryActions(fin, "alice@example.com")).toEqual([
+			{
+				type: "reactions",
+				jid: "bob@example.com",
+				messageId: "m1",
+				senderJid: "bob@example.com",
+				reactions: ["👍"],
+			},
+			{
+				type: "edit",
+				jid: "bob@example.com",
+				messageId: "m1",
+				body: "Updated",
+			},
+		]);
 	});
 });

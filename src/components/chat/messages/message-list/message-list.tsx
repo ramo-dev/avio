@@ -33,6 +33,7 @@ export function MessageList({
 	onReply,
 	onEdit,
 	onReact,
+	onDelete,
 }: {
 	jid: string;
 	messages: ChatMessage[];
@@ -47,6 +48,7 @@ export function MessageList({
 	onReply?: (message: ChatMessage) => void;
 	onEdit?: (message: ChatMessage) => void;
 	onReact?: (message: ChatMessage, emoji: string) => void;
+	onDelete?: (message: ChatMessage) => void;
 }) {
 	const timeline = useMemo(() => buildTimeline(messages), [messages]);
 	const messagesById = useMemo(
@@ -101,7 +103,7 @@ export function MessageList({
 					aria-label="Messages"
 					className="scrollbar-subtle px-4"
 				>
-					<MessageScrollerContent className="mx-auto w-full max-w-3xl justify-end py-6">
+					<MessageScrollerContent className="mx-auto w-full max-w-3xl justify-end pt-12 pb-6">
 						{timeline.map((item) =>
 							item.kind === "day" ? (
 								<MessageScrollerItem key={item.id} messageId={item.id}>
@@ -112,6 +114,7 @@ export function MessageList({
 									key={item.id}
 									messageId={item.group.id}
 									scrollAnchor={item.group.direction === "outgoing"}
+									style={{ contentVisibility: "visible" }}
 								>
 									<MessageGroupView
 										group={item.group}
@@ -123,6 +126,7 @@ export function MessageList({
 										onReply={onReply}
 										onEdit={onEdit}
 										onReact={onReact}
+										onDelete={onDelete}
 										onRetry={onRetry}
 									/>
 								</MessageScrollerItem>

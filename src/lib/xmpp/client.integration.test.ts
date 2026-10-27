@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createStanzaAdapter } from "#/lib/xmpp/client";
+import type { ChatMessage } from "#/types/chat";
 import type { XmppEvent } from "#/types/store";
 
 const enabled = process.env.XMPP_INTEGRATION === "1";
@@ -120,6 +121,32 @@ describe.skipIf(!enabled)("stanza adapter integration", () => {
 			5_000,
 		);
 		expect(edit).toBeDefined();
+
+		const source: ChatMessage = {
+			id: "integration-forward-source",
+			stanzaId: "integration-forward-source",
+			conversationJid: "bob@localhost",
+			from: "bob@localhost/phone",
+			to: "alice@localhost/web",
+			body: "forward me",
+			timestamp: Date.now(),
+			direction: "incoming",
+			status: "delivered",
+		};
+		await alice.forwardMessage("bob@localhost", source);
+		const forwarded = await waitFor(
+			() =>
+				bobEvents.find(
+					(event) =>
+						event.type === "message" &&
+						event.message.forwarded &&
+						event.message.body === "forward me",
+				),
+			5_000,
+		);
+		expect(forwarded.type === "message" && forwarded.message.id).toBe(
+			"integration-forward-source",
+		);
 
 		await alice.disconnect();
 		await bob.disconnect();

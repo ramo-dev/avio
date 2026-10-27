@@ -94,6 +94,7 @@ export interface XmppAdapter {
 		messageId: string,
 		reactions: string[],
 	): Promise<void>;
+	forwardMessage(to: string, message: ChatMessage): Promise<void>;
 	sendChatState(to: string, state: ChatState): Promise<void>;
 	getRoster(): Promise<Contact[]>;
 	getUploadService(): Promise<UploadService>;
@@ -124,12 +125,14 @@ export interface XmppStore {
 	): Promise<MessageAttachment>;
 	retryMessage(messageId: string): Promise<void>;
 	toggleReaction(to: string, messageId: string, emoji: string): Promise<void>;
+	forwardMessage(to: string, message: ChatMessage): Promise<ChatMessage | null>;
 	sendTyping(to: string, typing: boolean): Promise<void>;
 	setActiveConversation(jid: string | null): void;
 	ensureConversation(jid: string): void;
 	markConversationUnread(jid: string): void;
 	markAllRead(): void;
 	deleteConversation(jid: string): void;
+	deleteMessage(jid: string, messageId: string): void;
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
 	clearError(): void;

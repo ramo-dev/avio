@@ -174,5 +174,48 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 		}
 	}
 
-	return { sendMessage, retryMessage, sendTyping, toggleReaction };
+	async function forwardMessage(
+		to: string,
+		source: ChatMessage,
+	): Promise<ChatMessage | null> {
+		const state = getState();
+		if (state.connection.status !== "connected") {
+			onError(createXmppError("not-connected"));
+			return null;
+		}
+
+		const target = bareJid(to);
+		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
+		const id = `local-${idFactory()}`;
+		const message: ChatMessage = {
+			...createOutgoingMessage({
+				id,
+				conversationJid: target,
+				from: accountJid,
+				to: target,
+				body: source.body,
+				attachments: source.attachments,
+				timestamp: now(),
+			}),
+			forwarded: true,
+		};
+		handleEvent({ type: "message", message });
+
+		try {
+			await adapter.forwardMessage(target, source);
+			return message;
+		} catch (error) {
+			onError(normalizeXmppError(error, "send-failed"));
+			handleEvent({ type: "message-status", id, status: "failed" });
+			return message;
+		}
+	}
+
+	return {
+		sendMessage,
+		retryMessage,
+		sendTyping,
+		toggleReaction,
+		forwardMessage,
+	};
 }
