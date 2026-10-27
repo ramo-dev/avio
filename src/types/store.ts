@@ -94,7 +94,7 @@ export interface XmppAdapter {
 		messageId: string,
 		reactions: string[],
 	): Promise<void>;
-	forwardMessage(to: string, message: ChatMessage): Promise<void>;
+	forwardMessage(to: string, message: ChatMessage, id?: string): Promise<void>;
 	sendChatState(to: string, state: ChatState): Promise<void>;
 	getRoster(): Promise<Contact[]>;
 	getUploadService(): Promise<UploadService>;

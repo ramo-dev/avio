@@ -20,6 +20,7 @@ export function sendForwardedStanza(
 	agent: Agent,
 	to: string,
 	source: ChatMessage,
+	id?: string,
 ): void {
 	const links = source.attachments?.map((attachment) => ({
 		url: attachment.url,
@@ -35,6 +36,7 @@ export function sendForwardedStanza(
 	};
 	agent.sendMessage({
 		to: bareJid(to),
+		id,
 		type: "chat",
 		body: source.body,
 		links,

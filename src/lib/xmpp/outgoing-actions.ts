@@ -202,7 +202,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 		handleEvent({ type: "message", message });
 
 		try {
-			await adapter.forwardMessage(target, source);
+			await adapter.forwardMessage(target, source, id);
 			return message;
 		} catch (error) {
 			onError(normalizeXmppError(error, "send-failed"));

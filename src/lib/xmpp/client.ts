@@ -222,9 +222,10 @@ export function createStanzaAdapter(): XmppAdapter {
 	async function forwardMessage(
 		to: string,
 		source: ChatMessage,
+		id?: string,
 	): Promise<void> {
 		if (!client) throw createXmppError("not-connected");
-		sendForwardedStanza(client, to, source);
+		sendForwardedStanza(client, to, source, id);
 	}
 
 	async function sendChatState(to: string, state: ChatState) {

@@ -208,6 +208,7 @@ describe("xmpp store", () => {
 		expect(adapter.forwardMessage).toHaveBeenCalledWith(
 			"carol@example.com",
 			source,
+			"local-fixed",
 		);
 		expect(forwarded).toMatchObject({
 			conversationJid: "carol@example.com",
