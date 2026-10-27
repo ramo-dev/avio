@@ -1,73 +1,6 @@
-import { describe, expect, it, vi } from "vitest";
-import { createMemorySessionStore } from "#/lib/storage/session";
-import { createXmppStore } from "#/lib/xmpp/store";
+import { describe, expect, it } from "vitest";
+import { createStoreHarness } from "#/lib/xmpp/store-test-harness";
 import type { ChatMessage } from "#/types/chat";
-import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
-
-function createHarness(options: { idFactory?: () => string } = {}) {
-	let listener: ((event: XmppEvent) => void) | null = null;
-	const sent: SendMessageInput[] = [];
-	const sessionStore = createMemorySessionStore();
-
-	const adapter: XmppAdapter = {
-		connect: vi.fn(async () => undefined),
-		disconnect: vi.fn(async () => undefined),
-		sendMessage: vi.fn(async (input: SendMessageInput) => {
-			sent.push(input);
-		}),
-		sendReaction: vi.fn(async () => undefined),
-		sendChatState: vi.fn(async () => undefined),
-		getRoster: vi.fn(async () => [
-			{
-				jid: "bob@example.com",
-				name: "Bob",
-				subscription: "both" as const,
-				presence: { show: "offline" as const, priority: 0 },
-			},
-		]),
-		getUploadService: vi.fn(async () => ({
-			jid: "upload.example.com",
-			maxSize: 10 * 1024 * 1024,
-		})),
-		getUploadSlot: vi.fn(async () => ({
-			download: "https://cdn.example.com/file.png",
-			upload: { url: "https://upload.example.com/file.png" },
-		})),
-		addContact: vi.fn(async () => undefined),
-		acceptSubscription: vi.fn(async () => undefined),
-		subscribe: (next) => {
-			listener = next;
-			return () => {
-				listener = null;
-			};
-		},
-	};
-
-	const store = createXmppStore({
-		adapter,
-		uploader: {
-			upload: vi.fn(async (file: File) => ({
-				id: "attachment-1",
-				url: "https://cdn.example.com/file.png",
-				name: file.name,
-				kind: "image" as const,
-				mimeType: file.type,
-				size: file.size,
-			})),
-		},
-		sessionStore,
-		now: () => 10_000,
-		idFactory: options.idFactory ?? (() => "fixed"),
-	});
-
-	return {
-		store,
-		adapter,
-		sessionStore,
-		sent,
-		emit: (event: XmppEvent) => listener?.(event),
-	};
-}
 
 const credentials = {
 	jid: "alice@example.com",
@@ -76,20 +9,20 @@ const credentials = {
 
 describe("xmpp store", () => {
 	it("rejects invalid JIDs", async () => {
-		const { store } = createHarness();
+		const { store } = createStoreHarness();
 		await store.connect({ jid: "not-a-jid", password: "x" });
 		expect(store.getState().connection.error?.code).toBe("invalid-jid");
 	});
 
 	it("refuses to send before connecting", async () => {
-		const { store } = createHarness();
+		const { store } = createStoreHarness();
 		const result = await store.sendMessage("bob@example.com", "Hi");
 		expect(result).toBeNull();
 		expect(store.getState().connection.error?.code).toBe("not-connected");
 	});
 
 	it("connects, loads the roster, and persists the session", async () => {
-		const { store, sessionStore } = createHarness();
+		const { store, sessionStore } = createStoreHarness();
 		await store.connect(credentials);
 		await new Promise((resolve) => setTimeout(resolve, 0));
 
@@ -101,7 +34,7 @@ describe("xmpp store", () => {
 	});
 
 	it("sends optimistically and updates receipts", async () => {
-		const { store, sent, emit } = createHarness();
+		const { store, sent, emit } = createStoreHarness();
 		await store.connect(credentials);
 		const message = await store.sendMessage("bob@example.com", "  Hi  ");
 
@@ -125,7 +58,7 @@ describe("xmpp store", () => {
 
 	it("sends replies and edits existing messages", async () => {
 		let index = 0;
-		const { store, sent } = createHarness({
+		const { store, sent } = createStoreHarness({
 			idFactory: () => `id-${++index}`,
 		});
 		await store.connect(credentials);
@@ -160,7 +93,7 @@ describe("xmpp store", () => {
 	});
 
 	it("toggles reactions and applies incoming reactions and edits", async () => {
-		const { store, adapter, emit } = createHarness();
+		const { store, adapter, emit } = createStoreHarness();
 		await store.connect(credentials);
 		await store.sendMessage("bob@example.com", "Hi");
 
@@ -202,8 +135,49 @@ describe("xmpp store", () => {
 		expect(message?.edited).toBe(true);
 	});
 
+	it("scopes reactions to the conversation containing the message", async () => {
+		const { store, adapter, emit } = createStoreHarness();
+		await store.connect(credentials);
+
+		const base: ChatMessage = {
+			id: "shared-id",
+			stanzaId: "shared-id",
+			conversationJid: "carol@example.com",
+			from: "carol@example.com/phone",
+			to: "alice@example.com/web",
+			body: "Original",
+			timestamp: 10_000,
+			direction: "incoming",
+			status: "delivered",
+		};
+		emit({ type: "message", message: base });
+		emit({
+			type: "message",
+			message: {
+				...base,
+				conversationJid: "bob@example.com",
+				from: "bob@example.com/phone",
+			},
+		});
+
+		await store.toggleReaction("bob@example.com", "shared-id", "👍");
+
+		expect(
+			store.getState().conversations["bob@example.com"]?.messages[0]?.reactions,
+		).toEqual({ "alice@example.com": ["👍"] });
+		expect(
+			store.getState().conversations["carol@example.com"]?.messages[0]
+				?.reactions,
+		).toBeUndefined();
+		expect(adapter.sendReaction).toHaveBeenCalledWith(
+			"bob@example.com",
+			"shared-id",
+			["👍"],
+		);
+	});
+
 	it("sends attachment-only messages and uploads files", async () => {
-		const { store, sent } = createHarness();
+		const { store, sent } = createStoreHarness();
 		await store.connect(credentials);
 
 		const attachment = await store.uploadAttachment(
@@ -221,7 +195,7 @@ describe("xmpp store", () => {
 	});
 
 	it("tracks unread messages until the conversation is opened", async () => {
-		const { store, emit } = createHarness();
+		const { store, emit } = createStoreHarness();
 		await store.connect(credentials);
 
 		const incoming: ChatMessage = {
@@ -242,7 +216,7 @@ describe("xmpp store", () => {
 	});
 
 	it("updates presence and subscription requests", async () => {
-		const { store, emit } = createHarness();
+		const { store, emit } = createStoreHarness();
 		await store.connect(credentials);
 
 		emit({

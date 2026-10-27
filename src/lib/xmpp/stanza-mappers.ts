@@ -9,15 +9,19 @@ export function normalizeStanzaMessage(
 	accountBareJid: string,
 	options: { isCarbon?: boolean; direction?: "incoming" | "outgoing" } = {},
 ): ChatMessage | null {
+	const forwarded = message.forward?.message;
 	return normalizeMessage(
 		{
-			id: message.id,
+			id: forwarded?.id ?? message.id,
 			from: message.from ?? "",
 			to: message.to ?? "",
-			body: message.body,
-			delay: message.delay,
-			links: message.links,
-			reply: message.reply,
+			body: message.body?.trim() ? message.body : forwarded?.body,
+			delay: message.delay ?? forwarded?.delay,
+			links:
+				message.links && message.links.length > 0
+					? message.links
+					: forwarded?.links,
+			reply: message.reply ?? forwarded?.reply,
 		},
 		{
 			accountBareJid,

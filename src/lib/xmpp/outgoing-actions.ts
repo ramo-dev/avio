@@ -24,6 +24,17 @@ interface OutgoingActionDeps {
 export function createOutgoingActions(deps: OutgoingActionDeps) {
 	const { getState, handleEvent, adapter, now, idFactory, onError } = deps;
 
+	function findInConversation(
+		state: XmppState,
+		to: string,
+		messageId: string,
+	): ChatMessage | undefined {
+		const conversation = state.conversations[bareJid(to)];
+		return conversation?.messages.find(
+			(message) => message.id === messageId || message.stanzaId === messageId,
+		);
+	}
+
 	async function sendMessage(
 		to: string,
 		body: string,
@@ -38,7 +49,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 		}
 
 		if (options?.editId) {
-			const existing = findMessageById(state, options.editId);
+			const existing = findInConversation(state, to, options.editId);
 			if (!existing || existing.direction !== "outgoing" || !trimmed) {
 				return null;
 			}
@@ -56,7 +67,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 					id: `edit-${idFactory()}`,
 					editId: targetId,
 				});
-				return findMessageById(getState(), existing.id) ?? null;
+				return findInConversation(getState(), to, existing.id) ?? null;
 			} catch (error) {
 				onError(normalizeXmppError(error, "send-failed"));
 				handleEvent({
@@ -64,7 +75,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 					id: existing.id,
 					status: "failed",
 				});
-				return findMessageById(getState(), existing.id) ?? null;
+				return findInConversation(getState(), to, existing.id) ?? null;
 			}
 		}
 
@@ -135,7 +146,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 			onError(createXmppError("not-connected"));
 			return;
 		}
-		const message = findMessageById(state, messageId);
+		const message = findInConversation(state, to, messageId);
 		if (!message) return;
 		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
 		const current = message.reactions?.[accountJid] ?? [];
