@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Textarea } from "#/components/ui/textarea";
+import { useComposerDraft } from "#/hooks/use-composer-draft";
 import { useFileDrop } from "#/hooks/use-file-drop";
 import { useStagedFiles } from "#/hooks/use-staged-files";
 import { useTyping } from "#/hooks/use-typing";
@@ -27,7 +28,7 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 	const actions = useXmppActions();
 	const notifyTyping = useTyping(jid, !disabled);
 
-	const [body, setBody] = useState("");
+	const { draft: body, setDraft: setBody, resetDraft } = useComposerDraft(jid);
 	const [expanded, setExpanded] = useState(false);
 
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -95,7 +96,7 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 					setProgress,
 				);
 				clear();
-				setBody("");
+				resetDraft();
 			} catch {
 				resetUploading();
 			}
@@ -104,7 +105,7 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 
 		if (value) {
 			void actions.sendMessage(jid, value);
-			setBody("");
+			resetDraft();
 		}
 	}
 

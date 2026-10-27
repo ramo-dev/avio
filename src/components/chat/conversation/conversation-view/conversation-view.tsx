@@ -24,9 +24,26 @@ export function ConversationView({ jid }: { jid: string }) {
 	const contact = state.contacts[jid];
 	const conversation = state.conversations[jid];
 	const messages = conversation?.messages ?? EMPTY_MESSAGES;
+	const historyLoading = conversation?.historyLoading ?? false;
+	const historyComplete = conversation?.historyComplete ?? false;
 	const name = displayJidName(jid, contact?.name);
 	const presence = contact?.presence ?? OFFLINE_PRESENCE;
 	const connected = state.connection.status === "connected";
+
+	useEffect(() => {
+		if (!connected) return;
+		if (!conversation) {
+			actions.ensureConversation(jid);
+			return;
+		}
+		if (
+			conversation.messages.length === 0 &&
+			!conversation.historyLoading &&
+			!conversation.historyComplete
+		) {
+			void actions.loadOlderHistory(jid);
+		}
+	}, [actions, connected, conversation, jid]);
 
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
@@ -120,6 +137,9 @@ export function ConversationView({ jid }: { jid: string }) {
 					highlightQuery={searchOpen ? searchQuery : ""}
 					activeMessageId={activeMatch?.messageId ?? null}
 					activeGroupId={activeMatch?.groupId ?? null}
+					historyLoading={historyLoading}
+					historyComplete={historyComplete}
+					onLoadOlder={() => void actions.loadOlderHistory(jid)}
 					onRetry={(messageId) => void actions.retryMessage(messageId)}
 					onQuickReply={(body) => void actions.sendMessage(jid, body)}
 				/>

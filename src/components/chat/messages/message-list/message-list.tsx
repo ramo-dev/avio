@@ -14,6 +14,7 @@ import {
 	MessageScrollerViewport,
 	useMessageScroller,
 } from "#/components/ui/message-scroller";
+import { Spinner } from "#/components/ui/spinner";
 import { buildTimeline } from "#/lib/format/timeline";
 import type { ChatMessage } from "#/types/chat";
 
@@ -27,6 +28,9 @@ export function MessageList({
 	highlightQuery,
 	activeMessageId,
 	activeGroupId,
+	historyLoading,
+	historyComplete,
+	onLoadOlder,
 	onRetry,
 	onQuickReply,
 }: {
@@ -37,6 +41,9 @@ export function MessageList({
 	highlightQuery?: string;
 	activeMessageId?: string | null;
 	activeGroupId?: string | null;
+	historyLoading?: boolean;
+	historyComplete?: boolean;
+	onLoadOlder?: () => void;
 	onRetry?: (messageId: string) => void;
 	onQuickReply?: (body: string) => void;
 }) {
@@ -46,34 +53,45 @@ export function MessageList({
 	if (messages.length === 0) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-				<UserAvatar
-					jid={jid}
-					name={contactName}
-					size="lg"
-					className="size-16"
-				/>
-				<div className="space-y-1">
-					<h3 className="text-base font-semibold">{contactName}</h3>
-					<p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-						<RiChat3Line className="size-4" />
-						Say hello 👋
-					</p>
-				</div>
-				{onQuickReply && (
-					<div className="flex flex-wrap items-center justify-center gap-2">
-						{QUICK_REPLIES.map((reply) => (
-							<Button
-								key={reply}
-								variant="outline"
-								size="sm"
-								onClick={() => onQuickReply(reply)}
-							>
-								{reply}
-							</Button>
-						))}
-					</div>
+				{historyLoading ? (
+					<>
+						<Spinner className="size-5" />
+						<p className="text-sm text-muted-foreground">
+							Loading conversation history…
+						</p>
+					</>
+				) : (
+					<>
+						<UserAvatar
+							jid={jid}
+							name={contactName}
+							size="lg"
+							className="size-16"
+						/>
+						<div className="space-y-1">
+							<h3 className="text-base font-semibold">{contactName}</h3>
+							<p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
+								<RiChat3Line className="size-4" />
+								Say hello 👋
+							</p>
+						</div>
+						{onQuickReply && (
+							<div className="flex flex-wrap items-center justify-center gap-2">
+								{QUICK_REPLIES.map((reply) => (
+									<Button
+										key={reply}
+										variant="outline"
+										size="sm"
+										onClick={() => onQuickReply(reply)}
+									>
+										{reply}
+									</Button>
+								))}
+							</div>
+						)}
+						{typing && <TypingIndicator name={contactName} />}
+					</>
 				)}
-				{typing && <TypingIndicator name={contactName} />}
 			</div>
 		);
 	}
@@ -88,8 +106,26 @@ export function MessageList({
 					id="messages"
 					aria-label="Messages"
 					className="scrollbar-subtle px-4"
+					onScroll={(event) => {
+						if (event.currentTarget.scrollTop <= 48) onLoadOlder?.();
+					}}
 				>
 					<MessageScrollerContent className="mx-auto w-full max-w-3xl justify-end py-6">
+						{historyLoading && (
+							<MessageScrollerItem messageId="history-loading">
+								<div className="flex items-center justify-center gap-2 py-3 text-xs text-muted-foreground">
+									<Spinner className="size-3" />
+									Loading earlier messages…
+								</div>
+							</MessageScrollerItem>
+						)}
+						{historyComplete && !historyLoading && (
+							<MessageScrollerItem messageId="history-start">
+								<p className="py-3 text-center text-xs text-muted-foreground">
+									Beginning of conversation
+								</p>
+							</MessageScrollerItem>
+						)}
 						{timeline.map((item) =>
 							item.kind === "day" ? (
 								<MessageScrollerItem key={item.id} messageId={item.id}>

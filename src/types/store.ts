@@ -74,6 +74,11 @@ export interface XmppAdapter {
 	disconnect(): Promise<void>;
 	sendMessage(input: SendMessageInput): Promise<void>;
 	sendChatState(to: string, state: ChatState): Promise<void>;
+	getHistory(
+		jid: string,
+		before?: number,
+		max?: number,
+	): Promise<ChatMessage[]>;
 	getRoster(): Promise<Contact[]>;
 	getUploadService(): Promise<UploadService>;
 	getUploadSlot(
@@ -102,6 +107,7 @@ export interface XmppStore {
 	): Promise<MessageAttachment>;
 	retryMessage(messageId: string): Promise<void>;
 	sendTyping(to: string, typing: boolean): Promise<void>;
+	loadOlderHistory(jid: string): Promise<void>;
 	setActiveConversation(jid: string | null): void;
 	ensureConversation(jid: string): void;
 	markConversationUnread(jid: string): void;

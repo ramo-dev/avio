@@ -40,6 +40,8 @@ export interface Conversation {
 	unread: number;
 	lastActivity: number;
 	typing: boolean;
+	historyLoading: boolean;
+	historyComplete: boolean;
 }
 
 export interface MessageGroup {

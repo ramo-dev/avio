@@ -10,6 +10,7 @@ import {
 	isXmppError,
 	normalizeXmppError,
 } from "#/lib/xmpp/errors";
+import { loadOlderHistory as loadOlderHistoryPage } from "#/lib/xmpp/history-actions";
 import { bareJid, isValidAccountJid, toAccount } from "#/lib/xmpp/jid";
 import { createOutgoingMessage } from "#/lib/xmpp/messages";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
@@ -20,6 +21,7 @@ import {
 } from "#/lib/xmpp/reducers";
 import { findMessageById } from "#/lib/xmpp/selectors";
 import { restoreSavedSession } from "#/lib/xmpp/session-restore";
+import { sendTypingAction } from "#/lib/xmpp/typing-actions";
 import type { MessageAttachment } from "#/types/attachment";
 import type { ChatMessage } from "#/types/chat";
 import type {
@@ -29,7 +31,7 @@ import type {
 	XmppStore,
 	XmppStoreDeps,
 } from "#/types/store";
-import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
+import type { ConnectCredentials, XmppError } from "#/types/xmpp";
 
 export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	let state = createInitialState();
@@ -206,16 +208,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		}
 	}
 
-	async function sendTyping(to: string, typing: boolean) {
-		if (state.connection.status !== "connected") return;
-		const chatState: ChatState = typing ? "composing" : "active";
-		try {
-			await deps.adapter.sendChatState(bareJid(to), chatState);
-		} catch {
-			// Typing state is best-effort and must not surface as a send failure.
-		}
-	}
-
 	function setActiveConversation(jid: string | null) {
 		setState(reduceActive(state, jid));
 	}
@@ -285,7 +277,16 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 				onError: setError,
 			}),
 		retryMessage,
-		sendTyping,
+		sendTyping: (to, typing) =>
+			sendTypingAction({ getState, adapter: deps.adapter, to, typing }),
+		loadOlderHistory: (jid) =>
+			loadOlderHistoryPage({
+				getState,
+				setState,
+				adapter: deps.adapter,
+				jid,
+				onError: setError,
+			}).then(() => undefined),
 		setActiveConversation,
 		ensureConversation,
 		markConversationUnread,

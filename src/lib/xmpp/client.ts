@@ -7,7 +7,7 @@ import { bareJid, toAccount } from "#/lib/xmpp/jid";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
 import { mapHistory, mapRoster } from "#/lib/xmpp/stanza-mappers";
 import type { UploadService, UploadSlot } from "#/types/attachment";
-import type { Contact } from "#/types/chat";
+import type { ChatMessage, Contact } from "#/types/chat";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
 import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
 
@@ -200,6 +200,22 @@ export function createStanzaAdapter(): XmppAdapter {
 		client.sendMessage({ to, type: "chat", chatState: state });
 	}
 
+	async function getHistory(
+		jid: string,
+		before?: number,
+		max = 30,
+	): Promise<ChatMessage[]> {
+		if (!client) throw createXmppError("not-connected");
+		const history = await client.searchHistory(accountBareJid, {
+			with: bareJid(jid),
+			paging: { max, before: "" },
+			...(before ? { end: new Date(before - 1) } : {}),
+		});
+		return mapHistory(history, accountBareJid).filter(
+			(message) => message.conversationJid === bareJid(jid),
+		);
+	}
+
 	async function getRoster(): Promise<Contact[]> {
 		if (!client) return [];
 		const roster = await client.getRoster();
@@ -242,6 +258,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		disconnect,
 		sendMessage,
 		sendChatState,
+		getHistory,
 		getRoster,
 		getUploadService,
 		getUploadSlot,

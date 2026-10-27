@@ -16,6 +16,7 @@ function createHarness() {
 			sent.push(input);
 		}),
 		sendChatState: vi.fn(async () => undefined),
+		getHistory: vi.fn(async () => []),
 		getRoster: vi.fn(async () => [
 			{
 				jid: "bob@example.com",
@@ -120,6 +121,42 @@ describe("xmpp store", () => {
 		expect(
 			store.getState().conversations["bob@example.com"]?.messages[0].status,
 		).toBe("delivered");
+	});
+
+	it("loads older history before the oldest message and stops at the end", async () => {
+		const { store, adapter } = createHarness();
+		await store.connect(credentials);
+		await store.sendMessage("bob@example.com", "Latest");
+
+		const older: ChatMessage = {
+			id: "older-1",
+			conversationJid: "bob@example.com",
+			from: "bob@example.com/phone",
+			to: "alice@example.com/web",
+			body: "Earlier",
+			timestamp: 9_000,
+			direction: "incoming",
+			status: "delivered",
+		};
+		vi.mocked(adapter.getHistory).mockResolvedValueOnce([older]);
+
+		await store.loadOlderHistory("bob@example.com");
+
+		expect(adapter.getHistory).toHaveBeenCalledWith(
+			"bob@example.com",
+			10_000,
+			30,
+		);
+		const conversation = store.getState().conversations["bob@example.com"];
+		expect(conversation?.messages.map((message) => message.id)).toEqual([
+			"older-1",
+			"local-fixed",
+		]);
+		expect(conversation?.historyLoading).toBe(false);
+		expect(conversation?.historyComplete).toBe(true);
+
+		await store.loadOlderHistory("bob@example.com");
+		expect(adapter.getHistory).toHaveBeenCalledTimes(1);
 	});
 
 	it("sends attachment-only messages and uploads files", async () => {

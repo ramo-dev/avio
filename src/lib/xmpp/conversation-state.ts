@@ -11,6 +11,8 @@ export function createConversation(jid: string): Conversation {
 		unread: 0,
 		lastActivity: 0,
 		typing: false,
+		historyLoading: false,
+		historyComplete: false,
 	};
 }
 
