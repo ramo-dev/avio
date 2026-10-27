@@ -11,17 +11,14 @@ import {
 	normalizeXmppError,
 } from "#/lib/xmpp/errors";
 import { bareJid, isValidAccountJid, toAccount } from "#/lib/xmpp/jid";
-import { createOutgoingMessage } from "#/lib/xmpp/messages";
+import { createOutgoingActions } from "#/lib/xmpp/outgoing-actions";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import {
 	createInitialState,
 	reduceActive,
 	reduceEvent,
 } from "#/lib/xmpp/reducers";
-import { findMessageById } from "#/lib/xmpp/selectors";
 import { restoreSavedSession } from "#/lib/xmpp/session-restore";
-import type { MessageAttachment } from "#/types/attachment";
-import type { ChatMessage } from "#/types/chat";
 import type {
 	ConnectionState,
 	XmppEvent,
@@ -29,7 +26,7 @@ import type {
 	XmppStore,
 	XmppStoreDeps,
 } from "#/types/store";
-import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
+import type { ConnectCredentials, XmppError } from "#/types/xmpp";
 
 export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	let state = createInitialState();
@@ -69,6 +66,15 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	function setError(error: XmppError) {
 		setConnection({ ...state.connection, error });
 	}
+
+	const outgoing = createOutgoingActions({
+		getState,
+		handleEvent,
+		adapter: deps.adapter,
+		now,
+		idFactory,
+		onError: setError,
+	});
 
 	async function connect(credentials: ConnectCredentials) {
 		if (!isValidAccountJid(credentials.jid)) {
@@ -149,73 +155,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		});
 	}
 
-	async function sendMessage(
-		to: string,
-		body: string,
-		attachments?: MessageAttachment[],
-	): Promise<ChatMessage | null> {
-		const trimmed = body.trim();
-		if (!trimmed && (!attachments || attachments.length === 0)) return null;
-		if (state.connection.status !== "connected") {
-			setError(createXmppError("not-connected"));
-			return null;
-		}
-
-		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
-		const id = `local-${idFactory()}`;
-		const message = createOutgoingMessage({
-			id,
-			conversationJid: bareJid(to),
-			from: accountJid,
-			to: bareJid(to),
-			body: trimmed,
-			attachments,
-			timestamp: now(),
-		});
-		handleEvent({ type: "message", message });
-
-		try {
-			await deps.adapter.sendMessage({
-				to: bareJid(to),
-				body: trimmed,
-				id,
-				attachments,
-			});
-			return message;
-		} catch (error) {
-			setError(normalizeXmppError(error, "send-failed"));
-			handleEvent({ type: "message-status", id, status: "failed" });
-			return message;
-		}
-	}
-
-	async function retryMessage(messageId: string) {
-		const message = findMessageById(state, messageId);
-		if (!message || message.direction !== "outgoing") return;
-
-		handleEvent({ type: "message-status", id: messageId, status: "pending" });
-		try {
-			await deps.adapter.sendMessage({
-				to: message.conversationJid,
-				body: message.body,
-				id: message.id,
-			});
-		} catch (error) {
-			setError(normalizeXmppError(error, "send-failed"));
-			handleEvent({ type: "message-status", id: messageId, status: "failed" });
-		}
-	}
-
-	async function sendTyping(to: string, typing: boolean) {
-		if (state.connection.status !== "connected") return;
-		const chatState: ChatState = typing ? "composing" : "active";
-		try {
-			await deps.adapter.sendChatState(bareJid(to), chatState);
-		} catch {
-			// Typing state is best-effort and must not surface as a send failure.
-		}
-	}
-
 	function setActiveConversation(jid: string | null) {
 		setState(reduceActive(state, jid));
 	}
@@ -276,7 +215,7 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		connect,
 		restoreSession,
 		disconnect,
-		sendMessage,
+		...outgoing,
 		uploadAttachment: (file, onProgress) =>
 			uploadAttachmentWithErrors({
 				uploader: deps.uploader,
@@ -284,8 +223,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 				onProgress,
 				onError: setError,
 			}),
-		retryMessage,
-		sendTyping,
 		setActiveConversation,
 		ensureConversation,
 		markConversationUnread,

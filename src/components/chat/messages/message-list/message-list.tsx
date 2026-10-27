@@ -27,8 +27,12 @@ export function MessageList({
 	highlightQuery,
 	activeMessageId,
 	activeGroupId,
+	currentUserJid,
 	onRetry,
 	onQuickReply,
+	onReply,
+	onEdit,
+	onReact,
 }: {
 	jid: string;
 	messages: ChatMessage[];
@@ -37,10 +41,18 @@ export function MessageList({
 	highlightQuery?: string;
 	activeMessageId?: string | null;
 	activeGroupId?: string | null;
+	currentUserJid?: string;
 	onRetry?: (messageId: string) => void;
 	onQuickReply?: (body: string) => void;
+	onReply?: (message: ChatMessage) => void;
+	onEdit?: (message: ChatMessage) => void;
+	onReact?: (message: ChatMessage, emoji: string) => void;
 }) {
 	const timeline = useMemo(() => buildTimeline(messages), [messages]);
+	const messagesById = useMemo(
+		() => new Map(messages.map((message) => [message.id, message])),
+		[messages],
+	);
 	const searchActive = Boolean(highlightQuery?.trim());
 
 	if (messages.length === 0) {
@@ -106,6 +118,11 @@ export function MessageList({
 										senderName={contactName}
 										activeMessageId={activeMessageId}
 										highlightQuery={highlightQuery}
+										messagesById={messagesById}
+										currentUserJid={currentUserJid}
+										onReply={onReply}
+										onEdit={onEdit}
+										onReact={onReact}
 										onRetry={onRetry}
 									/>
 								</MessageScrollerItem>

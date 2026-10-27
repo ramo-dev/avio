@@ -46,12 +46,14 @@ export function MessageBubble({
 	position,
 	active,
 	footer,
+	actions,
 	children,
 }: {
 	direction: MessageDirection;
 	position: MessagePosition;
 	active?: boolean;
 	footer?: ReactNode;
+	actions?: ReactNode;
 	children: ReactNode;
 }) {
 	const align = direction === "outgoing" ? "end" : "start";
@@ -60,6 +62,16 @@ export function MessageBubble({
 			align={align}
 			variant={direction === "outgoing" ? "default" : "muted"}
 		>
+			{actions && (
+				<div
+					className={cn(
+						"absolute bottom-full z-10 pb-1 pointer-events-none opacity-0 transition-opacity group-focus-within/message:pointer-events-auto group-focus-within/message:opacity-100 group-hover/message:pointer-events-auto group-hover/message:opacity-100",
+						direction === "outgoing" ? "right-0" : "left-0",
+					)}
+				>
+					{actions}
+				</div>
+			)}
 			<BubbleContent
 				className={cn(
 					messageBubbleVariants({ direction, position }),

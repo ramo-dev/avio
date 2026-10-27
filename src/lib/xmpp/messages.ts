@@ -5,6 +5,7 @@ import type {
 	ChatMessage,
 	MessageDirection,
 	MessageGroup,
+	MessageReply,
 	MessageStatus,
 } from "#/types/chat";
 
@@ -15,6 +16,7 @@ export interface RawMessage {
 	body?: string;
 	delay?: { timestamp?: Date | string };
 	links?: Array<{ url?: string; description?: string }>;
+	reply?: { id?: string; to?: string };
 }
 
 export interface NormalizeMessageOptions {
@@ -66,6 +68,10 @@ export function normalizeMessage(
 		toTimestamp(raw.delay?.timestamp) ?? options.now ?? Date.now();
 	const stanzaId = raw.id?.trim() || undefined;
 	const id = stanzaId ?? `msg-${hash(`${raw.from}|${timestamp}|${body}`)}`;
+	const replyId = raw.reply?.id?.trim();
+	const replyTo = replyId
+		? { id: replyId, to: raw.reply?.to?.trim() || undefined }
+		: undefined;
 
 	return {
 		id,
@@ -75,6 +81,7 @@ export function normalizeMessage(
 		to: raw.to,
 		body,
 		attachments: attachments.length > 0 ? attachments : undefined,
+		replyTo,
 		timestamp,
 		direction,
 		status: direction === "outgoing" ? "sent" : "delivered",
@@ -90,6 +97,7 @@ export interface OutgoingMessageInput {
 	id: string;
 	timestamp: number;
 	attachments?: MessageAttachment[];
+	replyTo?: MessageReply;
 }
 
 export function createOutgoingMessage(
@@ -102,6 +110,7 @@ export function createOutgoingMessage(
 		to: input.to,
 		body: input.body,
 		attachments: input.attachments,
+		replyTo: input.replyTo,
 		timestamp: input.timestamp,
 		direction: "outgoing",
 		status: "pending",
@@ -152,6 +161,53 @@ export function applyMessageStatus(
 			status:
 				status === "failed" ? status : laterStatus(message.status, status),
 		};
+	});
+	return changed ? next : messages;
+}
+
+export function applyMessageReaction(
+	messages: ChatMessage[],
+	messageId: string,
+	senderJid: string,
+	reactions: string[],
+): ChatMessage[] {
+	const normalized = Array.from(
+		new Set(reactions.map((reaction) => reaction.trim()).filter(Boolean)),
+	).slice(0, 20);
+	let changed = false;
+	const next = messages.map((message) => {
+		if (message.id !== messageId && message.stanzaId !== messageId) {
+			return message;
+		}
+		changed = true;
+		const current = { ...message.reactions };
+		if (normalized.length === 0) delete current[senderJid];
+		else current[senderJid] = normalized;
+		return {
+			...message,
+			reactions: Object.keys(current).length > 0 ? current : undefined,
+		};
+	});
+	return changed ? next : messages;
+}
+
+export function applyMessageEdit(
+	messages: ChatMessage[],
+	messageId: string,
+	body: string,
+): ChatMessage[] {
+	const nextBody = body.trim();
+	if (!nextBody) return messages;
+	let changed = false;
+	const next = messages.map((message) => {
+		if (
+			(message.id !== messageId && message.stanzaId !== messageId) ||
+			message.body === nextBody
+		) {
+			return message;
+		}
+		changed = true;
+		return { ...message, body: nextBody, edited: true };
 	});
 	return changed ? next : messages;
 }

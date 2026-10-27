@@ -8,6 +8,7 @@ import type {
 	ChatMessage,
 	Contact,
 	Conversation,
+	MessageReply,
 	MessageStatus,
 } from "#/types/chat";
 import type { StoredSession } from "#/types/storage";
@@ -48,6 +49,14 @@ export type XmppEvent =
 	| { type: "roster"; contacts: Contact[] }
 	| { type: "presence"; jid: string; presence: PresenceState }
 	| { type: "message"; message: ChatMessage }
+	| {
+			type: "reactions";
+			jid: string;
+			messageId: string;
+			senderJid: string;
+			reactions: string[];
+	  }
+	| { type: "edit"; jid: string; messageId: string; body: string }
 	| { type: "history"; messages: ChatMessage[] }
 	| {
 			type: "message-status";
@@ -67,12 +76,24 @@ export interface SendMessageInput {
 	body: string;
 	id: string;
 	attachments?: MessageAttachment[];
+	replyTo?: MessageReply;
+	editId?: string;
+}
+
+export interface SendMessageOptions {
+	replyTo?: MessageReply;
+	editId?: string;
 }
 
 export interface XmppAdapter {
 	connect(credentials: ConnectCredentials): Promise<void>;
 	disconnect(): Promise<void>;
 	sendMessage(input: SendMessageInput): Promise<void>;
+	sendReaction(
+		to: string,
+		messageId: string,
+		reactions: string[],
+	): Promise<void>;
 	sendChatState(to: string, state: ChatState): Promise<void>;
 	getRoster(): Promise<Contact[]>;
 	getUploadService(): Promise<UploadService>;
@@ -95,12 +116,14 @@ export interface XmppStore {
 		to: string,
 		body: string,
 		attachments?: MessageAttachment[],
+		options?: SendMessageOptions,
 	): Promise<ChatMessage | null>;
 	uploadAttachment(
 		file: File,
 		onProgress?: (percent: number) => void,
 	): Promise<MessageAttachment>;
 	retryMessage(messageId: string): Promise<void>;
+	toggleReaction(to: string, messageId: string, emoji: string): Promise<void>;
 	sendTyping(to: string, typing: boolean): Promise<void>;
 	setActiveConversation(jid: string | null): void;
 	ensureConversation(jid: string): void;

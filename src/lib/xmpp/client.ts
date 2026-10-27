@@ -4,6 +4,7 @@ import type * as StanzaProtocol from "stanza/protocol";
 import { reconnectDelay } from "#/lib/xmpp/backoff";
 import { createXmppError, isXmppError } from "#/lib/xmpp/errors";
 import { bareJid, toAccount } from "#/lib/xmpp/jid";
+import { registerMessageExtensions } from "#/lib/xmpp/protocol";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
 import { mapHistory, mapRoster } from "#/lib/xmpp/stanza-mappers";
 import type { UploadService, UploadSlot } from "#/types/attachment";
@@ -133,6 +134,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		});
 
 		client = agent;
+		registerMessageExtensions(agent);
 		attachEvents(agent);
 		emit({ type: "connection", status: "connecting", jid: accountBareJid });
 
@@ -186,12 +188,27 @@ export function createStanzaAdapter(): XmppAdapter {
 			body: input.body,
 			id: input.id,
 			type: "chat",
-			receipt: { type: "request" },
-			marker: { type: "markable" },
+			receipt: input.editId ? undefined : { type: "request" },
+			marker: input.editId ? undefined : { type: "markable" },
+			reply: input.replyTo,
+			replace: input.editId,
 			links: input.attachments?.map((attachment) => ({
 				url: attachment.url,
 				description: attachment.name,
 			})),
+		});
+	}
+
+	async function sendReaction(
+		to: string,
+		messageId: string,
+		reactions: string[],
+	): Promise<void> {
+		if (!client) throw createXmppError("not-connected");
+		client.sendMessage({
+			to: bareJid(to),
+			type: "chat",
+			reactions: { id: messageId, reactions },
 		});
 	}
 
@@ -241,6 +258,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		connect,
 		disconnect,
 		sendMessage,
+		sendReaction,
 		sendChatState,
 		getRoster,
 		getUploadService,

@@ -4,7 +4,7 @@ import { createXmppStore } from "#/lib/xmpp/store";
 import type { ChatMessage } from "#/types/chat";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
 
-function createHarness() {
+function createHarness(options: { idFactory?: () => string } = {}) {
 	let listener: ((event: XmppEvent) => void) | null = null;
 	const sent: SendMessageInput[] = [];
 	const sessionStore = createMemorySessionStore();
@@ -15,6 +15,7 @@ function createHarness() {
 		sendMessage: vi.fn(async (input: SendMessageInput) => {
 			sent.push(input);
 		}),
+		sendReaction: vi.fn(async () => undefined),
 		sendChatState: vi.fn(async () => undefined),
 		getRoster: vi.fn(async () => [
 			{
@@ -56,7 +57,7 @@ function createHarness() {
 		},
 		sessionStore,
 		now: () => 10_000,
-		idFactory: () => "fixed",
+		idFactory: options.idFactory ?? (() => "fixed"),
 	});
 
 	return {
@@ -120,6 +121,85 @@ describe("xmpp store", () => {
 		expect(
 			store.getState().conversations["bob@example.com"]?.messages[0].status,
 		).toBe("delivered");
+	});
+
+	it("sends replies and edits existing messages", async () => {
+		let index = 0;
+		const { store, sent } = createHarness({
+			idFactory: () => `id-${++index}`,
+		});
+		await store.connect(credentials);
+
+		const original = await store.sendMessage("bob@example.com", "Original");
+		await store.sendMessage("bob@example.com", "Reply", undefined, {
+			replyTo: { id: original?.id ?? "", to: "bob@example.com" },
+		});
+
+		expect(sent[1]).toMatchObject({
+			body: "Reply",
+			replyTo: { id: "local-id-1", to: "bob@example.com" },
+		});
+		let messages =
+			store.getState().conversations["bob@example.com"]?.messages ?? [];
+		expect(messages[1]?.replyTo?.id).toBe("local-id-1");
+
+		await store.sendMessage("bob@example.com", "Edited", undefined, {
+			editId: original?.id ?? "",
+		});
+
+		messages =
+			store.getState().conversations["bob@example.com"]?.messages ?? [];
+		expect(sent[2]).toMatchObject({
+			body: "Edited",
+			editId: "local-id-1",
+		});
+		expect(messages).toHaveLength(2);
+		const edited = messages.find((message) => message.id === "local-id-1");
+		expect(edited?.body).toBe("Edited");
+		expect(edited?.edited).toBe(true);
+	});
+
+	it("toggles reactions and applies incoming reactions and edits", async () => {
+		const { store, adapter, emit } = createHarness();
+		await store.connect(credentials);
+		await store.sendMessage("bob@example.com", "Hi");
+
+		await store.toggleReaction("bob@example.com", "local-fixed", "👍");
+		expect(adapter.sendReaction).toHaveBeenCalledWith(
+			"bob@example.com",
+			"local-fixed",
+			["👍"],
+		);
+		expect(
+			store.getState().conversations["bob@example.com"]?.messages[0]?.reactions,
+		).toEqual({ "alice@example.com": ["👍"] });
+
+		await store.toggleReaction("bob@example.com", "local-fixed", "👍");
+		expect(
+			store.getState().conversations["bob@example.com"]?.messages[0]?.reactions,
+		).toBeUndefined();
+
+		emit({
+			type: "reactions",
+			jid: "bob@example.com",
+			messageId: "local-fixed",
+			senderJid: "bob@example.com",
+			reactions: ["🎉"],
+		});
+		expect(
+			store.getState().conversations["bob@example.com"]?.messages[0]?.reactions,
+		).toEqual({ "bob@example.com": ["🎉"] });
+
+		emit({
+			type: "edit",
+			jid: "bob@example.com",
+			messageId: "local-fixed",
+			body: "Updated",
+		});
+		const message =
+			store.getState().conversations["bob@example.com"]?.messages[0];
+		expect(message?.body).toBe("Updated");
+		expect(message?.edited).toBe(true);
 	});
 
 	it("sends attachment-only messages and uploads files", async () => {

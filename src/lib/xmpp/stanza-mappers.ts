@@ -17,6 +17,7 @@ export function normalizeStanzaMessage(
 			body: message.body,
 			delay: message.delay,
 			links: message.links,
+			reply: message.reply,
 		},
 		{
 			accountBareJid,
