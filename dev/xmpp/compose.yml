@@ -1,0 +1,18 @@
+services:
+  xmpp:
+    image: prosody/prosody:latest
+    container_name: avio-xmpp
+    ports:
+      - "5280:5280"
+    volumes:
+      - ./prosody.cfg.lua:/etc/prosody/prosody.cfg.lua:ro
+      - prosody-data:/var/lib/prosody
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      "chown -R prosody:prosody /var/lib/prosody /var/run/prosody;
+       prosodyctl register alice localhost alice123 || true;
+       prosodyctl register bob localhost bob123 || true;
+       exec setpriv --reuid=prosody --regid=prosody --init-groups prosody -F"
+
+volumes:
+  prosody-data:

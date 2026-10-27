@@ -1,0 +1,13 @@
+# Avio
+
+Read and follow `AGENTS.md` in the repository root. It contains the architecture, component, type, styling, XMPP, and verification rules for this project.
+
+Use pnpm only.
+
+Use the shadcn CLI for UI primitives:
+
+```bash
+pnpm dlx shadcn@latest add <component>
+```
+
+This project uses the Base UI shadcn registry (`base-nova`) and Remix Icon, not Radix or Lucide.

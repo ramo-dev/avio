@@ -1,0 +1,23 @@
+{
+  "bundler": "vite",
+  "projectName": "avio",
+  "mode": "file-router",
+  "typescript": true,
+  "packageManager": "pnpm",
+  "includeExamples": false,
+  "tailwind": true,
+  "projectPreset": "default",
+  "routerOnly": false,
+  "addOnOptions": {},
+  "git": true,
+  "install": true,
+  "intent": true,
+  "version": 1,
+  "framework": "react",
+  "chosenAddOns": [
+    "biome",
+    "nitro",
+    "tanstack-query",
+    "shadcn"
+  ]
+}

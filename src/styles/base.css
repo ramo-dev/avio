@@ -1,0 +1,58 @@
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+	}
+
+	html,
+	body,
+	#app {
+		min-height: 100%;
+	}
+
+	body {
+		@apply bg-background text-foreground;
+		margin: 0;
+		font-family: var(--font-sans);
+		position: relative;
+		-webkit-font-smoothing: antialiased;
+		-moz-osx-font-smoothing: grayscale;
+	}
+
+	button,
+	a {
+		transition:
+			background-color 160ms ease,
+			color 160ms ease,
+			border-color 160ms ease,
+			opacity 160ms ease;
+	}
+}
+
+.root {
+	isolation: isolate;
+}
+
+::selection {
+	background: color-mix(in oklab, var(--primary) 25%, transparent);
+}
+
+/* Keep the chat scrollbar subtle while leaving native scrolling intact. */
+.scrollbar-subtle {
+	scrollbar-width: thin;
+	scrollbar-color: color-mix(in oklab, var(--foreground) 18%, transparent)
+		transparent;
+}
+
+.scrollbar-subtle::-webkit-scrollbar {
+	width: 8px;
+	height: 8px;
+}
+
+.scrollbar-subtle::-webkit-scrollbar-thumb {
+	border-radius: 999px;
+	background: color-mix(in oklab, var(--foreground) 18%, transparent);
+}
+
+.scrollbar-subtle::-webkit-scrollbar-track {
+	background: transparent;
+}
