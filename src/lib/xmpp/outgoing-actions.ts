@@ -43,6 +43,9 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 	): Promise<ChatMessage | null> {
 		const state = getState();
 		const trimmed = body.trim();
+		const target = bareJid(to);
+		const type =
+			state.conversations[target]?.kind === "group" ? "groupchat" : "chat";
 		if (state.connection.status !== "connected") {
 			onError(createXmppError("not-connected"));
 			return null;
@@ -66,6 +69,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 					body: trimmed,
 					id: `edit-${idFactory()}`,
 					editId: targetId,
+					type,
 				});
 				return findInConversation(getState(), to, existing.id) ?? null;
 			} catch (error) {
@@ -93,6 +97,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 			replyTo: options?.replyTo,
 			timestamp: now(),
 		});
+		if (type === "groupchat") message.status = "sent";
 		handleEvent({ type: "message", message });
 
 		try {
@@ -100,6 +105,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 				to: bareJid(to),
 				body: trimmed,
 				id,
+				type,
 				attachments,
 				replyTo: options?.replyTo,
 			});
@@ -115,16 +121,24 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 		const message = findMessageById(getState(), messageId);
 		if (!message || message.direction !== "outgoing") return;
 
+		const type =
+			getState().conversations[message.conversationJid]?.kind === "group"
+				? "groupchat"
+				: "chat";
 		handleEvent({ type: "message-status", id: messageId, status: "pending" });
 		try {
 			await adapter.sendMessage({
 				to: message.conversationJid,
 				body: message.body,
 				id: message.edited ? `edit-${idFactory()}` : message.id,
+				type,
 				attachments: message.attachments,
 				replyTo: message.replyTo,
 				editId: message.edited ? message.id : undefined,
 			});
+			if (type === "groupchat") {
+				handleEvent({ type: "message-status", id: messageId, status: "sent" });
+			}
 		} catch (error) {
 			onError(normalizeXmppError(error, "send-failed"));
 			handleEvent({ type: "message-status", id: messageId, status: "failed" });
@@ -132,7 +146,9 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 	}
 
 	async function sendTyping(to: string, typing: boolean) {
-		if (getState().connection.status !== "connected") return;
+		const state = getState();
+		if (state.connection.status !== "connected") return;
+		if (state.conversations[bareJid(to)]?.kind === "group") return;
 		try {
 			await adapter.sendChatState(bareJid(to), typing ? "composing" : "active");
 		} catch {
@@ -150,9 +166,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 		if (!message) return;
 		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
 		const current = message.reactions?.[accountJid] ?? [];
-		const next = current.includes(emoji)
-			? current.filter((reaction) => reaction !== emoji)
-			: [...current, emoji];
+		const next = current.includes(emoji) ? [] : [emoji];
 		const event: XmppEvent = {
 			type: "reactions",
 			jid: message.conversationJid,

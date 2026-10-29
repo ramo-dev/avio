@@ -10,6 +10,10 @@ import type {
 	Conversation,
 	MessageReply,
 	MessageStatus,
+	RoomInvite,
+	RoomInviteRequest,
+	RoomOccupant,
+	RoomState,
 } from "#/types/chat";
 import type { StoredSession } from "#/types/storage";
 import type {
@@ -21,6 +25,11 @@ import type {
 	SubscriptionRequest,
 	XmppError,
 } from "#/types/xmpp";
+
+export interface RoomInviteStore {
+	load(accountJid: string): Record<string, RoomInvite[]>;
+	save(accountJid: string, rooms: Record<string, RoomInvite[]>): void;
+}
 
 export interface ConnectionState {
 	status: ConnectionStatus;
@@ -34,6 +43,8 @@ export interface XmppState {
 	account: Account | null;
 	contacts: Record<string, Contact>;
 	presences: Record<string, Record<string, PresenceState>>;
+	rooms: Record<string, RoomState>;
+	roomInviteRequests: RoomInviteRequest[];
 	conversations: Record<string, Conversation>;
 	activeJid: string | null;
 	subscriptionRequests: SubscriptionRequest[];
@@ -58,6 +69,18 @@ export type XmppEvent =
 	  }
 	| { type: "edit"; jid: string; messageId: string; body: string }
 	| { type: "history"; messages: ChatMessage[] }
+	| { type: "room"; room: RoomState }
+	| {
+			type: "room-occupant";
+			jid: string;
+			occupant: RoomOccupant;
+			action: "join" | "leave" | "update";
+	  }
+	| { type: "room-subject"; jid: string; subject: string }
+	| { type: "room-left"; jid: string }
+	| { type: "room-invites"; jid: string; invites: RoomInvite[] }
+	| { type: "room-invite-request"; request: RoomInviteRequest }
+	| { type: "room-invite-request-cleared"; roomJid: string }
 	| {
 			type: "message-status";
 			id?: string;
@@ -75,6 +98,7 @@ export interface SendMessageInput {
 	to: string;
 	body: string;
 	id: string;
+	type?: "chat" | "groupchat";
 	attachments?: MessageAttachment[];
 	replyTo?: MessageReply;
 	editId?: string;
@@ -83,6 +107,12 @@ export interface SendMessageInput {
 export interface SendMessageOptions {
 	replyTo?: MessageReply;
 	editId?: string;
+}
+
+export interface RoomInfo {
+	jid: string;
+	name: string;
+	nick: string;
 }
 
 export interface XmppAdapter {
@@ -97,6 +127,15 @@ export interface XmppAdapter {
 	forwardMessage(to: string, message: ChatMessage, id?: string): Promise<void>;
 	sendChatState(to: string, state: ChatState): Promise<void>;
 	getRoster(): Promise<Contact[]>;
+	createRoom(name: string, memberJids: string[]): Promise<RoomInfo>;
+	leaveRoom(jid: string): Promise<void>;
+	inviteToRoom(
+		jid: string,
+		memberJids: string[],
+		reason?: string,
+	): Promise<void>;
+	acceptRoomInvite(jid: string, reason?: string): Promise<void>;
+	declineRoomInvite(jid: string): Promise<void>;
 	getUploadService(): Promise<UploadService>;
 	getUploadSlot(
 		serviceJid: string,
@@ -135,6 +174,11 @@ export interface XmppStore {
 	deleteMessage(jid: string, messageId: string): void;
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
+	createGroupChat(name: string, memberJids: string[]): Promise<RoomInfo>;
+	leaveGroupChat(jid: string): Promise<void>;
+	addGroupMembers(jid: string, memberJids: string[]): Promise<void>;
+	acceptRoomInvite(jid: string): Promise<void>;
+	declineRoomInvite(jid: string): Promise<void>;
 	clearError(): void;
 }
 
@@ -151,6 +195,7 @@ export interface XmppStoreDeps {
 	adapter: XmppAdapter;
 	uploader: AttachmentUploader;
 	sessionStore: SessionStore;
+	roomInviteStore: RoomInviteStore;
 	now?: () => number;
 	idFactory?: () => string;
 }

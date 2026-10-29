@@ -4,14 +4,20 @@ import {
 	reduceHistory,
 } from "#/lib/xmpp/conversation-state";
 import { bareJid } from "#/lib/xmpp/jid";
+import { reduceEdit, reduceReaction } from "#/lib/xmpp/message-event-reducers";
 import {
 	appendMessage,
-	applyMessageEdit,
-	applyMessageReaction,
 	applyMessageStatus,
 	hasMessage,
 } from "#/lib/xmpp/messages";
 import { OFFLINE_PRESENCE, pickBestPresence } from "#/lib/xmpp/presence";
+import {
+	reduceRoom,
+	reduceRoomInvites,
+	reduceRoomLeft,
+	reduceRoomOccupant,
+	reduceRoomSubject,
+} from "#/lib/xmpp/room-reducers";
 import type { ChatMessage, Contact, Conversation } from "#/types/chat";
 import type { XmppEvent, XmppState } from "#/types/store";
 import type { PresenceState, SubscriptionRequest } from "#/types/xmpp";
@@ -25,6 +31,8 @@ export function createInitialState(): XmppState {
 		account: null,
 		contacts: {},
 		presences: {},
+		rooms: {},
+		roomInviteRequests: [],
 		conversations: {},
 		activeJid: null,
 		subscriptionRequests: [],
@@ -47,6 +55,34 @@ export function reduceEvent(state: XmppState, event: XmppEvent): XmppState {
 			return reduceEdit(state, event);
 		case "history":
 			return reduceHistory(state, event.messages);
+		case "room":
+			return reduceRoom(state, event.room);
+		case "room-occupant":
+			return reduceRoomOccupant(state, event);
+		case "room-subject":
+			return reduceRoomSubject(state, event);
+		case "room-left":
+			return reduceRoomLeft(state, event);
+		case "room-invites":
+			return reduceRoomInvites(state, event);
+		case "room-invite-request": {
+			const exists = state.roomInviteRequests.some(
+				(request) => request.roomJid === event.request.roomJid,
+			);
+			return exists
+				? state
+				: {
+						...state,
+						roomInviteRequests: [...state.roomInviteRequests, event.request],
+					};
+		}
+		case "room-invite-request-cleared":
+			return {
+				...state,
+				roomInviteRequests: state.roomInviteRequests.filter(
+					(request) => request.roomJid !== event.roomJid,
+				),
+			};
 		case "message-status":
 			return reduceMessageStatus(state, event);
 		case "typing":
@@ -147,6 +183,7 @@ export function reducePresence(
 				jid: key,
 				name: existing?.name,
 				subscription: existing?.subscription ?? "none",
+				groups: existing?.groups ?? [],
 				presence: contactPresence,
 			},
 		},
@@ -158,7 +195,14 @@ export function reduceMessage(
 	message: ChatMessage,
 ): XmppState {
 	const jid = message.conversationJid;
-	const existing = state.conversations[jid] ?? createConversation(jid);
+	const isGroup = Boolean(message.senderNick);
+	const existing =
+		state.conversations[jid] ??
+		createConversation(
+			jid,
+			isGroup ? "group" : "direct",
+			isGroup ? jid : undefined,
+		);
 	const isNew = !hasMessage(existing.messages, message);
 	const messages = appendMessage(existing.messages, message, MAX_MESSAGES);
 	const isActive = state.activeJid === jid;
@@ -177,55 +221,13 @@ export function reduceMessage(
 
 	return {
 		...state,
-		contacts: isSelfJid(state, message.from)
-			? state.contacts
-			: ensureContact(state.contacts, message.from),
+		contacts:
+			existing.kind === "group" || isSelfJid(state, message.from)
+				? state.contacts
+				: ensureContact(state.contacts, message.from),
 		conversations: {
 			...state.conversations,
 			[jid]: conversation,
-		},
-	};
-}
-
-export function reduceReaction(
-	state: XmppState,
-	event: Extract<XmppEvent, { type: "reactions" }>,
-): XmppState {
-	const conversation = state.conversations[event.jid];
-	if (!conversation) return state;
-	const messages = applyMessageReaction(
-		conversation.messages,
-		event.messageId,
-		event.senderJid,
-		event.reactions,
-	);
-	if (messages === conversation.messages) return state;
-	return {
-		...state,
-		conversations: {
-			...state.conversations,
-			[event.jid]: { ...conversation, messages },
-		},
-	};
-}
-
-export function reduceEdit(
-	state: XmppState,
-	event: Extract<XmppEvent, { type: "edit" }>,
-): XmppState {
-	const conversation = state.conversations[event.jid];
-	if (!conversation) return state;
-	const messages = applyMessageEdit(
-		conversation.messages,
-		event.messageId,
-		event.body,
-	);
-	if (messages === conversation.messages) return state;
-	return {
-		...state,
-		conversations: {
-			...state.conversations,
-			[event.jid]: { ...conversation, messages },
 		},
 	};
 }

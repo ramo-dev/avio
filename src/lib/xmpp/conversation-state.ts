@@ -1,12 +1,23 @@
 import { bareJid } from "#/lib/xmpp/jid";
 import { appendMessage } from "#/lib/xmpp/messages";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
-import type { ChatMessage, Contact, Conversation } from "#/types/chat";
+import type {
+	ChatMessage,
+	Contact,
+	Conversation,
+	ConversationKind,
+} from "#/types/chat";
 import type { XmppState } from "#/types/store";
 
-export function createConversation(jid: string): Conversation {
+export function createConversation(
+	jid: string,
+	kind: ConversationKind = "direct",
+	title?: string,
+): Conversation {
 	return {
 		jid,
+		kind,
+		title,
 		messages: [],
 		unread: 0,
 		lastActivity: 0,
@@ -32,6 +43,7 @@ export function ensureContact(
 			jid: key,
 			name,
 			subscription: "none",
+			groups: [],
 			presence: OFFLINE_PRESENCE,
 		},
 	};
@@ -89,13 +101,16 @@ export function deleteConversationState(
 
 	const conversations = { ...state.conversations };
 	const contacts = { ...state.contacts };
+	const rooms = { ...state.rooms };
 	delete conversations[key];
 	delete contacts[key];
+	delete rooms[key];
 
 	return {
 		...state,
 		conversations,
 		contacts,
+		rooms,
 		activeJid: state.activeJid === key ? null : state.activeJid,
 	};
 }

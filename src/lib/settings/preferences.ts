@@ -11,6 +11,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	appearance: { theme: "system" },
 	sounds: { muted: false, volume: 0.5 },
 	chats: { enterToSend: true, typingIndicators: true },
+	notifications: { enabled: false, previews: true },
 };
 
 export interface SettingsStorage {
@@ -103,6 +104,7 @@ export function normalizeSettings(value: unknown): Settings {
 	const appearance = asRecord(root?.appearance);
 	const sounds = asRecord(root?.sounds);
 	const chats = asRecord(root?.chats);
+	const notifications = asRecord(root?.notifications);
 
 	return {
 		version: SETTINGS_VERSION,
@@ -121,6 +123,16 @@ export function normalizeSettings(value: unknown): Settings {
 			typingIndicators: asBoolean(
 				chats?.typingIndicators,
 				DEFAULT_SETTINGS.chats.typingIndicators,
+			),
+		},
+		notifications: {
+			enabled: asBoolean(
+				notifications?.enabled,
+				DEFAULT_SETTINGS.notifications.enabled,
+			),
+			previews: asBoolean(
+				notifications?.previews,
+				DEFAULT_SETTINGS.notifications.previews,
 			),
 		},
 	};
@@ -220,5 +232,19 @@ export function setTypingIndicators(typingIndicators: boolean) {
 	settingsStore.update((current) => ({
 		...current,
 		chats: { ...current.chats, typingIndicators },
+	}));
+}
+
+export function setNotificationsEnabled(enabled: boolean) {
+	settingsStore.update((current) => ({
+		...current,
+		notifications: { ...current.notifications, enabled },
+	}));
+}
+
+export function setNotificationPreviews(previews: boolean) {
+	settingsStore.update((current) => ({
+		...current,
+		notifications: { ...current.notifications, previews },
 	}));
 }

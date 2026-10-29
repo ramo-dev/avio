@@ -26,7 +26,7 @@ export function SettingsHost() {
 	if (desktop) {
 		return (
 			<Dialog open={open} onOpenChange={setOpen}>
-				<DialogContent className="flex h-[42rem] max-h-[calc(100dvh-4rem)] w-full flex-col overflow-hidden sm:max-w-3xl">
+				<DialogContent className="flex h-full max-h-[calc(100dvh-4rem)] w-full flex-col overflow-hidden sm:max-w-4xl">
 					<DialogHeader className="shrink-0">
 						<DialogTitle>Settings</DialogTitle>
 						<DialogDescription>

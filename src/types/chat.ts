@@ -10,6 +10,42 @@ export type MessageStatus =
 
 export type MessageDirection = "incoming" | "outgoing";
 
+export type ConversationKind = "direct" | "group";
+
+export interface RoomOccupant {
+	nick: string;
+	jid?: string;
+	role?: string;
+	affiliation?: string;
+	presence: PresenceState;
+}
+
+export type RoomInviteStatus = "pending" | "accepted";
+
+export interface RoomInvite {
+	jid: string;
+	name?: string;
+	status: RoomInviteStatus;
+	invitedAt: number;
+}
+
+export interface RoomInviteRequest {
+	roomJid: string;
+	roomName: string;
+	from: string;
+	reason?: string;
+	receivedAt: number;
+}
+
+export interface RoomState {
+	jid: string;
+	name: string;
+	nick: string;
+	subject?: string;
+	occupants: Record<string, RoomOccupant>;
+	invites: Record<string, RoomInvite>;
+}
+
 export type MessagePosition = "single" | "first" | "middle" | "last";
 
 export interface MessageReply {
@@ -29,6 +65,7 @@ export interface ChatMessage {
 	reactions?: Record<string, string[]>;
 	edited?: boolean;
 	forwarded?: boolean;
+	senderNick?: string;
 	timestamp: number;
 	direction: MessageDirection;
 	status: MessageStatus;
@@ -40,11 +77,15 @@ export interface Contact {
 	jid: string;
 	name?: string;
 	subscription: "none" | "to" | "from" | "both";
+	groups: string[];
 	presence: PresenceState;
 }
 
 export interface Conversation {
 	jid: string;
+	kind: ConversationKind;
+	title?: string;
+	nick?: string;
 	messages: ChatMessage[];
 	unread: number;
 	lastActivity: number;
@@ -63,12 +104,20 @@ export type TimelineItem =
 	| { kind: "day"; id: string; timestamp: number }
 	| { kind: "group"; id: string; group: MessageGroup };
 
+export interface ConversationParticipant {
+	jid?: string;
+	name: string;
+}
+
 export interface ConversationSummary {
 	jid: string;
 	name: string;
+	kind: ConversationKind;
 	lastMessage?: ChatMessage;
 	unread: number;
 	lastActivity: number;
 	presence: PresenceState;
 	typing: boolean;
+	memberCount?: number;
+	participants?: ConversationParticipant[];
 }

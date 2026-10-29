@@ -39,14 +39,17 @@ export function ConversationItem({
 	const secondary = selected
 		? "text-primary-foreground/70"
 		: "text-muted-foreground";
+	const link =
+		item.kind === "group"
+			? ({ to: "/chat/group/$room", params: { room: item.jid } } as const)
+			: ({ to: "/chat/$jid", params: { jid: item.jid } } as const);
 
 	return (
 		<ContextMenu>
 			<ContextMenuTrigger
 				render={
 					<Link
-						to="/chat/$jid"
-						params={{ jid: item.jid }}
+						{...link}
 						role="option"
 						aria-selected={selected}
 						className={conversationItemVariants({

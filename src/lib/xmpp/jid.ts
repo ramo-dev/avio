@@ -58,6 +58,10 @@ export function jidLocalPart(value: string): string {
 	return parsed?.localPart || parsed?.domain || value;
 }
 
+export function jidResource(value: string): string | undefined {
+	return parseJid(value)?.resource;
+}
+
 export function displayJidName(value: string, name?: string): string {
 	if (name?.trim()) return name.trim();
 	return jidLocalPart(value);

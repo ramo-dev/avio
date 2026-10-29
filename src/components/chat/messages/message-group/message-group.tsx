@@ -5,6 +5,7 @@ import type { ChatMessage, MessageGroup } from "#/types/chat";
 export function MessageGroupView({
 	group,
 	senderName,
+	showSenderHeader = false,
 	activeMessageId,
 	highlightQuery,
 	messagesById,
@@ -17,6 +18,7 @@ export function MessageGroupView({
 }: {
 	group: MessageGroup;
 	senderName: string;
+	showSenderHeader?: boolean;
 	activeMessageId?: string | null;
 	highlightQuery?: string;
 	messagesById?: Map<string, ChatMessage>;
@@ -44,7 +46,9 @@ export function MessageGroupView({
 						key={message.id}
 						message={message}
 						senderName={senderName}
-						showHeader={false}
+						showHeader={
+							showSenderHeader && index === 0 && group.direction === "incoming"
+						}
 						//showHeader={index === 0 && group.direction === "incoming"}
 						showAvatar={
 							group.direction === "incoming" &&

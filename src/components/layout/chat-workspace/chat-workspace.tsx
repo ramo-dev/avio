@@ -32,8 +32,8 @@ export function ChatWorkspace({
 		>
 			<ResizablePanel
 				id="chat-list"
-				defaultSize="27%"
-				minSize="27%"
+				defaultSize="29%"
+				minSize="380px"
 				maxSize="40%"
 				className="min-h-0 overflow-hidden"
 			>

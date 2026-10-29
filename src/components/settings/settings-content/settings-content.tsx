@@ -5,6 +5,7 @@ import {
 	SettingsNav,
 	type SettingsSectionId,
 } from "#/components/settings/settings-nav/settings-nav";
+import { SettingsNotifications } from "#/components/settings/settings-notifications/settings-notifications";
 import { SettingsSounds } from "#/components/settings/settings-sounds/settings-sounds";
 
 export function SettingsContent() {
@@ -13,10 +14,11 @@ export function SettingsContent() {
 	return (
 		<div className="flex min-h-0 w-full flex-col gap-4 md:h-full md:flex-row md:gap-6">
 			<SettingsNav value={section} onChange={setSection} />
-			<div className="min-h-0 flex-1 md:overflow-y-auto md:pr-1">
+			<div className="min-h-0 flex-1 md:overflow-y-auto border border-input p-3 md:p-6 rounded-xl">
 				{section === "appearance" && <SettingsAppearance />}
 				{section === "sounds" && <SettingsSounds />}
 				{section === "chats" && <SettingsChats />}
+				{section === "notifications" && <SettingsNotifications />}
 			</div>
 		</div>
 	);

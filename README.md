@@ -2,6 +2,11 @@
 
 ## Your chats. Your server. Your rules.
 
+> **Development preview — not stable.** Avio is currently at **0.1.0-dev.0** and is
+> under active development. Features, interfaces, storage formats, and XMPP behavior
+> may change without notice. Do not use it as the only client for an important
+> account yet.
+
 Avio is a fast, friendly messaging app for the open network. It runs in your browser
 and on your desktop, connects straight to the server you choose, and reaches anyone
 on any server. No middleman. No lock-in.
@@ -60,7 +65,8 @@ Self-hosting is a choice here, not a requirement. Avio works the same either way
 
 For server operators: Avio needs a browser-friendly endpoint (WebSocket or BOSH) and
 your app's origin allowed. When discovery is not configured, the advanced fields take
-the endpoint directly.
+the endpoint directly. See [`docs/connections.md`](docs/connections.md) for server
+configuration, discovery, Tauri, and troubleshooting.
 
 ## Fast, in practice
 
@@ -100,8 +106,9 @@ A dropped connection is a pause, not an interruption.
 
 ## Private by default
 
-- Your password is never saved — not to the browser, not to disk. It stays in memory
-  for the session and disappears when you close the tab.
+- Your password is kept only in tab-scoped session storage so a refresh can restore
+  the session. It is never written to `localStorage`, and it is cleared on logout and
+  auth failure. The Tauri build will use the OS keychain.
 - Avio remembers your address and connection details on your device, and nothing more.
 - Messages render as plain text. Nothing inside a message can execute in your app.
 - Your history lives on your server, under your rules. Back it up, move it, or delete
@@ -148,6 +155,12 @@ between you and your server.
 
 Avio is in active development, with the web client as the reference implementation
 and the desktop app built from that same client.
+
+## Versioning
+
+Avio uses [Semantic Versioning](https://semver.org/). The current release is
+`0.1.0-dev.0`. Before `1.0.0`, preview releases may include breaking changes to
+storage, configuration, and UI. See [`CHANGELOG.md`](CHANGELOG.md) for what changed.
 
 ## License
 

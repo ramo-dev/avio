@@ -55,6 +55,26 @@ export function createLazyAdapter(): XmppAdapter {
 			const adapter = await ensure();
 			return adapter.getRoster();
 		},
+		async createRoom(name, memberJids) {
+			const adapter = await ensure();
+			return adapter.createRoom(name, memberJids);
+		},
+		async leaveRoom(jid) {
+			const adapter = await ensure();
+			await adapter.leaveRoom(jid);
+		},
+		async inviteToRoom(jid, memberJids, reason) {
+			const adapter = await ensure();
+			await adapter.inviteToRoom(jid, memberJids, reason);
+		},
+		async acceptRoomInvite(jid, reason) {
+			const adapter = await ensure();
+			await adapter.acceptRoomInvite(jid, reason);
+		},
+		async declineRoomInvite(jid) {
+			const adapter = await ensure();
+			await adapter.declineRoomInvite(jid);
+		},
 		async getUploadService(): Promise<UploadService> {
 			const adapter = await ensure();
 			return adapter.getUploadService();

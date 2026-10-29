@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
 	Tooltip,
 	TooltipContent,
@@ -29,18 +29,43 @@ export function MessageReactions({
 		}
 		return Array.from(byEmoji.entries());
 	}, [reactions]);
+	const [displayGroups, setDisplayGroups] = useState(groups);
+	const [leaving, setLeaving] = useState<Set<string>>(() => new Set());
+	const previousGroups = useRef(groups);
 
-	if (groups.length === 0) return null;
+	useEffect(() => {
+		const next = new Set(groups.map(([emoji]) => emoji));
+		const removed = previousGroups.current.filter(
+			([emoji]) => !next.has(emoji),
+		);
+
+		if (removed.length === 0) {
+			previousGroups.current = groups;
+			setDisplayGroups(groups);
+			return;
+		}
+
+		setDisplayGroups([...groups, ...removed]);
+		setLeaving(new Set(removed.map(([emoji]) => emoji)));
+		const timer = setTimeout(() => {
+			previousGroups.current = groups;
+			setDisplayGroups(groups);
+			setLeaving(new Set());
+		}, 150);
+		return () => clearTimeout(timer);
+	}, [groups]);
+
+	if (displayGroups.length === 0) return null;
 
 	return (
 		<div
 			data-slot="message-reactions"
 			className={cn(
-				"flex flex-wrap items-center gap-y-1 -space-x-1",
+				"flex flex-wrap -mt-3 items-center gap-y-1 -space-x-1",
 				outgoing ? "justify-end" : "justify-start",
 			)}
 		>
-			{groups.map(([emoji, users]) => {
+			{displayGroups.map(([emoji, users]) => {
 				const mine = Boolean(currentUserJid && users.includes(currentUserJid));
 				const names = users
 					.map((jid) => (jid === currentUserJid ? "You" : displayJidName(jid)))
@@ -52,7 +77,10 @@ export function MessageReactions({
 						aria-label={`${emoji} ${users.length} reaction${users.length === 1 ? "" : "s"}`}
 						onClick={() => onToggle?.(emoji)}
 						className={cn(
-							"relative z-0 flex size-7 shrink-0 items-center justify-center rounded-full border text-sm leading-none transition-colors hover:z-10 focus-visible:z-10",
+							"relative z-0 flex size-7 shrink-0 items-center justify-center rounded-full border text-sm leading-none transition-[transform,background-color,border-color] duration-150 hover:z-10 active:scale-90 focus-visible:z-10",
+							leaving.has(emoji)
+								? "pointer-events-none"
+								: "animate-in fade-in-0 zoom-in-75 duration-150",
 							mine
 								? "border-primary/40 bg-muted text-foreground"
 								: "border-border bg-muted text-muted-foreground hover:bg-muted",
@@ -67,14 +95,28 @@ export function MessageReactions({
 					</button>
 				);
 
-				if (users.length === 1) {
-					return <span key={emoji}>{chip}</span>;
-				}
+				const content =
+					users.length === 1 ? (
+						chip
+					) : (
+						<Tooltip>
+							<TooltipTrigger render={chip} />
+							<TooltipContent>{names}</TooltipContent>
+						</Tooltip>
+					);
+
 				return (
-					<Tooltip key={emoji}>
-						<TooltipTrigger render={chip} />
-						<TooltipContent>{names}</TooltipContent>
-					</Tooltip>
+					<span
+						key={emoji}
+						className={cn(
+							"inline-flex shrink-0 transition-[width,opacity,transform,margin] duration-200 ease-out",
+							leaving.has(emoji)
+								? "-ml-1 w-0 scale-75 opacity-0"
+								: "w-7 scale-100 opacity-100",
+						)}
+					>
+						{content}
+					</span>
 				);
 			})}
 		</div>

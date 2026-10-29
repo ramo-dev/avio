@@ -14,6 +14,7 @@ import { Route as ChatRouteImport } from './routes/chat'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as ChatIndexRouteImport } from './routes/chat.index'
 import { Route as ChatJidRouteImport } from './routes/chat.$jid'
+import { Route as ChatGroupRoomRouteImport } from './routes/chat.group.$room'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,11 @@ const ChatJidRoute = ChatJidRouteImport.update({
   path: '/$jid',
   getParentRoute: () => ChatRoute,
 } as any)
+const ChatGroupRoomRoute = ChatGroupRoomRouteImport.update({
+  id: '/group/$room',
+  path: '/group/$room',
+  getParentRoute: () => ChatRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,12 +53,14 @@ export interface FileRoutesByFullPath {
   '/connect': typeof ConnectRoute
   '/chat/$jid': typeof ChatJidRoute
   '/chat/': typeof ChatIndexRoute
+  '/chat/group/$room': typeof ChatGroupRoomRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/connect': typeof ConnectRoute
   '/chat/$jid': typeof ChatJidRoute
   '/chat': typeof ChatIndexRoute
+  '/chat/group/$room': typeof ChatGroupRoomRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -61,13 +69,22 @@ export interface FileRoutesById {
   '/connect': typeof ConnectRoute
   '/chat/$jid': typeof ChatJidRoute
   '/chat/': typeof ChatIndexRoute
+  '/chat/group/$room': typeof ChatGroupRoomRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/chat' | '/connect' | '/chat/$jid' | '/chat/'
+  fullPaths:
+    '/' | '/chat' | '/connect' | '/chat/$jid' | '/chat/' | '/chat/group/$room'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/connect' | '/chat/$jid' | '/chat'
-  id: '__root__' | '/' | '/chat' | '/connect' | '/chat/$jid' | '/chat/'
+  to: '/' | '/connect' | '/chat/$jid' | '/chat' | '/chat/group/$room'
+  id:
+    | '__root__'
+    | '/'
+    | '/chat'
+    | '/connect'
+    | '/chat/$jid'
+    | '/chat/'
+    | '/chat/group/$room'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -113,17 +130,26 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ChatJidRouteImport
       parentRoute: typeof ChatRoute
     }
+    '/chat/group/$room': {
+      id: '/chat/group/$room'
+      path: '/group/$room'
+      fullPath: '/chat/group/$room'
+      preLoaderRoute: typeof ChatGroupRoomRouteImport
+      parentRoute: typeof ChatRoute
+    }
   }
 }
 
 interface ChatRouteChildren {
   ChatJidRoute: typeof ChatJidRoute
   ChatIndexRoute: typeof ChatIndexRoute
+  ChatGroupRoomRoute: typeof ChatGroupRoomRoute
 }
 
 const ChatRouteChildren: ChatRouteChildren = {
   ChatJidRoute: ChatJidRoute,
   ChatIndexRoute: ChatIndexRoute,
+  ChatGroupRoomRoute: ChatGroupRoomRoute,
 }
 
 const ChatRouteWithChildren = ChatRoute._addFileChildren(ChatRouteChildren)

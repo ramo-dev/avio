@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router";
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { AppToaster } from "#/components/common/app-toaster/app-toaster";
+import { NotificationBridge } from "#/components/common/notification-bridge/notification-bridge";
 import { SoundEffects } from "#/components/common/sound/sound";
 import { ThemeSync } from "#/components/common/theme-sync/theme-sync";
 import { XmppErrorToaster } from "#/components/common/xmpp-error-toaster/xmpp-error-toaster";
@@ -66,6 +67,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 						<SoundEffects>
 							<XmppProvider>
 								{children}
+								<NotificationBridge />
 								<XmppErrorToaster />
 							</XmppProvider>
 						</SoundEffects>

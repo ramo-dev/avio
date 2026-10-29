@@ -14,9 +14,15 @@ export interface ChatSettings {
 	typingIndicators: boolean;
 }
 
+export interface NotificationSettings {
+	enabled: boolean;
+	previews: boolean;
+}
+
 export interface Settings {
 	version: 1;
 	appearance: AppearanceSettings;
 	sounds: SoundSettings;
 	chats: ChatSettings;
+	notifications: NotificationSettings;
 }

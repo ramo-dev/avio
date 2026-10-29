@@ -47,3 +47,7 @@ log = {
 VirtualHost "localhost"
 	authentication = "internal_plain"
 	modules_enabled = { "smacks"; "carbons"; "mam"; "websocket" }
+
+Component "conference.localhost" "muc"
+	restrict_room_creation = false
+	modules_enabled = { "muc_mam" }

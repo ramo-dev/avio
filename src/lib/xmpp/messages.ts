@@ -175,7 +175,7 @@ export function applyMessageReaction(
 ): ChatMessage[] {
 	const normalized = Array.from(
 		new Set(reactions.map((reaction) => reaction.trim()).filter(Boolean)),
-	).slice(0, 20);
+	).slice(-1);
 	let changed = false;
 	const next = messages.map((message) => {
 		if (message.id !== messageId && message.stanzaId !== messageId) {

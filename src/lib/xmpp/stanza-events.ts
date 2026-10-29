@@ -1,9 +1,10 @@
 import type { Agent } from "stanza";
 import type * as StanzaProtocol from "stanza/protocol";
-import { bareJid } from "#/lib/xmpp/jid";
+import { bareJid, jidResource } from "#/lib/xmpp/jid";
 import { normalizePresence } from "#/lib/xmpp/presence";
 import {
 	mapRoster,
+	normalizeGroupMessage,
 	normalizeStanzaMessage,
 	withFallbackAddress,
 } from "#/lib/xmpp/stanza-mappers";
@@ -12,6 +13,7 @@ import type { XmppEvent } from "#/types/store";
 export interface StanzaEventHandlers {
 	emit: (event: XmppEvent) => void;
 	getAccountBareJid: () => string;
+	getRoomNick: (roomJid: string) => string | undefined;
 	onSessionStarted: () => void;
 	onAuthFailed: () => void;
 	onStreamError: (error: StanzaProtocol.StreamError) => void;
@@ -72,6 +74,16 @@ export function attachStanzaEvents(
 	agent.on("chat", (message) => {
 		if (message.reactions || message.replace) return;
 		const normalized = normalizeStanzaMessage(message, accountBareJid());
+		if (normalized) emit({ type: "message", message: normalized });
+	});
+
+	agent.on("groupchat", (message) => {
+		const roomJid = bareJid(message.from ?? "");
+		const normalized = normalizeGroupMessage(
+			message,
+			accountBareJid(),
+			handlers.getRoomNick(roomJid),
+		);
 		if (normalized) emit({ type: "message", message: normalized });
 	});
 
@@ -185,6 +197,67 @@ export function attachStanzaEvents(
 			type: "typing",
 			jid: message.from,
 			typing: message.chatState === "composing",
+		});
+	});
+
+	agent.on("muc:available", (presence) => {
+		const roomJid = bareJid(presence.from);
+		const nick = presence.muc?.nick ?? jidResource(presence.from);
+		if (!nick) return;
+
+		emit({
+			type: "room-occupant",
+			jid: roomJid,
+			action: "join",
+			occupant: {
+				nick,
+				jid: presence.muc?.jid ? bareJid(presence.muc.jid) : undefined,
+				role: presence.muc?.role,
+				affiliation: presence.muc?.affiliation,
+				presence: normalizePresence({
+					show: presence.show,
+					status: presence.status,
+					priority: presence.priority,
+				}),
+			},
+		});
+	});
+
+	agent.on("muc:unavailable", (presence) => {
+		const roomJid = bareJid(presence.from);
+		const nick = presence.muc?.nick ?? jidResource(presence.from);
+		if (!nick) return;
+
+		emit({
+			type: "room-occupant",
+			jid: roomJid,
+			action: "leave",
+			occupant: {
+				nick,
+				presence: normalizePresence({ available: false }),
+			},
+		});
+	});
+
+	agent.on("muc:topic", (event) => {
+		emit({
+			type: "room-subject",
+			jid: bareJid(event.room),
+			subject: event.topic ?? "",
+		});
+	});
+
+	agent.on("muc:invite", (event) => {
+		const roomJid = bareJid(event.room);
+		emit({
+			type: "room-invite-request",
+			request: {
+				roomJid,
+				roomName: event.reason?.trim() || roomJid.split("@")[0] || roomJid,
+				from: event.from,
+				reason: event.reason,
+				receivedAt: Date.now(),
+			},
 		});
 	});
 

@@ -1,8 +1,17 @@
-import { RiChat3Line, RiSunLine, RiVolumeUpLine } from "@remixicon/react";
+import {
+	RiChat3Line,
+	RiNotification3Line,
+	RiSunLine,
+	RiVolumeUpLine,
+} from "@remixicon/react";
 import { Button } from "#/components/ui/button";
 import { cn } from "#/lib/utils";
 
-export type SettingsSectionId = "appearance" | "sounds" | "chats";
+export type SettingsSectionId =
+	| "appearance"
+	| "sounds"
+	| "chats"
+	| "notifications";
 
 const SECTIONS: Array<{
 	id: SettingsSectionId;
@@ -12,6 +21,7 @@ const SECTIONS: Array<{
 	{ id: "appearance", label: "Appearance", icon: RiSunLine },
 	{ id: "sounds", label: "Sounds", icon: RiVolumeUpLine },
 	{ id: "chats", label: "Chats", icon: RiChat3Line },
+	{ id: "notifications", label: "Notifications", icon: RiNotification3Line },
 ];
 
 export function SettingsNav({
@@ -33,7 +43,6 @@ export function SettingsNav({
 						key={id}
 						type="button"
 						variant={active ? "secondary" : "ghost"}
-						size="sm"
 						aria-current={active ? "page" : undefined}
 						onClick={() => onChange(id)}
 						className={cn(

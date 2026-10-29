@@ -136,4 +136,4 @@ Never import stanza types into components. Normalize at the adapter boundary.
 
 ## Backlog
 
-All deferred work goes in `docs/backlog.md`. Current out-of-scope items include MUC, OMEMO, file uploads, Jingle/WebRTC calls, push notifications, IndexedDB caching, multi-account support, and Tauri packaging.
+All deferred work goes in `docs/backlog.md`. Current out-of-scope items include advanced MUC features (room configuration, moderation, room MAM), OMEMO, Jingle/WebRTC calls, push notifications, IndexedDB caching, multi-account support, and Tauri packaging.

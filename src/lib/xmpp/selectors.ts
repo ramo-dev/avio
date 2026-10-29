@@ -38,14 +38,33 @@ function toSummary(
 	state: XmppState,
 ): ConversationSummary {
 	const contact = state.contacts[jid];
+	const room = state.rooms[jid];
+	const isGroup =
+		conversation?.kind === "group" ||
+		Boolean(room) ||
+		Boolean(conversation?.messages.some((message) => message.senderNick));
+	const occupants = isGroup ? Object.values(room?.occupants ?? {}) : [];
+
 	return {
 		jid,
-		name: displayJidName(jid, contact?.name),
+		name: isGroup
+			? (conversation?.title ?? room?.name ?? jid)
+			: displayJidName(jid, contact?.name),
+		kind: isGroup ? "group" : "direct",
 		lastMessage: conversation?.messages.at(-1),
 		unread: conversation?.unread ?? 0,
 		lastActivity: conversation?.lastActivity ?? 0,
-		presence: contact?.presence ?? OFFLINE_PRESENCE,
+		presence: isGroup
+			? OFFLINE_PRESENCE
+			: (contact?.presence ?? OFFLINE_PRESENCE),
 		typing: conversation?.typing ?? false,
+		memberCount: isGroup ? occupants.length : undefined,
+		participants: isGroup
+			? occupants.slice(0, 2).map((occupant) => ({
+					jid: occupant.jid,
+					name: occupant.nick,
+				}))
+			: undefined,
 	};
 }
 
