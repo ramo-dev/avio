@@ -1,6 +1,7 @@
 import {
 	RiChat3Line,
 	RiNotification3Line,
+	RiShieldCheckLine,
 	RiSunLine,
 	RiVolumeUpLine,
 } from "@remixicon/react";
@@ -11,7 +12,8 @@ export type SettingsSectionId =
 	| "appearance"
 	| "sounds"
 	| "chats"
-	| "notifications";
+	| "notifications"
+	| "security";
 
 const SECTIONS: Array<{
 	id: SettingsSectionId;
@@ -22,6 +24,7 @@ const SECTIONS: Array<{
 	{ id: "sounds", label: "Sounds", icon: RiVolumeUpLine },
 	{ id: "chats", label: "Chats", icon: RiChat3Line },
 	{ id: "notifications", label: "Notifications", icon: RiNotification3Line },
+	{ id: "security", label: "Security", icon: RiShieldCheckLine },
 ];
 
 export function SettingsNav({

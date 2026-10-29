@@ -23,6 +23,14 @@ without a deprecation period.
 - Responsive desktop dialog/mobile drawer primitives.
 - Local Prosody development environment with a conference component.
 
+### Security
+
+- Relicensed Avio under GPLv3 to allow compatible OMEMO and OpenPGP work.
+- Added an honest security status panel: TLS transport, no E2EE yet.
+- Added an isolated OMEMO cryptographic spike and integration plan; not wired into
+  the UI or enabled for users.
+- Added a development-only warning that this build is not production ready.
+
 ### Changed
 
 - Unified the conversation list for DMs and rooms, with stacked participant

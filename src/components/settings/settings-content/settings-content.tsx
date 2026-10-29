@@ -6,6 +6,7 @@ import {
 	type SettingsSectionId,
 } from "#/components/settings/settings-nav/settings-nav";
 import { SettingsNotifications } from "#/components/settings/settings-notifications/settings-notifications";
+import { SettingsSecurity } from "#/components/settings/settings-security/settings-security";
 import { SettingsSounds } from "#/components/settings/settings-sounds/settings-sounds";
 
 export function SettingsContent() {
@@ -19,6 +20,7 @@ export function SettingsContent() {
 				{section === "sounds" && <SettingsSounds />}
 				{section === "chats" && <SettingsChats />}
 				{section === "notifications" && <SettingsNotifications />}
+				{section === "security" && <SettingsSecurity />}
 			</div>
 		</div>
 	);

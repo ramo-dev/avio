@@ -29,6 +29,25 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Jingle / WebRTC** — use `webrtc-adapter` before creating `RTCPeerConnection`; add audio/video call UI and permission handling.
 - **Screen sharing** — depends on Jingle negotiation.
 
+## Security and encryption
+
+- **OMEMO 1:1 (XEP-0384)** — primary E2EE goal. The project is GPLv3, so
+  `libomemo.js` (GPLv3) is a candidate crypto engine. It is not audited yet.
+  See `tmp/0002-omemo-integration.md` for the integration plan.
+- **OpenPGP for XMPP (XEP-0374)** — Gajim supports it for 1:1, groups, and files.
+  Defer until OMEMO 1:1 is stable; `openpgp` is LGPL-3.0+ and GPLv3-compatible.
+- **Key storage** — never use `localStorage` for private keys. Design an
+  IndexedDB/keychain boundary with a documented threat model and CSP first.
+- **Security settings surface** — show transport security, E2EE availability,
+  device trust, and unencrypted-send warnings.
+- **Security threat model and CSP** — document local compromise, XSS, hostile
+  server/stanza input, and key backup before adding E2EE. Converse.js is MPL-2.0,
+  but its OMEMO dependency `libomemo.js` is GPLv3 and unaudited.
+- **Privacy controls** — block list, presence visibility, receipts/typing
+  policy, history retention, and clear-local-history.
+- **Accounts and connections** — multi-account, resource/priority, proxies, and
+  custom CA/certificate handling.
+
 ## Client features
 
 - **IndexedDB cache** — persist messages and roster for offline startup; keep MAM as the source of truth.
