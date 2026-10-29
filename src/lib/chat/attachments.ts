@@ -3,17 +3,21 @@ import type { StagedKind } from "#/types/attachment";
 export function getKind(file: File): StagedKind {
 	if (file.type.startsWith("image/")) return "image";
 	if (file.type.startsWith("video/")) return "video";
+	if (file.type.startsWith("audio/")) return "audio";
 	return "file";
 }
 
 const IMAGE_EXTENSIONS = /[.](png|jpe?g|gif|webp|avif|heic|bmp|svg)$/i;
 const VIDEO_EXTENSIONS = /[.](mp4|webm|mov|m4v|avi|mkv)$/i;
+const AUDIO_EXTENSIONS = /[.](mp3|m4a|aac|ogg|oga|opus|wav|flac|weba)$/i;
 
 export function kindFromName(name: string, mimeType?: string): StagedKind {
 	if (mimeType?.startsWith("image/")) return "image";
 	if (mimeType?.startsWith("video/")) return "video";
+	if (mimeType?.startsWith("audio/")) return "audio";
 	if (IMAGE_EXTENSIONS.test(name)) return "image";
 	if (VIDEO_EXTENSIONS.test(name)) return "video";
+	if (AUDIO_EXTENSIONS.test(name)) return "audio";
 	return "file";
 }
 

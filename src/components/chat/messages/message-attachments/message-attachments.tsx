@@ -3,9 +3,10 @@ import {
 	RiFileLine,
 	RiFileWarningLine,
 	RiImageLine,
-	RiVideoLine,
 } from "@remixicon/react";
 import { useState } from "react";
+import { MessageAudio } from "#/components/chat/messages/message-audio/message-audio";
+import { MessageVideo } from "#/components/chat/messages/message-video/message-video";
 import { Card } from "#/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "#/components/ui/dialog";
 import { formatBytes } from "#/lib/chat/attachments";
@@ -53,28 +54,19 @@ export function MessageAttachments({
 						);
 					}
 
-					if (attachment.kind === "video" && !isFailed) {
-						return (
-							<Card key={attachment.id} size="sm" className="p-2">
-								<video
-									src={attachment.url}
-									controls
-									onError={() => markFailed(attachment.id)}
-									className="max-h-72 w-full rounded-lg"
-								>
-									<track kind="captions" />
-								</video>
-							</Card>
-						);
+					if (attachment.kind === "video") {
+						return <MessageVideo key={attachment.id} attachment={attachment} />;
+					}
+
+					if (attachment.kind === "audio") {
+						return <MessageAudio key={attachment.id} attachment={attachment} />;
 					}
 
 					const Icon = isFailed
 						? RiFileWarningLine
 						: attachment.kind === "image"
 							? RiImageLine
-							: attachment.kind === "video"
-								? RiVideoLine
-								: RiFileLine;
+							: RiFileLine;
 
 					return (
 						<a

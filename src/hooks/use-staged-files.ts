@@ -43,7 +43,10 @@ export function useStagedFiles(canAttach: boolean, onFocus?: () => void) {
 					id: crypto.randomUUID(),
 					file,
 					kind,
-					previewUrl: kind === "file" ? null : URL.createObjectURL(file),
+					previewUrl:
+						kind === "image" || kind === "video"
+							? URL.createObjectURL(file)
+							: null,
 				});
 				room -= 1;
 			}
