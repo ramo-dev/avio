@@ -8,8 +8,10 @@ import {
 import { TanStackRouterDevtoolsPanel } from "@tanstack/react-router-devtools";
 import { AppToaster } from "#/components/common/app-toaster/app-toaster";
 import { SoundEffects } from "#/components/common/sound/sound";
+import { ThemeSync } from "#/components/common/theme-sync/theme-sync";
 import { XmppErrorToaster } from "#/components/common/xmpp-error-toaster/xmpp-error-toaster";
 import { TooltipProvider } from "#/components/ui/tooltip";
+import { THEME_INIT_SCRIPT } from "#/lib/settings/theme";
 import { XmppProvider } from "#/providers/xmpp-provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import appCss from "../styles.css?url";
@@ -35,6 +37,10 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 				name: "description",
 				content: "A calm, focused XMPP client for the web.",
 			},
+			{
+				name: "color-scheme",
+				content: "light dark",
+			},
 		],
 		links: [
 			{
@@ -51,9 +57,11 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 		<html lang="en" suppressHydrationWarning>
 			<head>
 				<HeadContent />
+				<script>{THEME_INIT_SCRIPT}</script>
 			</head>
 			<body>
 				<div className="root min-h-svh">
+					<ThemeSync />
 					<TooltipProvider>
 						<SoundEffects>
 							<XmppProvider>
