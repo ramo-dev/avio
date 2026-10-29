@@ -4,19 +4,16 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 
 ## Messaging
 
-- **MAM history pagination (XEP-0313)** — the client now loads the latest 50 archived messages on session start. Add older-page loading on scroll-top with `MessageScroller` prepend preservation.
-- **Reactions (XEP-0444)** — StanzaJS does not expose reactions; add a JXT plugin, reaction chips, and toggle commands.
-- **Replies (XEP-0461)** — send and render quoted replies once the stanza format is added.
-- **Message corrections (XEP-0308)** — stanza emits `replace`; update the original message body and show an edited marker.
-- **Retractions (XEP-0424)** — remove or tombstone a message after a retraction event.
-- **Upload cancellation and retry** — the XEP-0363 upload path now stages files, reports progress, sends OOB links, and renders image/file/video cards. Add per-file cancel/retry controls for failed uploads.
+- **MAM history pagination (XEP-0313)** — initial history loads the latest 50 messages and replays archived reactions/corrections. Apply the same action replay when older pages are added on scroll-top; initial pagination work is on `feat/mam-drafts`.
+- **Retractions (XEP-0424)** — message actions currently remove a message locally; add protocol retraction with a tombstone.
+- **Upload cancellation and retry** — the XEP-0363 upload path stages files, reports progress, sends OOB links, and renders image/file/video cards. Add per-file cancel/retry controls for failed uploads.
 - **Message search** — local search over the in-memory conversation store first, then MAM search.
 - **Delivery/read receipt parity** — verify server support and surface `marker:displayed` consistently for all clients.
 
 ## Chat UI
 
 - **Server-side roster removal** — deleting a chat currently removes the local conversation/contact; add `removeRosterItem` so it stays gone after roster reload.
-- **Message hover toolbar** — add reply/reaction/copy/delete actions on hover and right-click. Reactions and replies need the protocol work below.
+- **Message actions polish** — hover, right-click, long-press, and swipe gestures expose reply, reaction, forward, copy, edit, and local removal. Add keyboard shortcuts and review discoverability on touch.
 - **Message virtualization** — add `@tanstack/react-virtual` to the list and thread once either exceeds roughly 200 items.
 
 ## Presence and roster
@@ -37,7 +34,6 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Notifications** — browser Notification API with per-conversation unread counts and a mute setting.
 - **IndexedDB cache** — persist messages and roster for offline startup; keep MAM as the source of truth.
 - **Multi-account** — extend `SessionStore` to an account list and key store state by account.
-- **Drafts** — persist the composer draft per conversation.
 - **Theme toggle** — the CSS already supports `.dark`; add a persisted preference.
 - **Accessibility pass** — verify message log announcements, dialog focus traps, and keyboard navigation with a screen reader.
 - **Typing indicator polish** — stop composing on blur and on conversation switch.

@@ -15,7 +15,7 @@ export function ChatListHeader({ count }: { count: number }) {
 	const actions = useXmppActions();
 
 	return (
-		<header className="flex h-16 shrink-0 items-center gap-0.5 border-b border-border px-2.5">
+		<header className="flex h-16 shrink-0 items-center gap-0.5 border-b border-border md:px-2 px-3">
 			<div className="min-w-0 flex-1">
 				<h1 className="truncate text-lg font-semibold tracking-tight">
 					Messages

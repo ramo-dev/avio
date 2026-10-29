@@ -7,5 +7,5 @@ export const Route = createFileRoute("/chat/$jid")({
 
 function ChatConversation() {
 	const { jid } = Route.useParams();
-	return <ConversationView jid={jid} />;
+	return <ConversationView key={jid} jid={jid} />;
 }

@@ -31,11 +31,35 @@ export function ConversationView({ jid }: { jid: string }) {
 	const [searchOpen, setSearchOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [matchIndex, setMatchIndex] = useState(0);
+	const [replyTo, setReplyTo] = useState<ChatMessage | null>(null);
+	const [editing, setEditing] = useState<ChatMessage | null>(null);
+	const currentUserJid = state.account?.bareJid;
 	const matches = useMemo(
 		() => (searchOpen ? findMessageMatches(messages, searchQuery) : []),
 		[messages, searchOpen, searchQuery],
 	);
 	const activeMatch = matches[matchIndex];
+
+	function startReply(message: ChatMessage) {
+		setEditing(null);
+		setReplyTo(message);
+	}
+
+	function startEdit(message: ChatMessage) {
+		setReplyTo(null);
+		setEditing(message);
+	}
+
+	function clearComposerContext() {
+		setReplyTo(null);
+		setEditing(null);
+	}
+
+	function deleteMessage(message: ChatMessage) {
+		if (replyTo?.id === message.id) setReplyTo(null);
+		if (editing?.id === message.id) setEditing(null);
+		actions.deleteMessage(jid, message.id);
+	}
 
 	useEffect(() => {
 		if (matchIndex >= matches.length) {
@@ -120,12 +144,27 @@ export function ConversationView({ jid }: { jid: string }) {
 					highlightQuery={searchOpen ? searchQuery : ""}
 					activeMessageId={activeMatch?.messageId ?? null}
 					activeGroupId={activeMatch?.groupId ?? null}
+					currentUserJid={currentUserJid}
 					onRetry={(messageId) => void actions.retryMessage(messageId)}
 					onQuickReply={(body) => void actions.sendMessage(jid, body)}
+					onReply={startReply}
+					onEdit={startEdit}
+					onReact={(message, emoji) =>
+						void actions.toggleReaction(jid, message.id, emoji)
+					}
+					onDelete={deleteMessage}
 				/>
 			</div>
 
-			<Composer jid={jid} disabled={!connected} onSendFiles={sendFiles} />
+			<Composer
+				jid={jid}
+				disabled={!connected}
+				contactName={name}
+				onSendFiles={sendFiles}
+				replyTo={replyTo}
+				editing={editing}
+				onContextDone={clearComposerContext}
+			/>
 		</div>
 	);
 }

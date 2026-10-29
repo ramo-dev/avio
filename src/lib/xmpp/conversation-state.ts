@@ -100,6 +100,33 @@ export function deleteConversationState(
 	};
 }
 
+export function deleteMessageState(
+	state: XmppState,
+	jid: string,
+	messageId: string,
+): XmppState {
+	const key = bareJid(jid);
+	const conversation = state.conversations[key];
+	if (!conversation) return state;
+
+	const messages = conversation.messages.filter(
+		(message) => message.id !== messageId && message.stanzaId !== messageId,
+	);
+	if (messages.length === conversation.messages.length) return state;
+
+	return {
+		...state,
+		conversations: {
+			...state.conversations,
+			[key]: {
+				...conversation,
+				messages,
+				lastActivity: messages.at(-1)?.timestamp ?? 0,
+			},
+		},
+	};
+}
+
 export function reduceHistory(
 	state: XmppState,
 	messages: ChatMessage[],

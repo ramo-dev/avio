@@ -6,6 +6,8 @@ import {
 import { bareJid } from "#/lib/xmpp/jid";
 import {
 	appendMessage,
+	applyMessageEdit,
+	applyMessageReaction,
 	applyMessageStatus,
 	hasMessage,
 } from "#/lib/xmpp/messages";
@@ -39,6 +41,10 @@ export function reduceEvent(state: XmppState, event: XmppEvent): XmppState {
 			return reducePresence(state, event.jid, event.presence);
 		case "message":
 			return reduceMessage(state, event.message);
+		case "reactions":
+			return reduceReaction(state, event);
+		case "edit":
+			return reduceEdit(state, event);
 		case "history":
 			return reduceHistory(state, event.messages);
 		case "message-status":
@@ -177,6 +183,49 @@ export function reduceMessage(
 		conversations: {
 			...state.conversations,
 			[jid]: conversation,
+		},
+	};
+}
+
+export function reduceReaction(
+	state: XmppState,
+	event: Extract<XmppEvent, { type: "reactions" }>,
+): XmppState {
+	const conversation = state.conversations[event.jid];
+	if (!conversation) return state;
+	const messages = applyMessageReaction(
+		conversation.messages,
+		event.messageId,
+		event.senderJid,
+		event.reactions,
+	);
+	if (messages === conversation.messages) return state;
+	return {
+		...state,
+		conversations: {
+			...state.conversations,
+			[event.jid]: { ...conversation, messages },
+		},
+	};
+}
+
+export function reduceEdit(
+	state: XmppState,
+	event: Extract<XmppEvent, { type: "edit" }>,
+): XmppState {
+	const conversation = state.conversations[event.jid];
+	if (!conversation) return state;
+	const messages = applyMessageEdit(
+		conversation.messages,
+		event.messageId,
+		event.body,
+	);
+	if (messages === conversation.messages) return state;
+	return {
+		...state,
+		conversations: {
+			...state.conversations,
+			[event.jid]: { ...conversation, messages },
 		},
 	};
 }

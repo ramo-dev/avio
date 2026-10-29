@@ -1,5 +1,6 @@
 import type { Agent } from "stanza";
 import type * as StanzaProtocol from "stanza/protocol";
+import { bareJid } from "#/lib/xmpp/jid";
 import { normalizePresence } from "#/lib/xmpp/presence";
 import {
 	mapRoster,
@@ -24,13 +25,52 @@ export function attachStanzaEvents(
 	const { emit } = handlers;
 	const accountBareJid = () => handlers.getAccountBareJid();
 
+	function emitExtended(
+		message: StanzaProtocol.Message,
+		fallbackFrom: string,
+		fallbackTo: string,
+	): boolean {
+		const from = message.from ?? fallbackFrom;
+		const to = message.to ?? fallbackTo;
+		const outgoing =
+			bareJid(from).toLowerCase() === accountBareJid().toLowerCase();
+		const jid = outgoing ? bareJid(to) : bareJid(from);
+
+		if (message.reactions?.id) {
+			emit({
+				type: "reactions",
+				jid,
+				messageId: message.reactions.id,
+				senderJid: outgoing ? accountBareJid() : bareJid(from),
+				reactions: message.reactions.reactions ?? [],
+			});
+			return true;
+		}
+
+		if (message.replace) {
+			const body = message.body?.trim();
+			if (body) emit({ type: "edit", jid, messageId: message.replace, body });
+			return true;
+		}
+
+		return false;
+	}
+
 	agent.on("session:started", handlers.onSessionStarted);
 
 	agent.on("auth:failed", handlers.onAuthFailed);
 	agent.on("stream:error", handlers.onStreamError);
 	agent.on("disconnected", handlers.onDisconnected);
 
+	agent.on("message", (message) => {
+		if (message.carbon) return;
+		if (message.reactions || message.replace) {
+			emitExtended(message, message.from ?? "", message.to ?? "");
+		}
+	});
+
 	agent.on("chat", (message) => {
+		if (message.reactions || message.replace) return;
 		const normalized = normalizeStanzaMessage(message, accountBareJid());
 		if (normalized) emit({ type: "message", message: normalized });
 	});
@@ -38,6 +78,7 @@ export function attachStanzaEvents(
 	agent.on("carbon:received", (event) => {
 		const inner = event.carbon.forward.message;
 		if (!inner) return;
+		if (emitExtended(inner, event.from, event.to)) return;
 		const normalized = normalizeStanzaMessage(
 			withFallbackAddress(inner, event.from, event.to),
 			accountBareJid(),
@@ -49,6 +90,7 @@ export function attachStanzaEvents(
 	agent.on("carbon:sent", (event) => {
 		const inner = event.carbon.forward.message;
 		if (!inner) return;
+		if (emitExtended(inner, event.from, event.to)) return;
 		const normalized = normalizeStanzaMessage(
 			withFallbackAddress(inner, event.from, event.to),
 			accountBareJid(),

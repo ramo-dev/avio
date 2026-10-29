@@ -12,6 +12,11 @@ export type MessageDirection = "incoming" | "outgoing";
 
 export type MessagePosition = "single" | "first" | "middle" | "last";
 
+export interface MessageReply {
+	id: string;
+	to?: string;
+}
+
 export interface ChatMessage {
 	id: string;
 	stanzaId?: string;
@@ -20,6 +25,10 @@ export interface ChatMessage {
 	to: string;
 	body: string;
 	attachments?: MessageAttachment[];
+	replyTo?: MessageReply;
+	reactions?: Record<string, string[]>;
+	edited?: boolean;
+	forwarded?: boolean;
 	timestamp: number;
 	direction: MessageDirection;
 	status: MessageStatus;

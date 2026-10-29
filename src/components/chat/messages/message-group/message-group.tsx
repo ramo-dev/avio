@@ -1,19 +1,31 @@
 import { MessageRow } from "#/components/chat/messages/message-row/message-row";
 import { MessageGroup as MessageGroupShell } from "#/components/ui/message";
-import type { MessageGroup } from "#/types/chat";
+import type { ChatMessage, MessageGroup } from "#/types/chat";
 
 export function MessageGroupView({
 	group,
 	senderName,
 	activeMessageId,
 	highlightQuery,
+	messagesById,
+	currentUserJid,
 	onRetry,
+	onReply,
+	onEdit,
+	onReact,
+	onDelete,
 }: {
 	group: MessageGroup;
 	senderName: string;
 	activeMessageId?: string | null;
 	highlightQuery?: string;
+	messagesById?: Map<string, ChatMessage>;
+	currentUserJid?: string;
 	onRetry?: (messageId: string) => void;
+	onReply?: (message: ChatMessage) => void;
+	onEdit?: (message: ChatMessage) => void;
+	onReact?: (message: ChatMessage, emoji: string) => void;
+	onDelete?: (message: ChatMessage) => void;
 }) {
 	return (
 		<MessageGroupShell className="gap-0.5">
@@ -42,6 +54,16 @@ export function MessageGroupView({
 						position={position}
 						active={message.id === activeMessageId}
 						highlightQuery={highlightQuery}
+						replyToMessage={
+							message.replyTo
+								? messagesById?.get(message.replyTo.id)
+								: undefined
+						}
+						currentUserJid={currentUserJid}
+						onReply={onReply}
+						onEdit={onEdit}
+						onReact={onReact}
+						onDelete={onDelete}
 						onRetry={
 							message.status === "failed"
 								? () => onRetry?.(message.id)

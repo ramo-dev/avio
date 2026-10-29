@@ -5,8 +5,10 @@ import { useStagedFiles } from "#/hooks/use-staged-files";
 import { useTyping } from "#/hooks/use-typing";
 import { useXmppActions } from "#/hooks/xmpp/use-xmpp";
 import { cn } from "#/lib/utils";
+import type { ChatMessage } from "#/types/chat";
 import { AttachmentTray } from "./attachment-tray";
 import { ComposerActions } from "./composer-actions/composer-actions";
+import { ComposerContext } from "./composer-context/composer-context";
 import { DropOverlay } from "./drop-overlay";
 
 /** scrollHeight above this means the text wrapped to a second line. */
@@ -15,6 +17,10 @@ const SINGLE_LINE_MAX = 44;
 type ComposerProps = {
 	jid: string;
 	disabled: boolean;
+	contactName: string;
+	replyTo?: ChatMessage | null;
+	editing?: ChatMessage | null;
+	onContextDone?: () => void;
 	/** Called on send when files are staged. Omit to hide attachments. */
 	onSendFiles?: (
 		files: File[],
@@ -23,7 +29,15 @@ type ComposerProps = {
 	) => void | Promise<void>;
 };
 
-export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
+export function Composer({
+	jid,
+	disabled,
+	contactName,
+	replyTo,
+	editing,
+	onContextDone,
+	onSendFiles,
+}: ComposerProps) {
 	const actions = useXmppActions();
 	const notifyTyping = useTyping(jid, !disabled);
 
@@ -31,8 +45,12 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 	const [expanded, setExpanded] = useState(false);
 
 	const textareaRef = useRef<HTMLTextAreaElement>(null);
+	const prefilledEditId = useRef<string | null>(null);
+	const focusedContextId = useRef<string | null>(null);
+	const draftBeforeEdit = useRef("");
+	const contextActive = Boolean(replyTo || editing);
 
-	const canAttach = Boolean(onSendFiles) && !disabled;
+	const canAttach = Boolean(onSendFiles) && !disabled && !contextActive;
 	const {
 		staged,
 		stage,
@@ -44,13 +62,31 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 	} = useStagedFiles(canAttach, () => textareaRef.current?.focus());
 	const uploading = staged.some((item) => item.uploading);
 	const canSend =
-		!disabled && !uploading && (body.trim().length > 0 || staged.length > 0);
+		!disabled &&
+		!uploading &&
+		(body.trim().length > 0 || (!contextActive && staged.length > 0));
 
 	// Expand once the text wraps or contains a newline. Collapse only when
 	// empty, so the wider expanded layout can't flip it back and forth.
 	useLayoutEffect(() => {
 		const el = textareaRef.current;
 		if (!el) return;
+		const contextId = editing?.id ?? replyTo?.id ?? null;
+		if (!contextId) focusedContextId.current = null;
+		if (!editing) prefilledEditId.current = null;
+
+		if (editing && prefilledEditId.current !== editing.id) {
+			prefilledEditId.current = editing.id;
+			draftBeforeEdit.current = body;
+			setBody(editing.body);
+			el.focus();
+			focusedContextId.current = contextId;
+			return;
+		}
+		if (contextId && focusedContextId.current !== contextId) {
+			focusedContextId.current = contextId;
+			el.focus();
+		}
 		if (body.length === 0) {
 			if (expanded) setExpanded(false);
 			return;
@@ -61,7 +97,7 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 		) {
 			setExpanded(true);
 		}
-	}, [body, expanded]);
+	}, [body, editing, expanded, replyTo]);
 
 	const { isDragging } = useFileDrop(stage, canAttach);
 
@@ -86,7 +122,7 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 	async function send() {
 		if (!canSend) return;
 		const value = body.trim();
-		if (staged.length > 0 && onSendFiles) {
+		if (staged.length > 0 && onSendFiles && !contextActive) {
 			markUploading();
 			try {
 				await onSendFiles(
@@ -96,6 +132,7 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 				);
 				clear();
 				setBody("");
+				onContextDone?.();
 			} catch {
 				resetUploading();
 			}
@@ -103,15 +140,30 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 		}
 
 		if (value) {
-			void actions.sendMessage(jid, value);
+			const options = editing
+				? { editId: editing.id }
+				: replyTo
+					? { replyTo: { id: replyTo.id, to: replyTo.from } }
+					: undefined;
+			void actions.sendMessage(jid, value, undefined, options);
 			setBody("");
+			draftBeforeEdit.current = "";
+			onContextDone?.();
 		}
+	}
+
+	function cancelContext() {
+		if (editing) setBody(draftBeforeEdit.current);
+		draftBeforeEdit.current = "";
+		onContextDone?.();
 	}
 
 	const placeholder = useMemo(() => {
 		if (disabled) return "Reconnect to send messages";
+		if (editing) return "Edit message";
+		if (replyTo) return "Write a reply";
 		return staged.length > 0 ? "Add a caption" : "Write a message";
-	}, [disabled, staged.length]);
+	}, [disabled, editing, replyTo, staged.length]);
 
 	return (
 		<>
@@ -121,9 +173,17 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 					event.preventDefault();
 					send();
 				}}
-				className="shrink-0 bg-background p-3 md:p-5"
+				className="shrink-0 bg-background p-3 md:p-5 md:pb-3 pb-8"
 			>
 				<div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
+					{contextActive && (
+						<ComposerContext
+							replyTo={replyTo}
+							editing={editing}
+							contactName={contactName}
+							onCancel={cancelContext}
+						/>
+					)}
 					{staged.length > 0 && (
 						<AttachmentTray items={staged} onRemove={unstage} />
 					)}
@@ -166,7 +226,7 @@ export function Composer({ jid, disabled, onSendFiles }: ComposerProps) {
 							rows={1}
 							className={cn(
 								"max-h-40 min-h-9 w-full resize-none border-0 bg-transparent py-2 shadow-none [field-sizing:content] focus-visible:ring-0 dark:bg-transparent",
-								expanded ? "px-4" : "pl-12 pr-24",
+								expanded ? "px-4" : canAttach ? "pl-12 pr-24" : "pl-4 pr-24",
 							)}
 						/>
 

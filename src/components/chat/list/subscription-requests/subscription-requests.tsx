@@ -10,7 +10,7 @@ export function SubscriptionRequests() {
 	if (state.subscriptionRequests.length === 0) return null;
 
 	return (
-		<div className="mx-2 mt-2 rounded-lg border border-border bg-muted/40 p-2">
+		<div className="mx-2 mt-2 rounded-lg border border-border bg-muted/40 md:p-2 p-3">
 			<p className="mb-2 flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
 				<RiUserAddLine className="size-3.5" />
 				Contact requests
