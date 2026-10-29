@@ -6,6 +6,7 @@ import {
 } from "#/components/ui/tooltip";
 import { cn } from "#/lib/utils";
 import { displayJidName } from "#/lib/xmpp/jid";
+import { selectUserReactions } from "#/lib/xmpp/reactions";
 
 export function MessageReactions({
 	reactions,
@@ -29,6 +30,9 @@ export function MessageReactions({
 		}
 		return Array.from(byEmoji.entries());
 	}, [reactions]);
+	const myReactions = currentUserJid
+		? selectUserReactions(reactions, currentUserJid)
+		: [];
 	const [displayGroups, setDisplayGroups] = useState(groups);
 	const [leaving, setLeaving] = useState<Set<string>>(() => new Set());
 	const previousGroups = useRef(groups);
@@ -66,7 +70,7 @@ export function MessageReactions({
 			)}
 		>
 			{displayGroups.map(([emoji, users]) => {
-				const mine = Boolean(currentUserJid && users.includes(currentUserJid));
+				const mine = myReactions.includes(emoji);
 				const names = users
 					.map((jid) => (jid === currentUserJid ? "You" : displayJidName(jid)))
 					.join(", ");
@@ -74,7 +78,8 @@ export function MessageReactions({
 					<button
 						type="button"
 						aria-pressed={mine}
-						aria-label={`${emoji} ${users.length} reaction${users.length === 1 ? "" : "s"}`}
+						data-mine={mine}
+						aria-label={`${emoji} ${users.length} reaction${users.length === 1 ? "" : "s"}${mine ? ", yours" : ""}`}
 						onClick={() => onToggle?.(emoji)}
 						className={cn(
 							"relative z-0 flex size-7 shrink-0 items-center justify-center rounded-full border text-sm leading-none transition-[transform,background-color,border-color] duration-150 hover:z-10 active:scale-90 focus-visible:z-10",
@@ -82,8 +87,8 @@ export function MessageReactions({
 								? "pointer-events-none"
 								: "animate-in fade-in-0 zoom-in-75 duration-150",
 							mine
-								? "border-primary/40 bg-muted text-foreground"
-								: "border-border bg-muted text-muted-foreground hover:bg-muted",
+								? "border-border bg-muted text-foreground"
+								: "border-border bg-muted text-muted-foreground hover:bg-muted/80",
 						)}
 					>
 						<span>{emoji}</span>

@@ -71,6 +71,7 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 		roomInviteStore,
 		now: () => 10_000,
 		idFactory: options.idFactory ?? (() => "fixed"),
+		reactionDelayMs: 0,
 	});
 
 	return {

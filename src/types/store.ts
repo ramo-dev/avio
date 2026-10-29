@@ -198,4 +198,5 @@ export interface XmppStoreDeps {
 	roomInviteStore: RoomInviteStore;
 	now?: () => number;
 	idFactory?: () => string;
+	reactionDelayMs?: number;
 }

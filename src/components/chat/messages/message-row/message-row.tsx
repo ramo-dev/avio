@@ -25,6 +25,8 @@ import {
 import { copyText } from "#/lib/chat/clipboard";
 import { highlightText } from "#/lib/format/highlight";
 import { formatMessageTime } from "#/lib/format/time";
+import { shouldShowMessageBody } from "#/lib/xmpp/messages";
+import { selectUserReactions } from "#/lib/xmpp/reactions";
 import type { ChatMessage, MessagePosition } from "#/types/chat";
 
 export function MessageRow({
@@ -67,7 +69,6 @@ export function MessageRow({
 	const pressOrigin = useRef<{ x: number; y: number } | null>(null);
 	const swipeHandled = useRef(false);
 	const outgoing = message.direction === "outgoing";
-	const align = outgoing ? "end" : "start";
 	const body = highlightQuery
 		? highlightText(
 				message.body,
@@ -77,12 +78,7 @@ export function MessageRow({
 					: "bg-primary/20 text-inherit",
 			)
 		: message.body;
-	const showBody =
-		message.body.length > 0 &&
-		!message.attachments?.some(
-			(attachment) =>
-				attachment.name === message.body || attachment.url === message.body,
-		);
+	const myReaction = selectUserReactions(message.reactions, currentUserJid)[0];
 	const copyValue = message.body || message.attachments?.[0]?.url || "";
 	const toolbar =
 		onReply || onReact ? (
@@ -99,6 +95,7 @@ export function MessageRow({
 							}
 						: undefined
 				}
+				myReaction={myReaction}
 				onReact={(emoji) => {
 					setActionsOpen(false);
 					onReact?.(message, emoji);
@@ -211,7 +208,7 @@ export function MessageRow({
 	return (
 		<Message
 			ref={rowRef}
-			align={align}
+			align={outgoing ? "end" : "start"}
 			role="article"
 			className="touch-pan-y"
 			onContextMenu={openContextMenu}
@@ -274,7 +271,7 @@ export function MessageRow({
 							outgoing={outgoing}
 						/>
 					)}
-					{showBody && <div>{body}</div>}
+					{shouldShowMessageBody(message) && <div>{body}</div>}
 					{message.attachments && message.attachments.length > 0 && (
 						<MessageAttachments
 							attachments={message.attachments}

@@ -1,6 +1,7 @@
 import { createXmppError, normalizeXmppError } from "#/lib/xmpp/errors";
 import { bareJid } from "#/lib/xmpp/jid";
 import { createOutgoingMessage } from "#/lib/xmpp/messages";
+import { createReactionActions } from "#/lib/xmpp/reaction-actions";
 import { findMessageById } from "#/lib/xmpp/selectors";
 import type { MessageAttachment } from "#/types/attachment";
 import type { ChatMessage } from "#/types/chat";
@@ -19,10 +20,19 @@ interface OutgoingActionDeps {
 	now: () => number;
 	idFactory: () => string;
 	onError: (error: XmppError) => void;
+	reactionDelayMs?: number;
 }
 
 export function createOutgoingActions(deps: OutgoingActionDeps) {
 	const { getState, handleEvent, adapter, now, idFactory, onError } = deps;
+	const reactionDelayMs = deps.reactionDelayMs;
+	const reactions = createReactionActions({
+		getState,
+		handleEvent,
+		adapter,
+		onError,
+		delayMs: reactionDelayMs,
+	});
 
 	function findInConversation(
 		state: XmppState,
@@ -156,38 +166,6 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 		}
 	}
 
-	async function toggleReaction(to: string, messageId: string, emoji: string) {
-		const state = getState();
-		if (state.connection.status !== "connected") {
-			onError(createXmppError("not-connected"));
-			return;
-		}
-		const message = findInConversation(state, to, messageId);
-		if (!message) return;
-		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
-		const current = message.reactions?.[accountJid] ?? [];
-		const next = current.includes(emoji) ? [] : [emoji];
-		const event: XmppEvent = {
-			type: "reactions",
-			jid: message.conversationJid,
-			messageId: message.id,
-			senderJid: accountJid,
-			reactions: next,
-		};
-		handleEvent(event);
-
-		try {
-			await adapter.sendReaction(
-				bareJid(to),
-				message.stanzaId ?? message.id,
-				next,
-			);
-		} catch (error) {
-			onError(normalizeXmppError(error, "send-failed"));
-			handleEvent({ ...event, reactions: current });
-		}
-	}
-
 	async function forwardMessage(
 		to: string,
 		source: ChatMessage,
@@ -229,7 +207,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 		sendMessage,
 		retryMessage,
 		sendTyping,
-		toggleReaction,
+		toggleReaction: reactions.toggleReaction,
 		forwardMessage,
 	};
 }

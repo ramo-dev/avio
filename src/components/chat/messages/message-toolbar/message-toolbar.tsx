@@ -19,6 +19,7 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "#/components/ui/tooltip";
+import { cn } from "#/lib/utils";
 import type { ChatMessage } from "#/types/chat";
 
 const QUICK_REACTIONS = ["👍", "❤️", "😂", "😮", "😢", "🎉"];
@@ -27,6 +28,7 @@ export function MessageToolbar({
 	onReply,
 	onEdit,
 	onReact,
+	myReaction,
 	onCopy,
 	onDelete,
 	forwardSource,
@@ -37,6 +39,7 @@ export function MessageToolbar({
 	onReply: () => void;
 	onEdit?: () => void;
 	onReact: (emoji: string) => void;
+	myReaction?: string;
 	onCopy?: () => void;
 	onDelete?: () => void;
 	forwardSource?: ChatMessage;
@@ -100,23 +103,30 @@ export function MessageToolbar({
 					</Tooltip>
 					<PopoverContent side="top" align="end" className="w-auto p-1">
 						<div className="flex items-center gap-0.5">
-							{QUICK_REACTIONS.map((emoji) => (
-								<Button
-									key={emoji}
-									type="button"
-									variant="ghost"
-									size="icon"
-									aria-label={`React with ${emoji}`}
-									title={`React with ${emoji}`}
-									className="size-8 text-base"
-									onClick={() => {
-										onReact(emoji);
-										setOpen(false);
-									}}
-								>
-									{emoji}
-								</Button>
-							))}
+							{QUICK_REACTIONS.map((emoji) => {
+								const selected = myReaction === emoji;
+								return (
+									<Button
+										key={emoji}
+										type="button"
+										variant={selected ? "secondary" : "ghost"}
+										size="icon"
+										aria-label={`React with ${emoji}`}
+										aria-pressed={selected}
+										title={`React with ${emoji}`}
+										className={cn(
+											"size-8 text-base",
+											selected && "bg-secondary",
+										)}
+										onClick={() => {
+											onReact(emoji);
+											setOpen(false);
+										}}
+									>
+										{emoji}
+									</Button>
+								);
+							})}
 						</div>
 					</PopoverContent>
 				</Popover>

@@ -167,6 +167,16 @@ export function applyMessageStatus(
 	return changed ? next : messages;
 }
 
+export function shouldShowMessageBody(message: ChatMessage): boolean {
+	return (
+		message.body.length > 0 &&
+		!message.attachments?.some(
+			(attachment) =>
+				attachment.name === message.body || attachment.url === message.body,
+		)
+	);
+}
+
 export function applyMessageReaction(
 	messages: ChatMessage[],
 	messageId: string,

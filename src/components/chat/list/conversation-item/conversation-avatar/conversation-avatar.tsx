@@ -18,7 +18,7 @@ export function ConversationAvatar({
 			(item.memberCount ?? participants.length) - participants.length,
 		);
 
-		if (participants.length === 0) {
+		if (participants.length <= 0) {
 			return (
 				<div className="relative shrink-0">
 					<span
@@ -29,7 +29,7 @@ export function ConversationAvatar({
 								: "bg-muted text-muted-foreground",
 						)}
 					>
-						<RiGroupLine className="size-5" />
+						<RiGroupLine className="size-12" />
 					</span>
 				</div>
 			);
@@ -61,14 +61,6 @@ export function ConversationAvatar({
 						+{remaining}
 					</span>
 				)}
-				<span
-					className={cn(
-						"absolute -bottom-1 -right-1 grid size-4 place-items-center rounded-full bg-card text-muted-foreground ring-1",
-						selected ? "ring-primary" : "ring-border",
-					)}
-				>
-					<RiGroupLine className="size-2.5" />
-				</span>
 			</div>
 		);
 	}

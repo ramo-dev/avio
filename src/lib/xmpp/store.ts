@@ -101,6 +101,7 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		now,
 		idFactory,
 		onError: setError,
+		reactionDelayMs: deps.reactionDelayMs,
 	});
 	const groups = createGroupActions(
 		deps.adapter,

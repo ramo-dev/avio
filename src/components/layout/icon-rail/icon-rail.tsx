@@ -1,12 +1,12 @@
 import {
 	RiAddLine,
 	RiChat3Line,
-	RiChatSmile2Line,
 	RiGroupLine,
 	RiSettings3Line,
 } from "@remixicon/react";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { Logo } from "#/assets/logo/Logo";
 import { AccountMenu } from "#/components/chat/common/account-menu/account-menu";
 import { CreateGroupDialog } from "#/components/chat/groups/create-group-dialog/create-group-dialog";
 import { Button } from "#/components/ui/button";
@@ -31,14 +31,14 @@ export function IconRail({ onAction }: { onAction?: () => void }) {
 				<Button
 					variant="ghost"
 					size="icon-lg"
-					className="size-10 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 hover:text-primary-foreground"
+					className="size-7"
 					aria-label="Avio home"
 					onClick={() => {
 						onAction?.();
 						navigate({ to: "/chat" });
 					}}
 				>
-					<RiChatSmile2Line className="size-5" />
+					<Logo className="size-7" />
 				</Button>
 
 				<div className="h-px w-8 bg-border" />
