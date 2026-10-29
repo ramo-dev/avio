@@ -1,3 +1,4 @@
+import { RiGroupLine } from "@remixicon/react";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
 import { presenceDotClassName } from "#/lib/format/presence";
 import { cn } from "#/lib/utils";
@@ -10,6 +11,60 @@ export function ConversationAvatar({
 	item: ConversationSummary;
 	selected: boolean;
 }) {
+	if (item.kind === "group") {
+		const participants = item.participants ?? [];
+		const remaining = Math.max(
+			0,
+			(item.memberCount ?? participants.length) - participants.length,
+		);
+
+		if (participants.length <= 0) {
+			return (
+				<div className="relative shrink-0">
+					<span
+						className={cn(
+							"grid size-12 place-items-center rounded-full",
+							selected
+								? "bg-primary-foreground/15 text-primary-foreground"
+								: "bg-muted text-muted-foreground",
+						)}
+					>
+						<RiGroupLine className="size-12" />
+					</span>
+				</div>
+			);
+		}
+
+		return (
+			<div className="relative flex shrink-0 -space-x-2">
+				{participants.map((participant) => (
+					<UserAvatar
+						key={participant.jid ?? participant.name}
+						jid={participant.jid ?? participant.name}
+						name={participant.name}
+						size="sm"
+						className={cn(
+							"size-8 ring-2",
+							selected ? "ring-primary" : "ring-card",
+						)}
+					/>
+				))}
+				{remaining > 0 && (
+					<span
+						className={cn(
+							"grid size-8 place-items-center rounded-full text-[10px] font-medium ring-2",
+							selected
+								? "bg-primary-foreground/15 text-primary-foreground ring-primary"
+								: "bg-muted text-muted-foreground ring-card",
+						)}
+					>
+						+{remaining}
+					</span>
+				)}
+			</div>
+		);
+	}
+
 	return (
 		<div className="relative shrink-0">
 			<UserAvatar

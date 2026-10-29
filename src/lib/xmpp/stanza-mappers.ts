@@ -1,5 +1,5 @@
 import type * as StanzaProtocol from "stanza/protocol";
-import { bareJid } from "#/lib/xmpp/jid";
+import { bareJid, jidResource } from "#/lib/xmpp/jid";
 import { normalizeMessage } from "#/lib/xmpp/messages";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import type { ChatMessage, Contact } from "#/types/chat";
@@ -107,13 +107,57 @@ export function withFallbackAddress(
 	};
 }
 
+export function normalizeGroupMessage(
+	message: StanzaProtocol.Message,
+	accountBareJid: string,
+	ownNick?: string,
+): ChatMessage | null {
+	const roomJid = bareJid(message.from ?? "");
+	const nick = jidResource(message.from ?? "");
+	if (!roomJid || !nick) return null;
+
+	const normalized = normalizeMessage(
+		{
+			id: message.id,
+			from: roomJid,
+			to: accountBareJid,
+			body: message.body,
+			delay: message.delay,
+			links: message.links,
+			reply: message.reply,
+		},
+		{
+			accountBareJid,
+			direction: ownNick === nick ? "outgoing" : "incoming",
+			now: Date.now(),
+		},
+	);
+	if (!normalized) return null;
+
+	return {
+		...normalized,
+		conversationJid: roomJid,
+		from: message.from ?? roomJid,
+		to: roomJid,
+		senderNick: nick,
+	};
+}
+
 export function mapRoster(items: StanzaProtocol.RosterItem[]): Contact[] {
 	return items.map((item) => ({
 		jid: bareJid(item.jid),
 		name: item.name,
 		subscription: mapSubscription(item.subscription),
+		groups: normalizeGroups(item.groups),
 		presence: OFFLINE_PRESENCE,
 	}));
+}
+
+function normalizeGroups(groups?: string[]): string[] {
+	if (!Array.isArray(groups)) return [];
+	return Array.from(
+		new Set(groups.map((group) => group.trim()).filter(Boolean)),
+	);
 }
 
 function mapSubscription(

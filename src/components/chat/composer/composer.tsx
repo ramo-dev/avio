@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Textarea } from "#/components/ui/textarea";
 import { useFileDrop } from "#/hooks/use-file-drop";
+import { useSettings } from "#/hooks/use-settings";
 import { useStagedFiles } from "#/hooks/use-staged-files";
 import { useTyping } from "#/hooks/use-typing";
 import { useXmppActions } from "#/hooks/xmpp/use-xmpp";
@@ -39,7 +40,8 @@ export function Composer({
 	onSendFiles,
 }: ComposerProps) {
 	const actions = useXmppActions();
-	const notifyTyping = useTyping(jid, !disabled);
+	const { chats } = useSettings();
+	const notifyTyping = useTyping(jid, !disabled && chats.typingIndicators);
 
 	const [body, setBody] = useState("");
 	const [expanded, setExpanded] = useState(false);
@@ -208,6 +210,7 @@ export function Composer({
 								if (
 									event.key === "Enter" &&
 									!event.shiftKey &&
+									chats.enterToSend &&
 									!event.nativeEvent.isComposing
 								) {
 									event.preventDefault();

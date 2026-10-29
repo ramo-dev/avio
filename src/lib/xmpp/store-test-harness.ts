@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { createMemoryRoomInviteStore } from "#/lib/storage/room-invites";
 import { createMemorySessionStore } from "#/lib/storage/session";
 import { createXmppStore } from "#/lib/xmpp/store";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
@@ -7,6 +8,7 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 	let listener: ((event: XmppEvent) => void) | null = null;
 	const sent: SendMessageInput[] = [];
 	const sessionStore = createMemorySessionStore();
+	const roomInviteStore = createMemoryRoomInviteStore();
 
 	const adapter: XmppAdapter = {
 		connect: vi.fn(async () => undefined),
@@ -22,6 +24,7 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 				jid: "bob@example.com",
 				name: "Bob",
 				subscription: "both" as const,
+				groups: ["Work"],
 				presence: { show: "offline" as const, priority: 0 },
 			},
 		]),
@@ -35,6 +38,15 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 		})),
 		addContact: vi.fn(async () => undefined),
 		acceptSubscription: vi.fn(async () => undefined),
+		createRoom: vi.fn(async (name: string) => ({
+			jid: "room@conference.example.com",
+			name,
+			nick: "alice",
+		})),
+		leaveRoom: vi.fn(async () => undefined),
+		inviteToRoom: vi.fn(async () => undefined),
+		acceptRoomInvite: vi.fn(async () => undefined),
+		declineRoomInvite: vi.fn(async () => undefined),
 		subscribe: (next) => {
 			listener = next;
 			return () => {
@@ -56,14 +68,17 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 			})),
 		},
 		sessionStore,
+		roomInviteStore,
 		now: () => 10_000,
 		idFactory: options.idFactory ?? (() => "fixed"),
+		reactionDelayMs: 0,
 	});
 
 	return {
 		store,
 		adapter,
 		sessionStore,
+		roomInviteStore,
 		sent,
 		emit: (event: XmppEvent) => listener?.(event),
 	};

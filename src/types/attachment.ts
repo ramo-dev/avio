@@ -1,4 +1,4 @@
-export type StagedKind = "image" | "video" | "file";
+export type StagedKind = "image" | "video" | "audio" | "file";
 
 export interface StagedFile {
 	id: string;

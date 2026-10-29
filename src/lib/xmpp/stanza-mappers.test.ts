@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
 	mapHistory,
 	mapHistoryActions,
+	mapRoster,
+	normalizeGroupMessage,
 	normalizeStanzaMessage,
 } from "#/lib/xmpp/stanza-mappers";
 
@@ -53,6 +55,50 @@ describe("stanza mappers", () => {
 
 		expect(result?.id).toBe("inner-1");
 		expect(result?.body).toBe("Forwarded");
+	});
+
+	it("preserves and normalizes roster groups", () => {
+		const contacts = mapRoster([
+			{
+				jid: "bob@example.com/phone",
+				subscription: "both",
+				groups: [" Work ", "Work", ""],
+			},
+		]);
+
+		expect(contacts[0]?.jid).toBe("bob@example.com");
+		expect(contacts[0]?.groups).toEqual(["Work"]);
+	});
+
+	it("normalizes group chat messages with the sender nick", () => {
+		const message: StanzaProtocol.Message = {
+			id: "g1",
+			from: "team@conference.example.com/bob",
+			to: "alice@example.com/web",
+			type: "groupchat",
+			body: "Hello room",
+		};
+
+		const incoming = normalizeGroupMessage(
+			message,
+			"alice@example.com",
+			"alice",
+		);
+		expect(incoming).toMatchObject({
+			conversationJid: "team@conference.example.com",
+			from: "team@conference.example.com/bob",
+			senderNick: "bob",
+			direction: "incoming",
+			body: "Hello room",
+		});
+
+		const own = normalizeGroupMessage(
+			{ ...message, from: "team@conference.example.com/alice" },
+			"alice@example.com",
+			"alice",
+		);
+		expect(own?.direction).toBe("outgoing");
+		expect(own?.senderNick).toBe("alice");
 	});
 
 	it("replays archived reactions and corrections as events", () => {

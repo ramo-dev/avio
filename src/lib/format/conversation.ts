@@ -23,7 +23,11 @@ export function conversationPreview(
 	const attachment = message.attachments?.[0];
 	return {
 		text: message.body || (attachment ? `📎 ${attachment.name}` : summary.jid),
-		prefix: outgoing ? "You:" : undefined,
+		prefix: outgoing
+			? "You:"
+			: message.senderNick
+				? `${message.senderNick}:`
+				: undefined,
 		status: outgoing ? message.status : undefined,
 		typing: false,
 	};

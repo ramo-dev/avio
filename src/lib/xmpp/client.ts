@@ -8,15 +8,13 @@ import {
 	sendForwardedStanza,
 	sendReactionStanza,
 } from "#/lib/xmpp/message-stanzas";
+import { createMucAdapter } from "#/lib/xmpp/muc-adapter";
 import { registerMessageExtensions } from "#/lib/xmpp/protocol";
+import { createRosterAdapter } from "#/lib/xmpp/roster-adapter";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
-import {
-	mapHistory,
-	mapHistoryActions,
-	mapRoster,
-} from "#/lib/xmpp/stanza-mappers";
+import { mapHistory, mapHistoryActions } from "#/lib/xmpp/stanza-mappers";
 import type { UploadService, UploadSlot } from "#/types/attachment";
-import type { ChatMessage, Contact } from "#/types/chat";
+import type { ChatMessage } from "#/types/chat";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
 import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
 
@@ -42,6 +40,12 @@ export function createStanzaAdapter(): XmppAdapter {
 	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	let pending: PendingConnection | null = null;
 	const listeners = new Set<(event: XmppEvent) => void>();
+	const roster = createRosterAdapter(() => client);
+	const muc = createMucAdapter({
+		getClient: () => client,
+		getAccountBareJid: () => accountBareJid,
+		emit,
+	});
 
 	function emit(event: XmppEvent) {
 		for (const listener of listeners) listener(event);
@@ -71,12 +75,14 @@ export function createStanzaAdapter(): XmppAdapter {
 		attachStanzaEvents(agent, {
 			emit,
 			getAccountBareJid: () => accountBareJid,
+			getRoomNick: muc.getRoomNick,
 			onSessionStarted: () => {
 				reconnectAttempts = 0;
 				clearPending();
 				emit({ type: "connection", status: "connected", jid: accountBareJid });
 				agent.sendPresence();
 				void agent.enableCarbons().catch(() => undefined);
+				void muc.joinBookmarks().catch(() => undefined);
 				void agent
 					.searchHistory({ paging: { max: 50, before: "" } })
 					.then((history) => {
@@ -141,7 +147,7 @@ export function createStanzaAdapter(): XmppAdapter {
 			sendReceipts: true,
 			chatMarkers: true,
 			timeout: 20,
-			softwareVersion: { name: "Avio", version: "0.1.0" },
+			softwareVersion: { name: "Avio", version: __APP_VERSION__ },
 		});
 
 		client = agent;
@@ -194,13 +200,16 @@ export function createStanzaAdapter(): XmppAdapter {
 
 	async function sendMessage(input: SendMessageInput) {
 		if (!client) throw createXmppError("not-connected");
+		const type = input.type ?? "chat";
 		client.sendMessage({
 			to: input.to,
 			body: input.body,
 			id: input.id,
-			type: "chat",
-			receipt: input.editId ? undefined : { type: "request" },
-			marker: input.editId ? undefined : { type: "markable" },
+			type,
+			receipt:
+				type === "chat" && !input.editId ? { type: "request" } : undefined,
+			marker:
+				type === "chat" && !input.editId ? { type: "markable" } : undefined,
 			reply: input.replyTo,
 			replace: input.editId,
 			links: input.attachments?.map((attachment) => ({
@@ -233,12 +242,6 @@ export function createStanzaAdapter(): XmppAdapter {
 		client.sendMessage({ to, type: "chat", chatState: state });
 	}
 
-	async function getRoster(): Promise<Contact[]> {
-		if (!client) return [];
-		const roster = await client.getRoster();
-		return mapRoster(roster.items ?? []);
-	}
-
 	async function getUploadService(): Promise<UploadService> {
 		if (!client) throw createXmppError("not-connected");
 		const service = await client.getUploadService();
@@ -260,16 +263,6 @@ export function createStanzaAdapter(): XmppAdapter {
 		};
 	}
 
-	async function addContact(jid: string) {
-		if (!client) throw createXmppError("not-connected");
-		client.subscribe(jid);
-	}
-
-	async function acceptSubscription(jid: string) {
-		if (!client) throw createXmppError("not-connected");
-		client.acceptSubscription(jid);
-	}
-
 	return {
 		connect,
 		disconnect,
@@ -277,11 +270,14 @@ export function createStanzaAdapter(): XmppAdapter {
 		sendReaction,
 		forwardMessage,
 		sendChatState,
-		getRoster,
+		...roster,
+		createRoom: muc.createRoom,
+		leaveRoom: muc.leaveRoom,
+		inviteToRoom: muc.inviteToRoom,
+		acceptRoomInvite: (jid, reason) => muc.joinInvitedRoom(jid, reason),
+		declineRoomInvite: async () => undefined,
 		getUploadService,
 		getUploadSlot,
-		addContact,
-		acceptSubscription,
 		subscribe(listener) {
 			listeners.add(listener);
 			return () => listeners.delete(listener);

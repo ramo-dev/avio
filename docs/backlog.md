@@ -18,20 +18,38 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 
 ## Presence and roster
 
+- **Roster group management** — roster item groups are preserved on contacts, but the sidebar grouping and group editor were removed while the group chat UX is being built. Revisit after MUC settles.
 - **Subscription request decline** — add a decline action next to Accept. The adapter currently only accepts.
 - **Contact profile sheet** — show full JID, subscription state, presence, and actions.
-- **Roster groups** — preserve `item.groups` from the roster and group the sidebar.
 - **Avatar metadata (XEP-0084 / XEP-0153)** — fetch and cache avatars instead of initials.
 
 ## Rooms and calls
 
-- **MUC (XEP-0045)** — join/leave rooms, occupants, room presence, and groupchat message rendering.
+- **MUC (XEP-0045)** — basic create/join, groupchat messages, invitations, bookmarks, and occupant info are implemented. Remaining: room discovery UI, room configuration, moderation, room MAM, and inviting by bare JID (Add members currently lists roster contacts only).
 - **Jingle / WebRTC** — use `webrtc-adapter` before creating `RTCPeerConnection`; add audio/video call UI and permission handling.
 - **Screen sharing** — depends on Jingle negotiation.
 
+## Security and encryption
+
+- **OMEMO 1:1 (XEP-0384)** — primary E2EE goal. The project is GPLv3, so
+  `libomemo.js` (GPLv3) is a candidate crypto engine. It is not audited yet.
+  See `tmp/0002-omemo-integration.md` for the integration plan.
+- **OpenPGP for XMPP (XEP-0374)** — Gajim supports it for 1:1, groups, and files.
+  Defer until OMEMO 1:1 is stable; `openpgp` is LGPL-3.0+ and GPLv3-compatible.
+- **Key storage** — never use `localStorage` for private keys. Design an
+  IndexedDB/keychain boundary with a documented threat model and CSP first.
+- **Security settings surface** — show transport security, E2EE availability,
+  device trust, and unencrypted-send warnings.
+- **Security threat model and CSP** — document local compromise, XSS, hostile
+  server/stanza input, and key backup before adding E2EE. Converse.js is MPL-2.0,
+  but its OMEMO dependency `libomemo.js` is GPLv3 and unaudited.
+- **Privacy controls** — block list, presence visibility, receipts/typing
+  policy, history retention, and clear-local-history.
+- **Accounts and connections** — multi-account, resource/priority, proxies, and
+  custom CA/certificate handling.
+
 ## Client features
 
-- **Notifications** — browser Notification API with per-conversation unread counts and a mute setting.
 - **IndexedDB cache** — persist messages and roster for offline startup; keep MAM as the source of truth.
 - **Multi-account** — extend `SessionStore` to an account list and key store state by account.
 - **Theme toggle** — the CSS already supports `.dark`; add a persisted preference.

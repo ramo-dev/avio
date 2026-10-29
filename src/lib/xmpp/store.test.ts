@@ -107,7 +107,12 @@ describe("xmpp store", () => {
 			store.getState().conversations["bob@example.com"]?.messages[0]?.reactions,
 		).toEqual({ "alice@example.com": ["👍"] });
 
-		await store.toggleReaction("bob@example.com", "local-fixed", "👍");
+		await store.toggleReaction("bob@example.com", "local-fixed", "❤️");
+		expect(
+			store.getState().conversations["bob@example.com"]?.messages[0]?.reactions,
+		).toEqual({ "alice@example.com": ["❤️"] });
+
+		await store.toggleReaction("bob@example.com", "local-fixed", "❤️");
 		expect(
 			store.getState().conversations["bob@example.com"]?.messages[0]?.reactions,
 		).toBeUndefined();

@@ -4,6 +4,7 @@ import {
 	RiEmotionLine,
 	RiFileLine,
 	RiImageLine,
+	RiMusicLine,
 } from "@remixicon/react";
 import { useRef, useState } from "react";
 import { Button } from "#/components/ui/button";
@@ -47,6 +48,7 @@ export function ComposerActions({
 }) {
 	const [emojiOpen, setEmojiOpen] = useState(false);
 	const imageInputRef = useRef<HTMLInputElement>(null);
+	const audioInputRef = useRef<HTMLInputElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	return (
@@ -84,6 +86,11 @@ export function ComposerActions({
 								>
 									<RiImageLine /> Photo or video
 								</DropdownMenuItem>
+								<DropdownMenuItem
+									onClick={() => audioInputRef.current?.click()}
+								>
+									<RiMusicLine /> Audio
+								</DropdownMenuItem>
 								<DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
 									<RiFileLine /> Document
 								</DropdownMenuItem>
@@ -93,6 +100,17 @@ export function ComposerActions({
 							ref={imageInputRef}
 							type="file"
 							accept="image/*,video/*"
+							multiple
+							hidden
+							onChange={(event) => {
+								onStage(event.target.files);
+								event.target.value = "";
+							}}
+						/>
+						<input
+							ref={audioInputRef}
+							type="file"
+							accept="audio/*"
 							multiple
 							hidden
 							onChange={(event) => {

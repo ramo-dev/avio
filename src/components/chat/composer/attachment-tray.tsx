@@ -1,4 +1,9 @@
-import { RiCloseLine, RiFileLine, RiPlayFill } from "@remixicon/react";
+import {
+	RiCloseLine,
+	RiFileLine,
+	RiMusicLine,
+	RiPlayFill,
+} from "@remixicon/react";
 import { useState } from "react";
 import { Button } from "#/components/ui/button";
 import { Dialog, DialogContent, DialogTitle } from "#/components/ui/dialog";
@@ -28,7 +33,8 @@ export function AttachmentTray({
 			>
 				{items.map((item) => {
 					const { id, file, kind, previewUrl } = item;
-					const previewable = kind !== "file" && previewUrl !== null;
+					const previewable =
+						(kind === "image" || kind === "video") && previewUrl !== null;
 					return (
 						<li
 							key={id}
@@ -69,6 +75,19 @@ export function AttachmentTray({
 								{kind === "file" && (
 									<>
 										<RiFileLine className="size-5 shrink-0 text-muted-foreground" />
+										<span className="min-w-0">
+											<span className="block truncate text-xs font-medium">
+												{file.name}
+											</span>
+											<span className="block text-xs text-muted-foreground">
+												{formatBytes(file.size)}
+											</span>
+										</span>
+									</>
+								)}
+								{kind === "audio" && (
+									<>
+										<RiMusicLine className="size-5 shrink-0 text-muted-foreground" />
 										<span className="min-w-0">
 											<span className="block truncate text-xs font-medium">
 												{file.name}

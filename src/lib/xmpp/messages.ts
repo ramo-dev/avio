@@ -167,6 +167,16 @@ export function applyMessageStatus(
 	return changed ? next : messages;
 }
 
+export function shouldShowMessageBody(message: ChatMessage): boolean {
+	return (
+		message.body.length > 0 &&
+		!message.attachments?.some(
+			(attachment) =>
+				attachment.name === message.body || attachment.url === message.body,
+		)
+	);
+}
+
 export function applyMessageReaction(
 	messages: ChatMessage[],
 	messageId: string,
@@ -175,7 +185,7 @@ export function applyMessageReaction(
 ): ChatMessage[] {
 	const normalized = Array.from(
 		new Set(reactions.map((reaction) => reaction.trim()).filter(Boolean)),
-	).slice(0, 20);
+	).slice(-1);
 	let changed = false;
 	const next = messages.map((message) => {
 		if (message.id !== messageId && message.stanzaId !== messageId) {

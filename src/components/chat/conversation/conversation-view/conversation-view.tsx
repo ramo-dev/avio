@@ -9,13 +9,19 @@ import { useMediaQuery } from "#/hooks/use-media-query";
 import { useSendFiles } from "#/hooks/use-send-files";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { findMessageMatches } from "#/lib/chat/search";
-import { displayJidName } from "#/lib/xmpp/jid";
+import { displayJidName, jidResource } from "#/lib/xmpp/jid";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
-import type { ChatMessage } from "#/types/chat";
+import type { ChatMessage, ConversationKind } from "#/types/chat";
 
 const EMPTY_MESSAGES: ChatMessage[] = [];
 
-export function ConversationView({ jid }: { jid: string }) {
+export function ConversationView({
+	jid,
+	kind: routeKind,
+}: {
+	jid: string;
+	kind?: ConversationKind;
+}) {
 	const state = useXmppState();
 	const actions = useXmppActions();
 	const navigate = useNavigate();
@@ -23,8 +29,13 @@ export function ConversationView({ jid }: { jid: string }) {
 	const sendFiles = useSendFiles(jid);
 	const contact = state.contacts[jid];
 	const conversation = state.conversations[jid];
+	const room = state.rooms[jid];
+	const kind = routeKind ?? conversation?.kind ?? (room ? "group" : "direct");
+	const isGroup = kind === "group";
 	const messages = conversation?.messages ?? EMPTY_MESSAGES;
-	const name = displayJidName(jid, contact?.name);
+	const name = isGroup
+		? (conversation?.title ?? room?.name ?? jid.split("@")[0] ?? jid)
+		: displayJidName(jid, contact?.name);
 	const presence = contact?.presence ?? OFFLINE_PRESENCE;
 	const connected = state.connection.status === "connected";
 
@@ -104,6 +115,8 @@ export function ConversationView({ jid }: { jid: string }) {
 				jid={jid}
 				name={name}
 				presence={presence}
+				kind={kind}
+				memberCount={Object.keys(room?.occupants ?? {}).length}
 				typing={conversation?.typing ?? false}
 				searchOpen={searchOpen}
 				onToggleSearch={() => {
@@ -145,6 +158,12 @@ export function ConversationView({ jid }: { jid: string }) {
 					activeMessageId={activeMatch?.messageId ?? null}
 					activeGroupId={activeMatch?.groupId ?? null}
 					currentUserJid={currentUserJid}
+					resolveSenderName={
+						isGroup
+							? (senderJid) =>
+									jidResource(senderJid) ?? displayJidName(senderJid)
+							: undefined
+					}
 					onRetry={(messageId) => void actions.retryMessage(messageId)}
 					onQuickReply={(body) => void actions.sendMessage(jid, body)}
 					onReply={startReply}

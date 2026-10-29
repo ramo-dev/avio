@@ -1,6 +1,15 @@
 # Avio
 
+<p align="center">
+  <img src="src/assets/logo/Logo.svg" alt="Avio logo" width="96" height="96" />
+</p>
+
 ## Your chats. Your server. Your rules.
+
+> **Not ready for production.** Avio is a development preview at **0.1.0-dev.0**.
+> Features, interfaces, storage formats, and XMPP behavior may change without notice.
+> Use it for evaluation and development only; do not rely on it for important
+> accounts or sensitive conversations yet.
 
 Avio is a fast, friendly messaging app for the open network. It runs in your browser
 and on your desktop, connects straight to the server you choose, and reaches anyone
@@ -60,7 +69,8 @@ Self-hosting is a choice here, not a requirement. Avio works the same either way
 
 For server operators: Avio needs a browser-friendly endpoint (WebSocket or BOSH) and
 your app's origin allowed. When discovery is not configured, the advanced fields take
-the endpoint directly.
+the endpoint directly. See [`docs/connections.md`](docs/connections.md) for server
+configuration, discovery, Tauri, and troubleshooting.
 
 ## Fast, in practice
 
@@ -100,9 +110,13 @@ A dropped connection is a pause, not an interruption.
 
 ## Private by default
 
-- Your password is never saved — not to the browser, not to disk. It stays in memory
-  for the session and disappears when you close the tab.
+- Your password is kept only in tab-scoped session storage so a refresh can restore
+  the session. It is never written to `localStorage`, and it is cleared on logout and
+  auth failure. The Tauri build will use the OS keychain.
 - Avio remembers your address and connection details on your device, and nothing more.
+- **End-to-end encryption is not implemented yet.** Messages are protected in
+  transit by TLS, but the server can read them. OMEMO is planned; see
+  [`tmp/0001-encryption-and-licensing.md`](tmp/0001-encryption-and-licensing.md).
 - Messages render as plain text. Nothing inside a message can execute in your app.
 - Your history lives on your server, under your rules. Back it up, move it, or delete
   it on your own terms.
@@ -149,6 +163,20 @@ between you and your server.
 Avio is in active development, with the web client as the reference implementation
 and the desktop app built from that same client.
 
+## Versioning
+
+Avio uses [Semantic Versioning](https://semver.org/). The current release is
+`0.1.0-dev.0`. Before `1.0.0`, preview releases may include breaking changes to
+storage, configuration, and UI. See [`CHANGELOG.md`](CHANGELOG.md) for what changed.
+
 ## License
 
-Avio is released under the [MIT License](LICENSE).
+Avio is free software: you can redistribute it and/or modify it under the terms
+of the GNU General Public License as published by the Free Software Foundation,
+version 3.
+
+Avio is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY;
+without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR
+PURPOSE. See the [GNU General Public License v3](LICENSE) for details.
+
+Copyright (C) 2026 Avio contributors.

@@ -58,7 +58,7 @@ export function NewChatDialog() {
 	return (
 		<>
 			<Button
-				variant="outline"
+				variant="secondary"
 				size="icon"
 				aria-label="New chat"
 				title="New chat (⌘N)"

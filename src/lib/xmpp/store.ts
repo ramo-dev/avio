@@ -11,6 +11,7 @@ import {
 	isXmppError,
 	normalizeXmppError,
 } from "#/lib/xmpp/errors";
+import { createGroupActions } from "#/lib/xmpp/group-actions";
 import { bareJid, isValidAccountJid, toAccount } from "#/lib/xmpp/jid";
 import { createOutgoingActions } from "#/lib/xmpp/outgoing-actions";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
@@ -56,8 +57,33 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		for (const listener of listeners) listener();
 	}
 
+	function persistInvites(next: XmppState) {
+		const accountJid = next.account?.bareJid;
+		if (!accountJid) return;
+		const rooms = Object.fromEntries(
+			Object.entries(next.rooms).map(([roomJid, room]) => [
+				roomJid,
+				Object.values(room.invites),
+			]),
+		);
+		deps.roomInviteStore.save(accountJid, rooms);
+	}
+
 	function handleEvent(event: XmppEvent) {
-		setState(reduceEvent(state, event));
+		let nextEvent = event;
+		if (event.type === "room" && state.account) {
+			const saved =
+				deps.roomInviteStore.load(state.account.bareJid)[event.room.jid] ?? [];
+			if (saved.length > 0) {
+				const invites = { ...event.room.invites };
+				for (const invite of saved) invites[invite.jid] = invite;
+				nextEvent = { ...event, room: { ...event.room, invites } };
+			}
+		}
+
+		const next = reduceEvent(state, nextEvent);
+		setState(next);
+		if (nextEvent.type.startsWith("room")) persistInvites(next);
 	}
 
 	function setConnection(connection: ConnectionState) {
@@ -75,7 +101,14 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		now,
 		idFactory,
 		onError: setError,
+		reactionDelayMs: deps.reactionDelayMs,
 	});
+	const groups = createGroupActions(
+		deps.adapter,
+		getState,
+		handleEvent,
+		setError,
+	);
 
 	async function connect(credentials: ConnectCredentials) {
 		if (!isValidAccountJid(credentials.jid)) {
@@ -173,7 +206,13 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	}
 
 	function deleteConversation(jid: string) {
-		setState(deleteConversationState(state, jid));
+		const key = bareJid(jid);
+		if (state.conversations[key]?.kind === "group") {
+			void deps.adapter.leaveRoom(key).catch(() => undefined);
+		}
+		const next = deleteConversationState(state, jid);
+		setState(next);
+		persistInvites(next);
 	}
 
 	function deleteMessage(jid: string, messageId: string) {
@@ -221,6 +260,7 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		restoreSession,
 		disconnect,
 		...outgoing,
+		...groups,
 		uploadAttachment: (file, onProgress) =>
 			uploadAttachmentWithErrors({
 				uploader: deps.uploader,

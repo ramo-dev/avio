@@ -9,12 +9,15 @@ import { useMediaQuery } from "#/hooks/use-media-query";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 
 export function ChatLayout() {
-	const params = useParams({ strict: false }) as { jid?: string };
+	const params = useParams({ strict: false }) as {
+		jid?: string;
+		room?: string;
+	};
 	const state = useXmppState();
 	const actions = useXmppActions();
 	const hydrated = useHydrated();
 	const isDesktop = useMediaQuery("(min-width: 768px)");
-	const activeJid = params.jid ?? null;
+	const activeJid = params.room ?? params.jid ?? null;
 
 	useEffect(() => {
 		actions.setActiveConversation(activeJid);

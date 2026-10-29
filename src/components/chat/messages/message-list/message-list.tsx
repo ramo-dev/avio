@@ -1,4 +1,4 @@
-import { RiChat3Line } from "@remixicon/react";
+import { RiChat3Line, RiGroupLine } from "@remixicon/react";
 import { useEffect, useMemo } from "react";
 import { DaySeparator } from "#/components/chat/messages/day-separator/day-separator";
 import { MessageGroupView } from "#/components/chat/messages/message-group/message-group";
@@ -28,6 +28,7 @@ export function MessageList({
 	activeMessageId,
 	activeGroupId,
 	currentUserJid,
+	resolveSenderName,
 	onRetry,
 	onQuickReply,
 	onReply,
@@ -43,6 +44,7 @@ export function MessageList({
 	activeMessageId?: string | null;
 	activeGroupId?: string | null;
 	currentUserJid?: string;
+	resolveSenderName?: (senderJid: string) => string;
 	onRetry?: (messageId: string) => void;
 	onQuickReply?: (body: string) => void;
 	onReply?: (message: ChatMessage) => void;
@@ -56,24 +58,35 @@ export function MessageList({
 		[messages],
 	);
 	const searchActive = Boolean(highlightQuery?.trim());
+	const isGroup = Boolean(resolveSenderName);
 
 	if (messages.length === 0) {
 		return (
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
-				<UserAvatar
-					jid={jid}
-					name={contactName}
-					size="lg"
-					className="size-16"
-				/>
+				{isGroup ? (
+					<span className="grid size-16 place-items-center rounded-full bg-muted text-muted-foreground">
+						<RiGroupLine className="size-7" />
+					</span>
+				) : (
+					<UserAvatar
+						jid={jid}
+						name={contactName}
+						size="lg"
+						className="size-16"
+					/>
+				)}
 				<div className="space-y-1">
 					<h3 className="text-base font-semibold">{contactName}</h3>
 					<p className="flex items-center justify-center gap-1.5 text-sm text-muted-foreground">
-						<RiChat3Line className="size-4" />
-						Say hello 👋
+						{isGroup ? (
+							<RiGroupLine className="size-4" />
+						) : (
+							<RiChat3Line className="size-4" />
+						)}
+						{isGroup ? "No messages yet" : "Say hello 👋"}
 					</p>
 				</div>
-				{onQuickReply && (
+				{!isGroup && onQuickReply && (
 					<div className="flex flex-wrap items-center justify-center gap-2">
 						{QUICK_REPLIES.map((reply) => (
 							<Button
@@ -97,13 +110,13 @@ export function MessageList({
 			autoScroll={!searchActive}
 			defaultScrollPosition="end"
 		>
-			<MessageScroller className="bg-muted/20">
+			<MessageScroller className="bg-muted/20 dark:bg-background">
 				<MessageScrollerViewport
 					id="messages"
 					aria-label="Messages"
-					className="scrollbar-subtle px-4"
+					className="scrollbar-subtle px-4 bg-background"
 				>
-					<MessageScrollerContent className="mx-auto w-full max-w-3xl justify-end pt-12 pb-6">
+					<MessageScrollerContent className="mx-auto bg-background w-full max-w-3xl justify-end pt-12 pb-6">
 						{timeline.map((item) =>
 							item.kind === "day" ? (
 								<MessageScrollerItem key={item.id} messageId={item.id}>
@@ -118,7 +131,10 @@ export function MessageList({
 								>
 									<MessageGroupView
 										group={item.group}
-										senderName={contactName}
+										senderName={
+											resolveSenderName?.(item.group.senderJid) ?? contactName
+										}
+										showSenderHeader={isGroup}
 										activeMessageId={activeMessageId}
 										highlightQuery={highlightQuery}
 										messagesById={messagesById}

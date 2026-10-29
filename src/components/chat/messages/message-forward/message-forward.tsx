@@ -1,4 +1,8 @@
-import { RiSearchLine, RiShareForward2Line } from "@remixicon/react";
+import {
+	RiSearchLine,
+	RiShareForward2Line,
+	RiShareForwardLine,
+} from "@remixicon/react";
 import { useMemo, useState } from "react";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
 import { Button } from "#/components/ui/button";
@@ -15,6 +19,11 @@ import {
 	PopoverContent,
 	PopoverTrigger,
 } from "#/components/ui/popover";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "#/components/ui/tooltip";
 import { useMediaQuery } from "#/hooks/use-media-query";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { cn } from "#/lib/utils";
@@ -84,7 +93,7 @@ export function MessageForwardAction({
 			title="Forward message"
 			className={triggerClassName}
 		>
-			<RiShareForward2Line className="size-3.5" />
+			<RiShareForwardLine className="size-3.5 flip-x" />
 		</Button>
 	);
 
@@ -122,7 +131,12 @@ export function MessageForwardAction({
 	if (isDesktop) {
 		return (
 			<Popover open={open} onOpenChange={setOpen}>
-				<PopoverTrigger render={trigger} />
+				<Tooltip>
+					<TooltipTrigger render={<span className="inline-flex" />}>
+						<PopoverTrigger render={trigger} />
+					</TooltipTrigger>
+					<TooltipContent>Forward message</TooltipContent>
+				</Tooltip>
 				<PopoverContent
 					side="top"
 					align="end"
@@ -137,17 +151,23 @@ export function MessageForwardAction({
 
 	return (
 		<>
-			<Button
-				type="button"
-				variant="ghost"
-				size="icon"
-				aria-label="Forward message"
-				title="Forward message"
-				className={triggerClassName}
-				onClick={() => setOpen(true)}
-			>
-				<RiShareForward2Line className="size-3.5" />
-			</Button>
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<Button
+							type="button"
+							variant="ghost"
+							size="icon"
+							aria-label="Forward message"
+							className={triggerClassName}
+							onClick={() => setOpen(true)}
+						/>
+					}
+				>
+					<RiShareForward2Line className="size-3.5" />
+				</TooltipTrigger>
+				<TooltipContent>Forward message</TooltipContent>
+			</Tooltip>
 			<Drawer
 				open={open}
 				onOpenChange={setOpen}

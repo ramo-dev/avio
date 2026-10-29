@@ -3,8 +3,8 @@ import { useMemo, useState } from "react";
 import { ChatFilters } from "#/components/chat/list/chat-filters/chat-filters";
 import { ChatSearch } from "#/components/chat/list/chat-search/chat-search";
 import { ConversationList } from "#/components/chat/list/conversation-list/conversation-list";
-//import { ConnectionFooter } from "#/components/chat/list/footer/connection-footer";
 import { ChatListHeader } from "#/components/chat/list/header/chat-list-header";
+import { RoomInviteRequests } from "#/components/chat/list/room-invite-requests/room-invite-requests";
 import { SubscriptionRequests } from "#/components/chat/list/subscription-requests/subscription-requests";
 import { useChatPreferences } from "#/hooks/use-chat-preferences";
 import { useDebouncedValue } from "#/hooks/use-debounced-value";
@@ -16,7 +16,10 @@ export function ChatList() {
 	const state = useXmppState();
 	const actions = useXmppActions();
 	const navigate = useNavigate();
-	const params = useParams({ strict: false }) as { jid?: string };
+	const params = useParams({ strict: false }) as {
+		jid?: string;
+		room?: string;
+	};
 	const { getPreference, updatePreference } = useChatPreferences(
 		state.account?.bareJid ?? null,
 	);
@@ -24,7 +27,7 @@ export function ChatList() {
 	const [filter, setFilter] = useState<ChatFilter>("all");
 	const [sort, setSort] = useState<ChatSort>("newest");
 	const debouncedSearch = useDebouncedValue(search, 200);
-	const activeJid = params.jid ?? null;
+	const activeJid = params.room ?? params.jid ?? null;
 
 	const allSummaries = useMemo(
 		() => selectConversationSummaries(state),
@@ -89,6 +92,7 @@ export function ChatList() {
 			/>
 
 			<SubscriptionRequests />
+			<RoomInviteRequests />
 
 			<ConversationList
 				items={items}

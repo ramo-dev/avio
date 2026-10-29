@@ -32,14 +32,17 @@ import {
 	TooltipTrigger,
 } from "#/components/ui/tooltip";
 import { useXmppActions } from "#/hooks/xmpp/use-xmpp";
+import type { ConversationKind } from "#/types/chat";
 
 export function HeaderActions({
 	jid,
+	kind,
 	searchOpen,
 	onToggleSearch,
 	onOpenInfo,
 }: {
 	jid: string;
+	kind: ConversationKind;
 	searchOpen: boolean;
 	onToggleSearch: () => void;
 	onOpenInfo: () => void;
@@ -96,7 +99,7 @@ export function HeaderActions({
 				<DropdownMenuContent align="end">
 					<DropdownMenuItem onClick={onOpenInfo}>
 						<RiUserLine />
-						Contact info
+						{kind === "group" ? "Group info" : "Contact info"}
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={() => void copyJid()}>
 						<RiFileCopyLine />

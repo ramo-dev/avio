@@ -12,6 +12,12 @@ services:
       "chown -R prosody:prosody /var/lib/prosody /var/run/prosody;
        prosodyctl register alice localhost alice123 || true;
        prosodyctl register bob localhost bob123 || true;
+       prosodyctl register phiey localhost bob123 || true;
+       prosodyctl register james localhost bob123 || true;
+       prosodyctl register ivan localhost bob123 || true;
+       prosodyctl register sam localhost bob123 || true;
+       prosodyctl register mary localhost bob123 || true;
+       prosodyctl register lisa localhost bob123 || true;
        exec setpriv --reuid=prosody --regid=prosody --init-groups prosody -F"
 
 volumes:
