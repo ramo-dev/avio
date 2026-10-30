@@ -33,11 +33,15 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 
 - **OMEMO 1:1 (XEP-0384)** — primary E2EE goal. The project is GPLv3, so
   `libomemo.js` (GPLv3) is a candidate crypto engine. It is not audited yet.
-  See `tmp/0002-omemo-integration.md` for the integration plan.
+  The key store and passphrase-encrypted storage boundary now live in
+  `src/lib/omemo`; PEP, trust UI, and the message flow are still pending.
 - **OpenPGP for XMPP (XEP-0374)** — Gajim supports it for 1:1, groups, and files.
   Defer until OMEMO 1:1 is stable; `openpgp` is LGPL-3.0+ and GPLv3-compatible.
-- **Key storage** — never use `localStorage` for private keys. Design an
-  IndexedDB/keychain boundary with a documented threat model and CSP first.
+- **Key storage** — passphrase-encrypted IndexedDB storage exists in
+  `src/lib/omemo` (PBKDF2-HMAC-SHA-256, AES-GCM, authenticated KDF metadata,
+  legacy plaintext store deleted). It is not wired into the app yet. Remaining:
+  unlock/auto-lock UI, OS keychain for Tauri, browser IndexedDB upgrade coverage,
+  threat model/CSP, and independent audit.
 - **Security settings surface** — show transport security, E2EE availability,
   device trust, and unencrypted-send warnings.
 - **Security threat model and CSP** — document local compromise, XSS, hostile
