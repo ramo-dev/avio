@@ -8,10 +8,14 @@ export function createEmptyState(): OmemoPersistedState {
 	return {
 		identityKeyPair: null,
 		registrationId: null,
+		deviceId: null,
+		currentSignedPreKeyId: null,
 		preKeys: {},
 		signedPreKeys: {},
+		signedPreKeySignatures: {},
 		sessions: {},
 		identities: {},
+		trustedIdentities: {},
 	};
 }
 
@@ -33,21 +37,34 @@ export function cloneState(state: OmemoPersistedState): OmemoPersistedState {
 		signedPreKeys[keyId] = cloneKeyPair(keyPair);
 	}
 
-	const identities: Record<string, ArrayBuffer> = {};
-	for (const [address, identityKey] of Object.entries(state.identities)) {
-		identities[address] = identityKey.slice(0);
-	}
+	const signedPreKeySignatures = cloneBytesRecord(state.signedPreKeySignatures);
+	const identities = cloneBytesRecord(state.identities);
+	const trustedIdentities = cloneBytesRecord(state.trustedIdentities);
 
 	return {
 		identityKeyPair: state.identityKeyPair
 			? cloneKeyPair(state.identityKeyPair)
 			: null,
 		registrationId: state.registrationId,
+		deviceId: state.deviceId,
+		currentSignedPreKeyId: state.currentSignedPreKeyId,
 		preKeys,
 		signedPreKeys,
+		signedPreKeySignatures,
 		sessions: { ...state.sessions },
 		identities,
+		trustedIdentities,
 	};
+}
+
+function cloneBytesRecord(
+	record: Record<string, ArrayBuffer>,
+): Record<string, ArrayBuffer> {
+	const result: Record<string, ArrayBuffer> = {};
+	for (const [key, value] of Object.entries(record)) {
+		result[key] = value.slice(0);
+	}
+	return result;
 }
 
 export function equalBytes(left: ArrayBuffer, right: ArrayBuffer): boolean {

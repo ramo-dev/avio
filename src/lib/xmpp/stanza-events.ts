@@ -1,6 +1,7 @@
 import type { Agent } from "stanza";
 import type * as StanzaProtocol from "stanza/protocol";
 import { bareJid, jidResource } from "#/lib/xmpp/jid";
+import { createOmemoEventEmitter } from "#/lib/xmpp/omemo-events";
 import { normalizePresence } from "#/lib/xmpp/presence";
 import {
 	mapRoster,
@@ -26,6 +27,7 @@ export function attachStanzaEvents(
 ) {
 	const { emit } = handlers;
 	const accountBareJid = () => handlers.getAccountBareJid();
+	const emitOmemo = createOmemoEventEmitter(emit, accountBareJid);
 
 	function emitExtended(
 		message: StanzaProtocol.Message,
@@ -66,18 +68,21 @@ export function attachStanzaEvents(
 
 	agent.on("message", (message) => {
 		if (message.carbon) return;
+		if (emitOmemo(message, message.from ?? "", message.to ?? "")) return;
 		if (message.reactions || message.replace) {
 			emitExtended(message, message.from ?? "", message.to ?? "");
 		}
 	});
 
 	agent.on("chat", (message) => {
+		if (message.omemo) return;
 		if (message.reactions || message.replace) return;
 		const normalized = normalizeStanzaMessage(message, accountBareJid());
 		if (normalized) emit({ type: "message", message: normalized });
 	});
 
 	agent.on("groupchat", (message) => {
+		if (message.omemo) return;
 		const roomJid = bareJid(message.from ?? "");
 		const normalized = normalizeGroupMessage(
 			message,
@@ -90,6 +95,7 @@ export function attachStanzaEvents(
 	agent.on("carbon:received", (event) => {
 		const inner = event.carbon.forward.message;
 		if (!inner) return;
+		if (emitOmemo(inner, event.from, event.to, "incoming")) return;
 		if (emitExtended(inner, event.from, event.to)) return;
 		const normalized = normalizeStanzaMessage(
 			withFallbackAddress(inner, event.from, event.to),
@@ -102,6 +108,7 @@ export function attachStanzaEvents(
 	agent.on("carbon:sent", (event) => {
 		const inner = event.carbon.forward.message;
 		if (!inner) return;
+		if (emitOmemo(inner, event.from, event.to, "outgoing")) return;
 		if (emitExtended(inner, event.from, event.to)) return;
 		const normalized = normalizeStanzaMessage(
 			withFallbackAddress(inner, event.from, event.to),

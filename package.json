@@ -23,7 +23,7 @@
     "verify": "pnpm check && pnpm typecheck && pnpm audit:rules && pnpm test && pnpm build",
     "xmpp:up": "docker compose -f dev/xmpp/compose.yml up -d",
     "xmpp:down": "docker compose -f dev/xmpp/compose.yml down",
-    "test:integration": "XMPP_INTEGRATION=1 vitest run src/lib/xmpp/client.integration.test.ts src/lib/xmpp/omemo-pep.integration.test.ts",
+    "test:integration": "XMPP_INTEGRATION=1 vitest run src/lib/xmpp/client.integration.test.ts src/lib/xmpp/omemo-pep.integration.test.ts src/lib/xmpp/omemo-message.integration.test.ts",
     "react:doctor": "pnpm dlx react-doctor@latest ."
   },
   "dependencies": {

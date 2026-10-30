@@ -1,66 +1,25 @@
 import type { Direction, KeyId, OMEMOStore } from "libomemo.js";
-import {
-	addressJid,
-	cloneKeyPair,
-	cloneState,
-	createEmptyState,
-	createStoreMap,
-	equalBytes,
-} from "#/lib/omemo/store-state";
-import type {
-	OmemoKeyPair,
-	OmemoPersistedState,
-	OmemoPersistence,
-} from "#/types/omemo";
+import { OmemoStoreBase } from "#/lib/omemo/store-base";
+import { addressJid, cloneKeyPair, equalBytes } from "#/lib/omemo/store-state";
+import type { OmemoKeyPair } from "#/types/omemo";
+
+/** A stored pre-key in numeric-ID order, as needed for bundle assembly. */
+export interface OmemoStoredPreKey {
+	id: number;
+	keyPair: OmemoKeyPair;
+}
 
 /**
  * Persistence-agnostic OMEMO key store implementing libomemo.js `OMEMOStore`.
  *
- * libomemo.js mixes synchronous and asynchronous storage methods. The generic
- * `store`/`put`/`get`/`remove` surface is a synchronous in-memory map, while
- * identity, pre-key, and session methods hydrate from `OmemoPersistence` and
- * persist after every mutation.
+ * Identity, pre-key, session, and trust methods hydrate from `OmemoPersistence`
+ * and persist after every mutation. All reads return defensive copies.
  *
  * Call `load()` before using the store. Every other asynchronous method also
  * awaits hydration defensively, so a missed call cannot silently operate on an
  * empty state.
  */
-export class OmemoKeyStore implements OMEMOStore {
-	store: Record<string, unknown> = createStoreMap();
-	private readonly accountJid: string;
-	private readonly persistence: OmemoPersistence;
-	private state: OmemoPersistedState = createEmptyState();
-	private loaded = false;
-	private loadPromise: Promise<void> | null = null;
-	private saveChain: Promise<void> = Promise.resolve();
-	private generation = 0;
-
-	constructor(accountJid: string, persistence: OmemoPersistence) {
-		this.accountJid = accountJid;
-		this.persistence = persistence;
-	}
-
-	async load(): Promise<void> {
-		if (this.loaded) return;
-		this.loadPromise ??= this.hydrate();
-		try {
-			await this.loadPromise;
-		} catch (error) {
-			this.loadPromise = null;
-			throw error;
-		}
-	}
-
-	private async hydrate(): Promise<void> {
-		const generation = this.generation;
-		const persisted = await this.persistence.load(this.accountJid);
-		if (generation !== this.generation) return;
-		if (persisted) {
-			this.state = cloneState(persisted);
-		}
-		this.loaded = true;
-	}
-
+export class OmemoKeyStore extends OmemoStoreBase implements OMEMOStore {
 	/**
 	 * Stores the locally generated identity key pair. libomemo.js has no setter
 	 * for this, so the engine uses this method after `KeyHelper` generates it.
@@ -80,17 +39,26 @@ export class OmemoKeyStore implements OMEMOStore {
 		await this.persist();
 	}
 
-	put(key: string, value: unknown): void {
-		this.store[key] = value;
+	async getDeviceId(): Promise<number | undefined> {
+		await this.load();
+		return this.state.deviceId ?? undefined;
 	}
 
-	get<T = unknown>(key: string, defaultValue?: T): T | undefined {
-		if (!Object.hasOwn(this.store, key)) return defaultValue;
-		return this.store[key] as T;
+	async saveDeviceId(deviceId: number): Promise<void> {
+		await this.load();
+		this.state.deviceId = deviceId;
+		await this.persist();
 	}
 
-	remove(key: string): void {
-		delete this.store[key];
+	async getCurrentSignedPreKeyId(): Promise<number | undefined> {
+		await this.load();
+		return this.state.currentSignedPreKeyId ?? undefined;
+	}
+
+	async saveCurrentSignedPreKeyId(keyId: number): Promise<void> {
+		await this.load();
+		this.state.currentSignedPreKeyId = keyId;
+		await this.persist();
 	}
 
 	async isTrustedIdentity(
@@ -120,6 +88,27 @@ export class OmemoKeyStore implements OMEMOStore {
 		return changed;
 	}
 
+	async saveTrustedIdentity(
+		address: string,
+		identityKey: ArrayBuffer,
+	): Promise<void> {
+		await this.load();
+		this.state.trustedIdentities[address] = identityKey.slice(0);
+		await this.persist();
+	}
+
+	async loadTrustedIdentity(address: string): Promise<ArrayBuffer | undefined> {
+		await this.load();
+		return this.state.trustedIdentities[address]?.slice(0);
+	}
+
+	async removeTrustedIdentity(address: string): Promise<void> {
+		await this.load();
+		if (!Object.hasOwn(this.state.trustedIdentities, address)) return;
+		delete this.state.trustedIdentities[address];
+		await this.persist();
+	}
+
 	async loadPreKey(
 		keyId: KeyId,
 	): Promise<{ keyPair: OmemoKeyPair } | undefined> {
@@ -140,6 +129,24 @@ export class OmemoKeyStore implements OMEMOStore {
 		await this.persist();
 	}
 
+	async listPreKeyIds(): Promise<number[]> {
+		await this.load();
+		return Object.keys(this.state.preKeys)
+			.map((keyId) => Number(keyId))
+			.filter((keyId) => Number.isInteger(keyId))
+			.sort((left, right) => left - right);
+	}
+
+	async listPreKeys(): Promise<OmemoStoredPreKey[]> {
+		await this.load();
+		const preKeys: OmemoStoredPreKey[] = [];
+		for (const id of await this.listPreKeyIds()) {
+			const keyPair = this.state.preKeys[String(id)];
+			if (keyPair) preKeys.push({ id, keyPair: cloneKeyPair(keyPair) });
+		}
+		return preKeys;
+	}
+
 	async loadSignedPreKey(
 		keyId: number,
 	): Promise<{ keyPair: OmemoKeyPair } | undefined> {
@@ -157,6 +164,23 @@ export class OmemoKeyStore implements OMEMOStore {
 	async removeSignedPreKey(keyId: KeyId): Promise<void> {
 		await this.load();
 		delete this.state.signedPreKeys[String(keyId)];
+		delete this.state.signedPreKeySignatures[String(keyId)];
+		await this.persist();
+	}
+
+	async loadSignedPreKeySignature(
+		keyId: number,
+	): Promise<ArrayBuffer | undefined> {
+		await this.load();
+		return this.state.signedPreKeySignatures[String(keyId)]?.slice(0);
+	}
+
+	async saveSignedPreKeySignature(
+		keyId: number,
+		signature: ArrayBuffer,
+	): Promise<void> {
+		await this.load();
+		this.state.signedPreKeySignatures[String(keyId)] = signature.slice(0);
 		await this.persist();
 	}
 
@@ -199,38 +223,5 @@ export class OmemoKeyStore implements OMEMOStore {
 	async getLocalRegistrationId(): Promise<number | undefined> {
 		await this.load();
 		return this.state.registrationId ?? undefined;
-	}
-
-	async clear(): Promise<void> {
-		this.generation += 1;
-		this.state = createEmptyState();
-		for (const key of Object.keys(this.store)) {
-			delete this.store[key];
-		}
-		this.loaded = true;
-		this.loadPromise = null;
-
-		const clearing = this.saveChain.then(
-			() => this.persistence.clear(this.accountJid),
-			() => this.persistence.clear(this.accountJid),
-		);
-		this.saveChain = clearing.then(
-			() => undefined,
-			() => undefined,
-		);
-		await clearing;
-	}
-
-	private persist(): Promise<void> {
-		const snapshot = cloneState(this.state);
-		const write = this.saveChain.then(
-			() => this.persistence.save(this.accountJid, snapshot),
-			() => this.persistence.save(this.accountJid, snapshot),
-		);
-		this.saveChain = write.then(
-			() => undefined,
-			() => undefined,
-		);
-		return write;
 	}
 }

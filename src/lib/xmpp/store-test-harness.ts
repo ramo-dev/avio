@@ -16,6 +16,7 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 		sendMessage: vi.fn(async (input: SendMessageInput) => {
 			sent.push(input);
 		}),
+		sendEncryptedMessage: vi.fn(async () => undefined),
 		sendReaction: vi.fn(async () => undefined),
 		forwardMessage: vi.fn(async () => undefined),
 		sendChatState: vi.fn(async () => undefined),

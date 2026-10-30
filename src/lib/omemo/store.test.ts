@@ -223,6 +223,47 @@ describe("OmemoKeyStore", () => {
 		expect(store.store.beta).toBe("two");
 	});
 
+	it("roundtrips lifecycle metadata, prekey lists, and trusted identities", async () => {
+		const persistence = new MemoryOmemoPersistence();
+		const first = new OmemoKeyStore(ACCOUNT, persistence);
+		await first.load();
+		await first.saveDeviceId(1234);
+		await first.saveCurrentSignedPreKeyId(5);
+		await first.saveSignedPreKeySignature(5, bytes(1, 2));
+		await first.storePreKey(9, keyPair([10], [11]));
+		await first.storePreKey(3, keyPair([12], [13]));
+		await first.saveTrustedIdentity(BOB_ADDRESS, bytes(4, 5));
+
+		expect(await first.listPreKeyIds()).toEqual([3, 9]);
+		expect((await first.listPreKeys()).map((preKey) => preKey.id)).toEqual([
+			3, 9,
+		]);
+
+		const second = new OmemoKeyStore(ACCOUNT, persistence);
+		await second.load();
+		expect(await second.getDeviceId()).toBe(1234);
+		expect(await second.getCurrentSignedPreKeyId()).toBe(5);
+		expectBytes(await second.loadSignedPreKeySignature(5), bytes(1, 2));
+		expectBytes(await second.loadTrustedIdentity(BOB_ADDRESS), bytes(4, 5));
+
+		const signature = await second.loadSignedPreKeySignature(5);
+		const trusted = await second.loadTrustedIdentity(BOB_ADDRESS);
+		const listed = await second.listPreKeys();
+		if (!signature || !trusted || !listed[0]) {
+			throw new Error("Expected lifecycle data to be present");
+		}
+		new Uint8Array(signature)[0] = 99;
+		new Uint8Array(trusted)[0] = 99;
+		new Uint8Array(listed[0].keyPair.pubKey)[0] = 99;
+
+		expectBytes(await second.loadSignedPreKeySignature(5), bytes(1, 2));
+		expectBytes(await second.loadTrustedIdentity(BOB_ADDRESS), bytes(4, 5));
+		expectBytes((await second.loadPreKey(3))?.keyPair.pubKey, bytes(12));
+
+		await second.removeTrustedIdentity(BOB_ADDRESS);
+		expect(await second.loadTrustedIdentity(BOB_ADDRESS)).toBeUndefined();
+	});
+
 	it("clears in-memory state and persistence", async () => {
 		const persistence = new MemoryOmemoPersistence();
 		const store = new OmemoKeyStore(ACCOUNT, persistence);

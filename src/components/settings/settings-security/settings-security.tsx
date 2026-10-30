@@ -32,9 +32,9 @@ export function SettingsSecurity() {
 				<StatusRow
 					icon={<RiLockLine className="size-4" />}
 					title="OMEMO"
-					value="Planned"
+					value="In progress"
 					tone="secondary"
-					description="Blocked on the licensing and key-storage decision in the encryption ADR."
+					description="Key storage, PEP bundles, and 1:1 message encryption are implemented, but OMEMO is not enabled in the app and has not been independently audited."
 				/>
 				<StatusRow
 					icon={<RiAlertLine className="size-4" />}

@@ -10,10 +10,14 @@ interface SerializedKeyPair {
 interface SerializedState {
 	identityKeyPair: SerializedKeyPair | null;
 	registrationId: number | null;
+	deviceId: number | null;
+	currentSignedPreKeyId: number | null;
 	preKeys: Record<string, SerializedKeyPair>;
 	signedPreKeys: Record<string, SerializedKeyPair>;
+	signedPreKeySignatures: Record<string, string>;
 	sessions: Record<string, string>;
 	identities: Record<string, string>;
+	trustedIdentities: Record<string, string>;
 }
 
 function corrupt(): never {
@@ -37,6 +41,16 @@ function serializeKeyPairs(
 	return result;
 }
 
+function serializeBytesRecord(
+	record: Record<string, ArrayBuffer>,
+): Record<string, string> {
+	const result: Record<string, string> = {};
+	for (const [key, value] of Object.entries(record)) {
+		result[key] = encodeBase64(new Uint8Array(value));
+	}
+	return result;
+}
+
 /**
  * Serializes key state to bytes for encryption.
  *
@@ -46,20 +60,19 @@ function serializeKeyPairs(
 export function encodeState(
 	state: OmemoPersistedState,
 ): Uint8Array<ArrayBuffer> {
-	const identities: Record<string, string> = {};
-	for (const [address, identityKey] of Object.entries(state.identities)) {
-		identities[address] = encodeBase64(new Uint8Array(identityKey));
-	}
-
 	const serialized: SerializedState = {
 		identityKeyPair: state.identityKeyPair
 			? serializeKeyPair(state.identityKeyPair)
 			: null,
 		registrationId: state.registrationId,
+		deviceId: state.deviceId,
+		currentSignedPreKeyId: state.currentSignedPreKeyId,
 		preKeys: serializeKeyPairs(state.preKeys),
 		signedPreKeys: serializeKeyPairs(state.signedPreKeys),
+		signedPreKeySignatures: serializeBytesRecord(state.signedPreKeySignatures),
 		sessions: { ...state.sessions },
-		identities,
+		identities: serializeBytesRecord(state.identities),
+		trustedIdentities: serializeBytesRecord(state.trustedIdentities),
 	};
 
 	return new TextEncoder().encode(JSON.stringify(serialized));
@@ -114,8 +127,15 @@ function parseIdentities(value: unknown): Record<string, ArrayBuffer> {
 	return result;
 }
 
-function parseRegistrationId(value: unknown): number | null {
-	if (value === null) return null;
+function parseBackwardCompatibleBytesRecord(
+	value: unknown,
+): Record<string, ArrayBuffer> {
+	if (value === undefined) return {};
+	return parseIdentities(value);
+}
+
+function parseNullableInteger(value: unknown): number | null {
+	if (value === undefined || value === null) return null;
 	if (typeof value !== "number" || !Number.isInteger(value)) corrupt();
 	return value;
 }
@@ -127,11 +147,19 @@ function parseState(value: unknown): OmemoPersistedState {
 			value.identityKeyPair === null
 				? null
 				: parseKeyPair(value.identityKeyPair),
-		registrationId: parseRegistrationId(value.registrationId),
+		registrationId: parseNullableInteger(value.registrationId),
+		deviceId: parseNullableInteger(value.deviceId),
+		currentSignedPreKeyId: parseNullableInteger(value.currentSignedPreKeyId),
 		preKeys: parseKeyPairs(value.preKeys),
 		signedPreKeys: parseKeyPairs(value.signedPreKeys),
+		signedPreKeySignatures: parseBackwardCompatibleBytesRecord(
+			value.signedPreKeySignatures,
+		),
 		sessions: parseSessions(value.sessions),
 		identities: parseIdentities(value.identities),
+		trustedIdentities: parseBackwardCompatibleBytesRecord(
+			value.trustedIdentities,
+		),
 	};
 }
 

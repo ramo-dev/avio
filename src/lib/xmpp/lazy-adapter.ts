@@ -39,6 +39,10 @@ export function createLazyAdapter(): XmppAdapter {
 			const adapter = await ensure();
 			await adapter.sendMessage(input);
 		},
+		async sendEncryptedMessage(to, id, envelope) {
+			const adapter = await ensure();
+			await adapter.sendEncryptedMessage(to, id, envelope);
+		},
 		async sendReaction(to, messageId, reactions) {
 			const adapter = await ensure();
 			await adapter.sendReaction(to, messageId, reactions);

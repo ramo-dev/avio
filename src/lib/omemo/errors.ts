@@ -73,3 +73,72 @@ export function wrapOmemoPepError(
 ): OmemoPepError {
 	return cause instanceof OmemoPepError ? cause : new OmemoPepError(code);
 }
+
+export type OmemoMessageErrorCode =
+	| "not-initialized"
+	| "invalid-envelope"
+	| "no-device-key"
+	| "no-recipients"
+	| "encrypt-failed"
+	| "decrypt-failed"
+	| "identity-changed";
+
+const MESSAGE_MESSAGES: Record<OmemoMessageErrorCode, string> = {
+	"not-initialized": "The OMEMO device is not initialized.",
+	"invalid-envelope": "The OMEMO message envelope is invalid.",
+	"no-device-key": "The OMEMO message has no key for this device.",
+	"no-recipients": "The OMEMO message has no recipient devices.",
+	"encrypt-failed": "The OMEMO message could not be encrypted.",
+	"decrypt-failed": "The OMEMO message could not be decrypted.",
+	"identity-changed": "The OMEMO device identity key has changed.",
+};
+
+/**
+ * Typed failure for OMEMO message encryption and decryption.
+ *
+ * Messages are fixed per code and never include key material or plaintext.
+ */
+export class OmemoMessageError extends Error {
+	readonly code: OmemoMessageErrorCode;
+
+	constructor(code: OmemoMessageErrorCode, message = MESSAGE_MESSAGES[code]) {
+		super(message);
+		this.name = "OmemoMessageError";
+		this.code = code;
+	}
+}
+
+export type OmemoSessionErrorCode =
+	| "invalid-device"
+	| "bundle-missing"
+	| "identity-missing"
+	| "identity-changed"
+	| "prekey-missing"
+	| "untrusted-device"
+	| "session-failed";
+
+const SESSION_MESSAGES: Record<OmemoSessionErrorCode, string> = {
+	"invalid-device": "The OMEMO device ID is invalid.",
+	"bundle-missing": "The OMEMO bundle is not available.",
+	"identity-missing": "The OMEMO identity key is not available.",
+	"identity-changed": "The OMEMO device identity key has changed.",
+	"prekey-missing": "The OMEMO pre-key is not available.",
+	"untrusted-device": "The OMEMO device is not trusted.",
+	"session-failed": "The OMEMO session could not be established.",
+};
+
+/**
+ * Typed failure for OMEMO key lifecycle and session setup.
+ *
+ * Messages are fixed per code and never include key material, bundles, or
+ * account credentials.
+ */
+export class OmemoSessionError extends Error {
+	readonly code: OmemoSessionErrorCode;
+
+	constructor(code: OmemoSessionErrorCode, message = SESSION_MESSAGES[code]) {
+		super(message);
+		this.name = "OmemoSessionError";
+		this.code = code;
+	}
+}

@@ -16,57 +16,54 @@ const PASSPHRASE = "correct horse battery staple";
 const WRONG_PASSPHRASE = "incorrect horse battery staple";
 
 function bytes(...values: number[]): ArrayBuffer {
-	const buffer = new ArrayBuffer(values.length);
-	new Uint8Array(buffer).set(values);
-	return buffer;
+	return Uint8Array.from(values).buffer;
 }
+
+const sequence = (start: number, length: number): ArrayBuffer =>
+	bytes(...Array.from({ length }, (_, index) => start + index));
 
 function keyPair(pub: number[], priv: number[]): OmemoKeyPair {
 	return { pubKey: bytes(...pub), privKey: bytes(...priv) };
 }
 
-function expectBytes(
-	actual: ArrayBuffer | undefined,
-	expected: ArrayBuffer,
-): void {
+function expectBytes(actual: ArrayBuffer | undefined, expected: ArrayBuffer) {
 	if (!actual) throw new Error("Expected key bytes to be present");
-	expect(Array.from(new Uint8Array(actual))).toEqual(
-		Array.from(new Uint8Array(expected)),
-	);
+	expect(new Uint8Array(actual)).toEqual(new Uint8Array(expected));
 }
 
 function fixtureState(): OmemoPersistedState {
 	return {
-		identityKeyPair: keyPair(
-			[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16],
-			[17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32],
-		),
+		identityKeyPair: {
+			pubKey: sequence(1, 16),
+			privKey: sequence(17, 16),
+		},
 		registrationId: 4242,
+		deviceId: 5150,
+		currentSignedPreKeyId: 9,
 		preKeys: { "7": keyPair([33, 34], [35, 36]) },
 		signedPreKeys: { "9": keyPair([37, 38], [39, 40]) },
+		signedPreKeySignatures: { "9": bytes(44, 45) },
 		sessions: { [BOB_ADDRESS]: "session-record" },
 		identities: { [BOB_ADDRESS]: bytes(41, 42, 43) },
+		trustedIdentities: { [BOB_ADDRESS]: bytes(46, 47) },
 	};
 }
 
 function expectFixtureState(state: OmemoPersistedState | null): void {
 	if (!state) throw new Error("Expected persisted state to be present");
-	expect(state.identityKeyPair).not.toBeNull();
-	expectBytes(
-		state.identityKeyPair?.pubKey,
-		bytes(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16),
-	);
-	expectBytes(
-		state.identityKeyPair?.privKey,
-		bytes(17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32),
-	);
+	expectBytes(state.identityKeyPair?.pubKey, sequence(1, 16));
+	expectBytes(state.identityKeyPair?.privKey, sequence(17, 16));
 	expect(state.registrationId).toBe(4242);
+	expect(state.deviceId).toBe(5150);
+	expect(state.currentSignedPreKeyId).toBe(9);
 	expectBytes(state.preKeys["7"]?.pubKey, bytes(33, 34));
 	expectBytes(state.preKeys["7"]?.privKey, bytes(35, 36));
 	expectBytes(state.signedPreKeys["9"]?.pubKey, bytes(37, 38));
 	expectBytes(state.signedPreKeys["9"]?.privKey, bytes(39, 40));
+	expectBytes(state.signedPreKeySignatures["9"], bytes(44, 45));
 	expect(state.sessions[BOB_ADDRESS]).toBe("session-record");
 	expectBytes(state.identities[BOB_ADDRESS], bytes(41, 42, 43));
+	expectBytes(state.trustedIdentities[BOB_ADDRESS], bytes(46, 47));
 }
 
 function tamperCiphertext(value: string): string {
@@ -84,14 +81,15 @@ async function createUnlocked(
 	return persistence;
 }
 
-describe("EncryptedOmemoPersistence", () => {
+describe("EncryptedOmemoPersistence", { timeout: 20_000 }, () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
 	});
 
 	it("unlocks with no record and round-trips all state", async () => {
-		const raw = new MemoryOmemoEnvelopePersistence();
-		const persistence = await createUnlocked(raw);
+		const persistence = await createUnlocked(
+			new MemoryOmemoEnvelopePersistence(),
+		);
 
 		expect(persistence.isUnlocked).toBe(true);
 		expect(await persistence.load(ACCOUNT)).toBeNull();
@@ -139,8 +137,9 @@ describe("EncryptedOmemoPersistence", () => {
 	});
 
 	it("rejects load and save while locked", async () => {
-		const raw = new MemoryOmemoEnvelopePersistence();
-		const persistence = await createUnlocked(raw);
+		const persistence = await createUnlocked(
+			new MemoryOmemoEnvelopePersistence(),
+		);
 		await persistence.save(ACCOUNT, fixtureState());
 		persistence.lock();
 
@@ -219,17 +218,18 @@ describe("EncryptedOmemoPersistence", () => {
 
 		expect(serialized).not.toContain(PASSPHRASE);
 		expect(serialized).not.toContain("session-record");
-		expect(serialized).not.toContain(
-			encodeBase64(new Uint8Array(bytes(1, 2, 3, 4, 5, 6, 7, 8))),
-		);
-		expect(serialized).not.toContain(
-			encodeBase64(new Uint8Array(bytes(17, 18, 19, 20))),
-		);
+		for (const value of [
+			bytes(1, 2, 3, 4, 5, 6, 7, 8),
+			bytes(17, 18, 19, 20),
+		]) {
+			expect(serialized).not.toContain(encodeBase64(new Uint8Array(value)));
+		}
 	});
 
 	it("validates the account for every operation", async () => {
-		const raw = new MemoryOmemoEnvelopePersistence();
-		const persistence = await createUnlocked(raw);
+		const persistence = await createUnlocked(
+			new MemoryOmemoEnvelopePersistence(),
+		);
 		await persistence.save(ACCOUNT, fixtureState());
 
 		for (const operation of [

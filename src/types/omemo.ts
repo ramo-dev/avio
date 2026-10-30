@@ -12,16 +12,21 @@ export interface OmemoKeyPair {
 /**
  * Everything the OMEMO key store needs to survive a reload.
  *
- * Session records are libomemo.js `SessionRecord` strings. Identities are
- * keyed by OMEMO address (`name.deviceId`), and pre-keys by their numeric ID.
+ * Session records are libomemo.js `SessionRecord` strings. Identities,
+ * trusted copies, and signed-pre-key signatures are keyed by OMEMO address or
+ * key ID. Device ID and the current signed pre-key ID complete the lifecycle.
  */
 export interface OmemoPersistedState {
 	identityKeyPair: OmemoKeyPair | null;
 	registrationId: number | null;
+	deviceId: number | null;
+	currentSignedPreKeyId: number | null;
 	preKeys: Record<string, OmemoKeyPair>;
 	signedPreKeys: Record<string, OmemoKeyPair>;
+	signedPreKeySignatures: Record<string, ArrayBuffer>;
 	sessions: Record<string, string>;
 	identities: Record<string, ArrayBuffer>;
+	trustedIdentities: Record<string, ArrayBuffer>;
 }
 
 /**
@@ -81,6 +86,36 @@ export interface OmemoPepBundle {
 	signedPreKeyPublic: string;
 	signedPreKeySignature: string;
 	preKeys: OmemoPepPreKey[];
+}
+
+/** One recipient device key inside an OMEMO message envelope. */
+export interface OmemoCipherKey {
+	rid: number;
+	preKey: boolean;
+	/** Base64 of the encrypted 16-byte key followed by its 16-byte GCM tag. */
+	value: string;
+}
+
+/**
+ * Legacy OMEMO 0.3.0 message envelope.
+ *
+ * `iv` and `payload` are base64. The payload is the AES-GCM ciphertext with
+ * the tag stripped; the tag travels inside each per-device key value.
+ */
+export interface OmemoEncryptedMessage {
+	sid: number;
+	iv: string;
+	keys: OmemoCipherKey[];
+	payload: string;
+}
+
+/** Decrypted 1:1 message plus the sender and trust facts for the UI. */
+export interface OmemoDecryptedMessage {
+	plaintext: string;
+	senderJid: string;
+	senderDeviceId: number;
+	trusted: boolean;
+	bundleRefreshed: boolean;
 }
 
 /**

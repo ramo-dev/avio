@@ -35,8 +35,16 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
   `libomemo.js` (GPLv3) is a candidate crypto engine. It is not audited yet.
   The key store and passphrase-encrypted storage boundary now live in
   `src/lib/omemo`; the legacy OMEMO 0.3.0 device-list and bundle PEP boundary
-  lives in `src/lib/xmpp/omemo-pep.ts`. Trust UI and the message flow are still
-  pending.
+  lives in `src/lib/xmpp/omemo-pep.ts`. The lifecycle engine in
+  `src/lib/omemo/engine.ts` generates and persists identity, device, signed
+  pre-key, and pre-key material, publishes bundles/device lists, builds
+  sessions, and stores app trust decisions. The message codec in
+  `src/lib/omemo/message.ts` performs AES-128-GCM payload encryption, per-device
+  ratchet wrapping, trust gating, and pre-key refresh; stanza send/receive
+  wiring and an encrypted-message event are in place. Remaining: app/UI engine
+  lifecycle after unlock, contact/own-device resolution, PEP update
+  subscriptions, inbound decryption into the message store, trust/device UI,
+  passphrase setup and auto-lock, and audit.
 - **OMEMO2 PEP (XEP-0384)** — legacy 0.3.0 device lists and bundles are
   implemented. Add the `urn:xmpp:omemo:2` device-list/bundle nodes and
   version-aware selection after 1:1 messaging works.

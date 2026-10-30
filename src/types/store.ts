@@ -15,7 +15,7 @@ import type {
 	RoomOccupant,
 	RoomState,
 } from "#/types/chat";
-import type { OmemoPepClient } from "#/types/omemo";
+import type { OmemoEncryptedMessage, OmemoPepClient } from "#/types/omemo";
 import type { StoredSession } from "#/types/storage";
 import type {
 	Account,
@@ -61,6 +61,17 @@ export type XmppEvent =
 	| { type: "roster"; contacts: Contact[] }
 	| { type: "presence"; jid: string; presence: PresenceState }
 	| { type: "message"; message: ChatMessage }
+	| {
+			type: "omemo-message";
+			/** Bare conversation JID. */
+			jid: string;
+			/** Full sender JID. */
+			from: string;
+			/** Stanza ID, when present. */
+			id?: string;
+			direction: "incoming" | "outgoing";
+			envelope: OmemoEncryptedMessage;
+	  }
 	| {
 			type: "reactions";
 			jid: string;
@@ -120,6 +131,11 @@ export interface XmppAdapter {
 	connect(credentials: ConnectCredentials): Promise<void>;
 	disconnect(): Promise<void>;
 	sendMessage(input: SendMessageInput): Promise<void>;
+	sendEncryptedMessage(
+		to: string,
+		id: string,
+		envelope: OmemoEncryptedMessage,
+	): Promise<void>;
 	sendReaction(
 		to: string,
 		messageId: string,
