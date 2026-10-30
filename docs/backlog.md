@@ -56,7 +56,7 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
   outgoing carbon decryption (currently ignored to avoid duplicates),
   re-decrypting locked placeholders after unlock, encrypted replies/edits,
   forwarding, attachments, and MAM history, live device-list PEP subscriptions,
-  persisting per-chat encryption preference, and independent audit.
+  and independent audit. Per-chat encryption choices are persisted.
 - **OMEMO2 PEP (XEP-0384)** — legacy 0.3.0 device lists and bundles are
   implemented. Add the `urn:xmpp:omemo:2` device-list/bundle nodes and
   version-aware selection after 1:1 messaging works.

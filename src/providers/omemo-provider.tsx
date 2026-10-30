@@ -5,9 +5,9 @@ import {
 	useContext,
 	useEffect,
 	useMemo,
-	useState,
 } from "react";
 import { toast } from "react-hot-toast";
+import { useEncryptionPreferences } from "#/hooks/use-encryption-preferences";
 import { useOmemoSession } from "#/hooks/use-omemo-session";
 import { useSettings } from "#/hooks/use-settings";
 import { useXmppState } from "#/hooks/xmpp/use-xmpp";
@@ -60,16 +60,8 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 		rememberUnlock: security.rememberOmemoUnlock,
 	});
 	const { accountRef, status, resetIdle } = session;
-	const [encryptedJids, setEncryptedJids] = useState<Record<string, boolean>>(
-		{},
-	);
-
-	useEffect(() => {
-		if (accountJid && state.connection.status === "connected") return;
-		setEncryptedJids((current) =>
-			Object.keys(current).length === 0 ? current : {},
-		);
-	}, [accountJid, state.connection.status]);
+	const { preferences: encryptedJids, setPreference: setEncryptedPreference } =
+		useEncryptionPreferences(accountJid);
 
 	const handleIncoming = useCallback(
 		async (event: OmemoMessageEvent) => {
@@ -125,7 +117,7 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 		(jid: string) => {
 			const key = bareJid(jid);
 			if (Object.hasOwn(encryptedJids, key)) {
-				return Boolean(encryptedJids[key]);
+				return encryptedJids[key] === "on";
 			}
 			return (
 				security.defaultEncryption === "omemo" &&
@@ -141,18 +133,12 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 		[isEncryptionIntended, status],
 	);
 
-	const setEncryptionEnabled = useCallback((jid: string, enabled: boolean) => {
-		const key = bareJid(jid);
-		setEncryptedJids((current) => {
-			if (!enabled) {
-				if (!current[key]) return current;
-				const next = { ...current };
-				delete next[key];
-				return next;
-			}
-			return { ...current, [key]: true };
-		});
-	}, []);
+	const setEncryptionEnabled = useCallback(
+		(jid: string, enabled: boolean) => {
+			setEncryptedPreference(jid, enabled);
+		},
+		[setEncryptedPreference],
+	);
 
 	const sendMessage = useCallback(
 		async (jid: string, body: string) => {

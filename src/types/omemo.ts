@@ -90,6 +90,9 @@ export type OmemoAccountStatus =
 	| "ready"
 	| "error";
 
+/** Persisted per-chat override of the default encryption choice. */
+export type EncryptionPreference = "on" | "off";
+
 /** Public device facts shown in trust UI. Never contains key bytes. */
 export interface OmemoDeviceInfo {
 	deviceId: number;

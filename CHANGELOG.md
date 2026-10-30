@@ -61,6 +61,12 @@ without a deprecation period.
   so presence is mutual instead of one-directional.
 - The open conversation sends XEP-0333 displayed markers for new incoming
   messages, so other clients can show read receipts.
+- Per-chat encryption choices now persist per account, including an explicit
+  "off" under an OMEMO default, so a refresh no longer resets a chat to the
+  default and silently changes its protection.
+- Remote images, video, and audio load only after an explicit tap. Messages no
+  longer contact file hosts automatically, so reading a chat does not reveal
+  your IP or read time to the sender's host.
 
 - Unified the conversation list for DMs and rooms, with stacked participant
   avatars and a group badge.

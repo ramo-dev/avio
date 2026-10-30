@@ -3,8 +3,9 @@ import {
 	RiErrorWarningLine,
 	RiMusicLine,
 } from "@remixicon/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { MediaControls } from "#/components/chat/messages/media-controls/media-controls";
+import { MediaPlaceholder } from "#/components/chat/messages/media-placeholder/media-placeholder";
 import { Card } from "#/components/ui/card";
 import { useMediaPlayer } from "#/hooks/use-media-player";
 import { formatBytes } from "#/lib/chat/attachments";
@@ -16,7 +17,19 @@ export function MessageAudio({
 	attachment: MessageAttachment;
 }) {
 	const mediaRef = useRef<HTMLAudioElement>(null);
-	const player = useMediaPlayer(mediaRef, attachment.url);
+	const [revealed, setRevealed] = useState(false);
+	const player = useMediaPlayer(mediaRef, attachment.url, revealed);
+
+	if (!revealed) {
+		return (
+			<MediaPlaceholder
+				kind="audio"
+				name={attachment.name}
+				size={attachment.size}
+				onLoad={() => setRevealed(true)}
+			/>
+		);
+	}
 
 	return (
 		// biome-ignore lint/a11y/noStaticElementInteractions: media controls own the pointer gestures
