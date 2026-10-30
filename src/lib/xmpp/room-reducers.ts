@@ -6,10 +6,26 @@ export function reduceRoom(state: XmppState, room: RoomState): XmppState {
 	const existing =
 		state.conversations[room.jid] ??
 		createConversation(room.jid, "group", room.name);
+	const previous = state.rooms[room.jid];
+	const occupants =
+		previous && Object.keys(room.occupants).length === 0
+			? previous.occupants
+			: room.occupants;
+	const invites =
+		previous && Object.keys(room.invites).length === 0
+			? previous.invites
+			: room.invites;
+	const mergedRoom: RoomState = {
+		...room,
+		occupants,
+		invites,
+		membership: room.membership ?? previous?.membership,
+	};
 
 	return {
 		...state,
-		rooms: { ...state.rooms, [room.jid]: room },
+		contacts: withoutRoomContact(state.contacts, room.jid),
+		rooms: { ...state.rooms, [room.jid]: mergedRoom },
 		conversations: {
 			...state.conversations,
 			[room.jid]: {
@@ -18,6 +34,31 @@ export function reduceRoom(state: XmppState, room: RoomState): XmppState {
 				title: room.name,
 				nick: room.nick,
 			},
+		},
+	};
+}
+
+function withoutRoomContact(
+	contacts: XmppState["contacts"],
+	roomJid: string,
+): XmppState["contacts"] {
+	if (!Object.hasOwn(contacts, roomJid)) return contacts;
+	const next = { ...contacts };
+	delete next[roomJid];
+	return next;
+}
+
+export function reduceRoomMembership(
+	state: XmppState,
+	event: Extract<XmppEvent, { type: "room-membership" }>,
+): XmppState {
+	const room = state.rooms[event.jid];
+	if (!room) return state;
+	return {
+		...state,
+		rooms: {
+			...state.rooms,
+			[event.jid]: { ...room, membership: event.membership },
 		},
 	};
 }
@@ -53,10 +94,56 @@ function markAccepted(
 	if (event.action === "leave" || !joinedJid) return invites;
 
 	for (const [jid, invite] of Object.entries(invites)) {
-		if (invite.jid.toLowerCase() !== joinedJid) continue;
+		const jidMatches = invite.jid.toLowerCase() === joinedJid;
+		const nickMatches =
+			invite.jid.split("@")[0]?.toLowerCase() ===
+			event.occupant.nick.toLowerCase();
+		if (!jidMatches && !nickMatches) continue;
 		invites[jid] = { ...invite, status: "accepted" };
 	}
 	return invites;
+}
+
+export function reduceRoomMembers(
+	state: XmppState,
+	event: Extract<XmppEvent, { type: "room-members" }>,
+): XmppState {
+	const room = state.rooms[event.jid];
+	if (!room) return state;
+	return {
+		...state,
+		rooms: {
+			...state.rooms,
+			[event.jid]: { ...room, memberJids: event.memberJids },
+		},
+	};
+}
+
+export function reduceRoomInviteDeclined(
+	state: XmppState,
+	event: Extract<XmppEvent, { type: "room-invite-declined" }>,
+): XmppState {
+	const room = state.rooms[event.roomJid];
+	if (!room) return state;
+
+	const invite = room.invites[event.from];
+	if (!invite) return state;
+	return {
+		...state,
+		rooms: {
+			...state.rooms,
+			[event.roomJid]: {
+				...room,
+				memberJids: room.memberJids?.filter(
+					(jid) => jid.toLowerCase() !== event.from.toLowerCase(),
+				),
+				invites: {
+					...room.invites,
+					[event.from]: { ...invite, status: "declined" },
+				},
+			},
+		},
+	};
 }
 
 export function reduceRoomInvites(

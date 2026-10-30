@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import { createMemoryRoomInviteRequestStore } from "#/lib/storage/room-invite-requests";
 import { createMemoryRoomInviteStore } from "#/lib/storage/room-invites";
 import { createMemorySessionStore } from "#/lib/storage/session";
 import { createXmppStore } from "#/lib/xmpp/store";
@@ -9,6 +10,7 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 	const sent: SendMessageInput[] = [];
 	const sessionStore = createMemorySessionStore();
 	const roomInviteStore = createMemoryRoomInviteStore();
+	const roomInviteRequestStore = createMemoryRoomInviteRequestStore();
 
 	const adapter: XmppAdapter = {
 		connect: vi.fn(async () => undefined),
@@ -51,6 +53,11 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 		getOmemoPep: vi.fn(async () => {
 			throw new Error("OMEMO PEP is unavailable in the store test harness.");
 		}),
+		loadRoomPreview: vi.fn(async () => ({
+			status: "ok" as const,
+			messages: [],
+		})),
+		getRoomMemberJids: vi.fn(async () => []),
 		subscribe: (next) => {
 			listener = next;
 			return () => {
@@ -73,6 +80,7 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 		},
 		sessionStore,
 		roomInviteStore,
+		roomInviteRequestStore,
 		now: () => 10_000,
 		idFactory: options.idFactory ?? (() => "fixed"),
 		reactionDelayMs: 0,
@@ -83,6 +91,7 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 		adapter,
 		sessionStore,
 		roomInviteStore,
+		roomInviteRequestStore,
 		sent,
 		emit: (event: XmppEvent) => listener?.(event),
 	};

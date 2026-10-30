@@ -43,6 +43,18 @@ export function RoomInviteRequests() {
 						</span>
 						<Button
 							size="xs"
+							variant="ghost"
+							onClick={() =>
+								void navigate({
+									to: "/chat/group/$room",
+									params: { room: request.roomJid },
+								})
+							}
+						>
+							Preview
+						</Button>
+						<Button
+							size="xs"
 							variant="secondary"
 							onClick={() => void accept(request.roomJid, request.roomName)}
 						>

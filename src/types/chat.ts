@@ -20,13 +20,15 @@ export interface RoomOccupant {
 	presence: PresenceState;
 }
 
-export type RoomInviteStatus = "pending" | "accepted";
+export type RoomInviteStatus = "pending" | "accepted" | "declined";
 
 export interface RoomInvite {
 	jid: string;
 	name?: string;
 	status: RoomInviteStatus;
 	invitedAt: number;
+	/** Bare JID of the account that sent the invitation. */
+	invitedBy?: string;
 }
 
 export interface RoomInviteRequest {
@@ -37,6 +39,8 @@ export interface RoomInviteRequest {
 	receivedAt: number;
 }
 
+export type RoomMembership = "joining" | "joined";
+
 export interface RoomState {
 	jid: string;
 	name: string;
@@ -44,6 +48,11 @@ export interface RoomState {
 	subject?: string;
 	occupants: Record<string, RoomOccupant>;
 	invites: Record<string, RoomInvite>;
+	membership?: RoomMembership;
+	/** Server-side member JIDs reconciled for owners/admins. */
+	memberJids?: string[];
+	/** Bare JID of the account that invited the local user, when applicable. */
+	invitedBy?: string;
 }
 
 export type MessagePosition = "single" | "first" | "middle" | "last";
@@ -70,6 +79,13 @@ export interface ChatMessage {
 	direction: MessageDirection;
 	status: MessageStatus;
 	isCarbon?: boolean;
+	encrypted?: boolean;
+	/** Whether the sender device identity is explicitly trusted. */
+	trusted?: boolean;
+	/** Sent unencrypted because no OMEMO recipient device was available. */
+	unencryptedFallback?: boolean;
+	/** Safe, human-readable decryption failure reason. */
+	decryptionError?: string;
 	error?: string;
 }
 

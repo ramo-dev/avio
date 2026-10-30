@@ -26,15 +26,29 @@ without a deprecation period.
 ### Security
 
 - Relicensed Avio under GPLv3 to allow compatible OMEMO and OpenPGP work.
-- Added an honest security status panel: TLS transport, no E2EE yet.
-- Added an isolated OMEMO cryptographic spike and integration plan; not wired into
-  the UI or enabled for users.
+- Added a security status panel with transport and explicit E2EE state.
+- Added an isolated OMEMO cryptographic spike; superseded by the opt-in
+  support below.
+- Added opt-in, experimental OMEMO 1:1 support with passphrase-encrypted key
+  storage, PEP device discovery, explicit device trust, encrypted message
+  transport, and locked placeholders. It is off by default and unaudited.
+- Added optional "Remember unlock on this device" for OMEMO. It stores only the
+  non-exportable key derived from the passphrase in IndexedDB, never the
+  passphrase, and is cleared by Lock, logout, or the 10-minute idle lock.
+- Added a default encryption preference for new direct chats.
+- Added an explicit unencrypted fallback confirmation and message marker when
+  no OMEMO device is available.
 - Added a development-only warning that this build is not production ready.
 
 ### Changed
 
 - Unified the conversation list for DMs and rooms, with stacked participant
   avatars and a group badge.
+- Added inviter-only pending room invites, sidebar preview, and read-only room
+  MAM preview with an invite-only fallback before joining.
+- Pending room invitees now show as "Invited" under Invites instead of appearing
+  as members, even when the server already lists them as members-only affiliates.
+- Raised the toast layer above dialog and drawer overlays.
 - Made reactions single-select per user with animated enter/exit states.
 - Added tooltips and a confirmation dialog to message actions.
 - Moved the app version into `package.json` and exposed it through XMPP software

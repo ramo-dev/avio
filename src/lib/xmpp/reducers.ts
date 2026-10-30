@@ -13,8 +13,11 @@ import {
 import { OFFLINE_PRESENCE, pickBestPresence } from "#/lib/xmpp/presence";
 import {
 	reduceRoom,
+	reduceRoomInviteDeclined,
 	reduceRoomInvites,
 	reduceRoomLeft,
+	reduceRoomMembers,
+	reduceRoomMembership,
 	reduceRoomOccupant,
 	reduceRoomSubject,
 } from "#/lib/xmpp/room-reducers";
@@ -24,21 +27,7 @@ import type { PresenceState, SubscriptionRequest } from "#/types/xmpp";
 
 const MAX_MESSAGES = 1000;
 
-export function createInitialState(): XmppState {
-	return {
-		connection: { status: "idle", error: null, jid: null },
-		restorePending: true,
-		account: null,
-		contacts: {},
-		presences: {},
-		rooms: {},
-		roomInviteRequests: [],
-		conversations: {},
-		activeJid: null,
-		subscriptionRequests: [],
-	};
-}
-
+export { createInitialState } from "#/lib/xmpp/initial-state";
 export function reduceEvent(state: XmppState, event: XmppEvent): XmppState {
 	switch (event.type) {
 		case "connection":
@@ -57,6 +46,10 @@ export function reduceEvent(state: XmppState, event: XmppEvent): XmppState {
 			return reduceHistory(state, event.messages);
 		case "room":
 			return reduceRoom(state, event.room);
+		case "room-membership":
+			return reduceRoomMembership(state, event);
+		case "room-members":
+			return reduceRoomMembers(state, event);
 		case "room-occupant":
 			return reduceRoomOccupant(state, event);
 		case "room-subject":
@@ -83,6 +76,8 @@ export function reduceEvent(state: XmppState, event: XmppEvent): XmppState {
 					(request) => request.roomJid !== event.roomJid,
 				),
 			};
+		case "room-invite-declined":
+			return reduceRoomInviteDeclined(state, event);
 		case "message-status":
 			return reduceMessageStatus(state, event);
 		case "typing":
@@ -155,7 +150,7 @@ export function reducePresence(
 	presence: PresenceState,
 ): XmppState {
 	const key = bareJid(jid);
-	if (isSelfJid(state, key)) return state;
+	if (isSelfJid(state, key) || state.rooms[key]) return state;
 
 	const resources = { ...state.presences[key] };
 	if (presence.show === "offline") {

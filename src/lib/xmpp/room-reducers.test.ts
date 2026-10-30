@@ -79,6 +79,58 @@ describe("room reducers", () => {
 		);
 	});
 
+	it("keeps known occupants when an empty room snapshot arrives", () => {
+		let state = reduceEvent(createInitialState(), { type: "room", room });
+		for (const nick of ["alice", "bob"]) {
+			state = reduceEvent(state, {
+				type: "room-occupant",
+				jid: room.jid,
+				action: "join",
+				occupant: {
+					nick,
+					jid: `${nick}@example.com`,
+					presence: OFFLINE_PRESENCE,
+				},
+			});
+		}
+
+		state = reduceEvent(state, {
+			type: "room",
+			room: { ...room, occupants: {}, membership: "joining" },
+		});
+
+		expect(Object.keys(state.rooms[room.jid]?.occupants ?? {})).toEqual([
+			"alice",
+			"bob",
+		]);
+	});
+
+	it("marks a declined invitation", () => {
+		let state = reduceEvent(createInitialState(), { type: "room", room });
+		state = reduceEvent(state, {
+			type: "room-invites",
+			jid: room.jid,
+			invites: [
+				{
+					jid: "bob@example.com",
+					status: "pending",
+					invitedAt: 1000,
+					invitedBy: "alice@example.com",
+				},
+			],
+		});
+
+		state = reduceEvent(state, {
+			type: "room-invite-declined",
+			roomJid: room.jid,
+			from: "bob@example.com",
+		});
+
+		expect(state.rooms[room.jid]?.invites["bob@example.com"]?.status).toBe(
+			"declined",
+		);
+	});
+
 	it("updates the subject and removes a left room", () => {
 		let state = reduceEvent(createInitialState(), { type: "room", room });
 		state = reduceEvent(state, {

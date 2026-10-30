@@ -88,4 +88,29 @@ describe("conversation selectors", () => {
 			summary?.participants?.map((participant) => participant.name),
 		).toEqual(["alice", "bob"]);
 	});
+
+	it("does not render a room JID as a direct contact", () => {
+		const state = reduceEvent(createInitialState(), {
+			type: "room",
+			room: {
+				jid: "test@conference.example.com",
+				name: "Test room",
+				nick: "alice",
+				occupants: {},
+				invites: {},
+			},
+		});
+		const withPresence = reduceEvent(state, {
+			type: "presence",
+			jid: "test@conference.example.com/bob",
+			presence: { show: "available", priority: 0 },
+		});
+
+		const summaries = selectConversationSummaries(withPresence).filter(
+			(entry) => entry.jid === "test@conference.example.com",
+		);
+
+		expect(summaries).toHaveLength(1);
+		expect(summaries[0]?.kind).toBe("group");
+	});
 });

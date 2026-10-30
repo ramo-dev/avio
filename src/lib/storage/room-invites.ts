@@ -58,7 +58,10 @@ function isRoomInvite(value: unknown): value is RoomInvite {
 	return (
 		typeof invite.jid === "string" &&
 		(invite.name === undefined || typeof invite.name === "string") &&
-		(invite.status === "pending" || invite.status === "accepted") &&
+		(invite.invitedBy === undefined || typeof invite.invitedBy === "string") &&
+		(invite.status === "pending" ||
+			invite.status === "accepted" ||
+			invite.status === "declined") &&
 		typeof invite.invitedAt === "number"
 	);
 }

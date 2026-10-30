@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	mapHistory,
 	mapHistoryActions,
+	mapRoomHistory,
 	mapRoster,
 	normalizeGroupMessage,
 	normalizeStanzaMessage,
@@ -164,5 +165,34 @@ describe("stanza mappers", () => {
 				body: "Updated",
 			},
 		]);
+	});
+
+	it("maps room MAM results into read-only group previews", () => {
+		const fin = {
+			results: [
+				{
+					item: {
+						message: {
+							id: "room-1",
+							from: "room@conference.example/alice",
+							to: "bob@example.com/web",
+							type: "groupchat",
+							body: "room history",
+						},
+					},
+				},
+			],
+		} as StanzaProtocol.MAMFin;
+
+		const messages = mapRoomHistory(fin, "bob@example.com");
+
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toMatchObject({
+			id: "room-1",
+			conversationJid: "room@conference.example",
+			senderNick: "alice",
+			body: "room history",
+			direction: "incoming",
+		});
 	});
 });

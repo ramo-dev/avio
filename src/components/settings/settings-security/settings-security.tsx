@@ -1,10 +1,11 @@
 import {
 	RiAlertLine,
-	RiLockLine,
 	RiLockUnlockLine,
 	RiShieldCheckLine,
 } from "@remixicon/react";
 import type { ReactNode } from "react";
+import { SettingsOmemoCard } from "#/components/settings/settings-omemo-card/settings-omemo-card";
+import { SettingsOmemoPreferences } from "#/components/settings/settings-omemo-card/settings-omemo-preferences";
 import { SettingsSection } from "#/components/settings/settings-section/settings-section";
 import { Badge } from "#/components/ui/badge";
 
@@ -25,16 +26,9 @@ export function SettingsSecurity() {
 				<StatusRow
 					icon={<RiLockUnlockLine className="size-4" />}
 					title="End-to-end encryption"
-					value="Not available"
-					tone="destructive"
-					description="The server and anyone with server access can read messages in this build."
-				/>
-				<StatusRow
-					icon={<RiLockLine className="size-4" />}
-					title="OMEMO"
-					value="In progress"
+					value="Opt-in"
 					tone="secondary"
-					description="Key storage, PEP bundles, and 1:1 message encryption are implemented, but OMEMO is not enabled in the app and has not been independently audited."
+					description="OMEMO can be enabled per direct conversation after you set up and unlock it below."
 				/>
 				<StatusRow
 					icon={<RiAlertLine className="size-4" />}
@@ -45,9 +39,13 @@ export function SettingsSecurity() {
 				/>
 			</div>
 
+			<SettingsOmemoCard />
+			<SettingsOmemoPreferences />
+
 			<p className="text-xs leading-relaxed text-muted-foreground">
 				Do not use this development build for sensitive conversations. TLS
-				protects the connection, not the message contents.
+				protects the connection, not the message contents. OMEMO is experimental
+				and has not been independently audited.
 			</p>
 		</SettingsSection>
 	);

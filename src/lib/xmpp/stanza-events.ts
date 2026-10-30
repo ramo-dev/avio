@@ -177,6 +177,7 @@ export function attachStanzaEvents(
 	});
 
 	agent.on("available", (presence) => {
+		if (presence.muc) return;
 		emit({
 			type: "presence",
 			jid: presence.from,
@@ -189,6 +190,7 @@ export function attachStanzaEvents(
 	});
 
 	agent.on("unavailable", (presence) => {
+		if (presence.muc) return;
 		emit({
 			type: "presence",
 			jid: presence.from,
@@ -265,6 +267,17 @@ export function attachStanzaEvents(
 				reason: event.reason,
 				receivedAt: Date.now(),
 			},
+		});
+	});
+
+	agent.on("muc:declined", (event) => {
+		void agent
+			.setRoomAffiliation(bareJid(event.room), bareJid(event.from), "none")
+			.catch(() => undefined);
+		emit({
+			type: "room-invite-declined",
+			roomJid: bareJid(event.room),
+			from: bareJid(event.from),
 		});
 	});
 

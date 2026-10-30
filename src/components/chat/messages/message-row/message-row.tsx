@@ -1,5 +1,4 @@
 import { RiShareForwardLine } from "@remixicon/react";
-import { cn } from "cn";
 import {
 	type MouseEvent as ReactMouseEvent,
 	type PointerEvent as ReactPointerEvent,
@@ -13,7 +12,8 @@ import { MessageAttachments } from "#/components/chat/messages/message-attachmen
 import { MessageBubble } from "#/components/chat/messages/message-bubble/message-bubble";
 import { MessageReactions } from "#/components/chat/messages/message-reactions/message-reactions";
 import { MessageReplyQuote } from "#/components/chat/messages/message-reply-quote/message-reply-quote";
-import { MessageStatus } from "#/components/chat/messages/message-status/message-status";
+import { MessageDecryptionError } from "#/components/chat/messages/message-row/message-encryption";
+import { MessageFooter } from "#/components/chat/messages/message-row/message-footer";
 import { MessageToolbar } from "#/components/chat/messages/message-toolbar/message-toolbar";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
 import {
@@ -116,7 +116,7 @@ export function MessageRow({
 							}
 						: undefined
 				}
-				forwardSource={message}
+				forwardSource={message.encrypted ? undefined : message}
 				onForwarded={() => setActionsOpen(false)}
 				forwardOpen={forwardOpen}
 				onForwardOpenChange={setForwardOpen}
@@ -241,19 +241,10 @@ export function MessageRow({
 					actionsOpen={actionsOpen}
 					footer={
 						showMeta ? (
-							<>
-								<span className={cn(outgoing ? "ml-auto" : "mr-auto")}>
-									{formatMessageTime(message.timestamp)}
-								</span>
-								{message.edited && <span>edited</span>}
-								{outgoing && (
-									<MessageStatus
-										status={message.status}
-										onRetry={onRetry}
-										tone="inverse"
-									/>
-								)}
-							</>
+							<MessageFooter
+								message={message}
+								onRetry={message.encrypted ? undefined : onRetry}
+							/>
 						) : undefined
 					}
 				>
@@ -271,7 +262,14 @@ export function MessageRow({
 							outgoing={outgoing}
 						/>
 					)}
-					{shouldShowMessageBody(message) && <div>{body}</div>}
+					{message.decryptionError ? (
+						<MessageDecryptionError
+							reason={message.decryptionError}
+							outgoing={outgoing}
+						/>
+					) : (
+						shouldShowMessageBody(message) && <div>{body}</div>
+					)}
 					{message.attachments && message.attachments.length > 0 && (
 						<MessageAttachments
 							attachments={message.attachments}

@@ -67,6 +67,36 @@ export interface OmemoEnvelopePersistence {
 	clear(accountJid: string): Promise<void>;
 }
 
+/**
+ * Device-local secret that unlocks an account without typing the passphrase.
+ *
+ * `key` is the non-extractable AES-GCM key derived from the passphrase. The
+ * passphrase itself is never stored. The discriminant leaves room for a native
+ * keychain variant later.
+ */
+export type OmemoUnlockSecret = { type: "key"; key: CryptoKey };
+
+/**
+ * Lifecycle of an account-scoped OMEMO session.
+ *
+ * `setup` means no encrypted envelope exists yet, `locked` means an envelope
+ * exists but the passphrase has not unlocked it in this tab.
+ */
+export type OmemoAccountStatus =
+	| "disabled"
+	| "setup"
+	| "locked"
+	| "unlocking"
+	| "ready"
+	| "error";
+
+/** Public device facts shown in trust UI. Never contains key bytes. */
+export interface OmemoDeviceInfo {
+	deviceId: number;
+	fingerprint: string;
+	trusted: boolean;
+}
+
 /** A single legacy OMEMO pre-key published in a PEP bundle. */
 export interface OmemoPepPreKey {
 	id: number;

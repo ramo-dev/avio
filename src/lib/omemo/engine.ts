@@ -8,6 +8,7 @@ import {
 } from "#/lib/omemo/bundle";
 import { secureRandomBytes } from "#/lib/omemo/crypto";
 import { OmemoSessionError } from "#/lib/omemo/errors";
+import { fingerprintIdentityKey } from "#/lib/omemo/fingerprint";
 import type { OmemoKeyStore } from "#/lib/omemo/store";
 import { equalBytes } from "#/lib/omemo/store-state";
 import type {
@@ -176,11 +177,21 @@ export class OmemoEngine {
 		await this.buildSession(accountJid, deviceId);
 	}
 
-	async trustDevice(accountJid: string, deviceId: number): Promise<void> {
+	async trustDevice(
+		accountJid: string,
+		deviceId: number,
+		expectedFingerprint?: string,
+	): Promise<void> {
 		const address = addressFor(accountJid, deviceId);
 		const bundle = await this.pep.fetchBundle(accountJid, deviceId);
 		if (!bundle) throw new OmemoSessionError("bundle-missing");
 		const identity = fromBase64(bundle.identityKey);
+		if (expectedFingerprint) {
+			const actual = await fingerprintIdentityKey(identity);
+			if (actual !== expectedFingerprint) {
+				throw new OmemoSessionError("identity-changed");
+			}
+		}
 		const known = await this.store.loadIdentityKey(address);
 		if (known && !equalBytes(known, identity)) {
 			await this.store.removeSession(address);

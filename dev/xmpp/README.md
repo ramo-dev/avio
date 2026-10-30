@@ -28,11 +28,11 @@ On the Avio connect screen, open **Connection options** and enter the WebSocket 
 ## Reset
 
 ```bash
-pnpm xmpp:down
-docker compose -f dev/xmpp/compose.yml down -v
+pnpm xmpp:wipe
 ```
 
-Removing the volume also removes the test accounts. `pnpm xmpp:up` recreates them.
+This stops the container and removes the Prosody data volume, including the
+test accounts. `pnpm xmpp:up` recreates them.
 
 ## Integration test
 

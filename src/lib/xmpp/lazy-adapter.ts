@@ -71,13 +71,13 @@ export function createLazyAdapter(): XmppAdapter {
 			const adapter = await ensure();
 			await adapter.inviteToRoom(jid, memberJids, reason);
 		},
-		async acceptRoomInvite(jid, reason) {
+		async acceptRoomInvite(jid, reason, invitedBy) {
 			const adapter = await ensure();
-			await adapter.acceptRoomInvite(jid, reason);
+			await adapter.acceptRoomInvite(jid, reason, invitedBy);
 		},
-		async declineRoomInvite(jid) {
+		async declineRoomInvite(jid, sender, reason) {
 			const adapter = await ensure();
-			await adapter.declineRoomInvite(jid);
+			await adapter.declineRoomInvite(jid, sender, reason);
 		},
 		async getUploadService(): Promise<UploadService> {
 			const adapter = await ensure();
@@ -93,6 +93,14 @@ export function createLazyAdapter(): XmppAdapter {
 		async getOmemoPep() {
 			const adapter = await ensure();
 			return adapter.getOmemoPep();
+		},
+		async loadRoomPreview(jid) {
+			const adapter = await ensure();
+			return adapter.loadRoomPreview(jid);
+		},
+		async getRoomMemberJids(jid) {
+			const adapter = await ensure();
+			return adapter.getRoomMemberJids(jid);
 		},
 		async addContact(jid) {
 			const adapter = await ensure();

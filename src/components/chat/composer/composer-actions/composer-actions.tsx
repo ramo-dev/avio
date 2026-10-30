@@ -4,6 +4,8 @@ import {
 	RiEmotionLine,
 	RiFileLine,
 	RiImageLine,
+	RiLockLine,
+	RiLockUnlockLine,
 	RiMusicLine,
 } from "@remixicon/react";
 import { useRef, useState } from "react";
@@ -35,6 +37,9 @@ export function ComposerActions({
 	disabled,
 	canSend,
 	canAttach,
+	showEncryption,
+	encryptionEnabled,
+	onToggleEncryption,
 	onStage,
 	onEmojiSelect,
 	textareaRef,
@@ -42,6 +47,9 @@ export function ComposerActions({
 	disabled: boolean;
 	canSend: boolean;
 	canAttach: boolean;
+	showEncryption?: boolean;
+	encryptionEnabled?: boolean;
+	onToggleEncryption?: () => void;
 	onStage: (files: FileList | null) => void;
 	onEmojiSelect: (emoji: string) => void;
 	textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -54,6 +62,39 @@ export function ComposerActions({
 	return (
 		<div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-2">
 			<div className="flex items-center gap-1">
+				{showEncryption && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									type="button"
+									variant={encryptionEnabled ? "secondary" : "ghost"}
+									size="icon"
+									disabled={disabled}
+									onClick={onToggleEncryption}
+									aria-label={
+										encryptionEnabled
+											? "Turn off message encryption"
+											: "Turn on message encryption"
+									}
+									aria-pressed={encryptionEnabled}
+									className="size-9 shrink-0 rounded-full text-muted-foreground"
+								/>
+							}
+						>
+							{encryptionEnabled ? (
+								<RiLockLine className="size-5" />
+							) : (
+								<RiLockUnlockLine className="size-5" />
+							)}
+						</TooltipTrigger>
+						<TooltipContent>
+							{encryptionEnabled
+								? "Encryption on"
+								: "Encrypt this conversation"}
+						</TooltipContent>
+					</Tooltip>
+				)}
 				{canAttach && (
 					<>
 						<DropdownMenu>

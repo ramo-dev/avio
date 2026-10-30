@@ -114,9 +114,10 @@ A dropped connection is a pause, not an interruption.
   the session. It is never written to `localStorage`, and it is cleared on logout and
   auth failure. The Tauri build will use the OS keychain.
 - Avio remembers your address and connection details on your device, and nothing more.
-- **End-to-end encryption is not implemented yet.** Messages are protected in
-  transit by TLS, but the server can read them. OMEMO is planned and is not
-  enabled.
+- **End-to-end encryption is experimental.** OMEMO is opt-in per direct
+  conversation and requires a local passphrase. The implementation is not
+  independently audited, and messages remain readable by the server unless
+  OMEMO is enabled and every participating device is verified.
 - Messages render as plain text. Nothing inside a message can execute in your app.
 - Your history lives on your server, under your rules. Back it up, move it, or delete
   it on your own terms.

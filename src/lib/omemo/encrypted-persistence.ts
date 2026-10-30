@@ -2,6 +2,7 @@ import { decodeState, encodeState } from "#/lib/omemo/codec";
 import {
 	deriveKey,
 	openEnvelope,
+	type ParsedEnvelope,
 	PBKDF2_ITERATIONS,
 	parseEnvelope,
 	SALT_BYTES,
@@ -47,9 +48,11 @@ export class EncryptedOmemoPersistence implements OmemoPersistence {
 	/**
 	 * Derives the storage key and verifies an existing envelope.
 	 *
-	 * A wrong passphrase fails authentication and leaves the wrapper locked.
+	 * Returns the non-extractable derived key so callers can remember it without
+	 * retaining the passphrase. A wrong passphrase fails authentication and leaves
+	 * the wrapper locked.
 	 */
-	async unlock(passphrase: string): Promise<void> {
+	async unlock(passphrase: string): Promise<CryptoKey> {
 		this.lock();
 		if (passphrase.length === 0) {
 			throw new OmemoStorageError("invalid-passphrase");
@@ -62,11 +65,50 @@ export class EncryptedOmemoPersistence implements OmemoPersistence {
 			this.key = key;
 			this.salt = salt;
 			this.iterations = PBKDF2_ITERATIONS;
-			return;
+			return key;
 		}
 
 		const parsed = parseEnvelope(envelope);
 		const key = await deriveKey(passphrase, parsed.salt, parsed.iterations);
+		await this.verifyEnvelope(parsed, key);
+
+		this.key = key;
+		this.salt = parsed.salt;
+		this.iterations = parsed.iterations;
+		return key;
+	}
+
+	/**
+	 * Unlocks with a previously derived key instead of the passphrase.
+	 *
+	 * The key must be non-extractable AES-GCM and must authenticate the stored
+	 * envelope. Any mismatch leaves the wrapper locked.
+	 */
+	async unlockWithKey(key: CryptoKey): Promise<void> {
+		this.lock();
+		if (
+			key.extractable ||
+			key.algorithm.name !== "AES-GCM" ||
+			!key.usages.includes("decrypt")
+		) {
+			throw new OmemoStorageError("invalid-passphrase");
+		}
+
+		const envelope = await this.raw.loadEnvelope(this.accountJid);
+		if (!envelope) throw new OmemoStorageError("not-configured");
+
+		const parsed = parseEnvelope(envelope);
+		await this.verifyEnvelope(parsed, key);
+
+		this.key = key;
+		this.salt = parsed.salt;
+		this.iterations = parsed.iterations;
+	}
+
+	private async verifyEnvelope(
+		parsed: ParsedEnvelope,
+		key: CryptoKey,
+	): Promise<void> {
 		let plaintext: Uint8Array;
 		try {
 			plaintext = await openEnvelope(parsed, key, this.accountJid);
@@ -80,10 +122,6 @@ export class EncryptedOmemoPersistence implements OmemoPersistence {
 			throw error;
 		}
 		plaintext.fill(0);
-
-		this.key = key;
-		this.salt = parsed.salt;
-		this.iterations = parsed.iterations;
 	}
 
 	lock(): void {

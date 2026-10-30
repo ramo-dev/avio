@@ -53,6 +53,28 @@ export function mapHistory(
 	return messages.sort((a, b) => a.timestamp - b.timestamp);
 }
 
+/**
+ * Maps room MAM results into read-only room messages for invite previews.
+ */
+export function mapRoomHistory(
+	fin: StanzaProtocol.MAMFin,
+	accountBareJid: string,
+): ChatMessage[] {
+	const messages: ChatMessage[] = [];
+	for (const result of fin.results ?? []) {
+		const message = result.item.message;
+		if (!message || message.type !== "groupchat") continue;
+		if (message.reactions || message.replace) continue;
+		const delay = result.item.delay?.timestamp ?? message.delay?.timestamp;
+		const normalized = normalizeGroupMessage(
+			delay ? { ...message, delay: { timestamp: delay } } : message,
+			accountBareJid,
+		);
+		if (normalized) messages.push(normalized);
+	}
+	return messages.sort((a, b) => a.timestamp - b.timestamp);
+}
+
 export function mapHistoryActions(
 	fin: StanzaProtocol.MAMFin,
 	accountBareJid: string,

@@ -1,6 +1,8 @@
 import type { Agent } from "stanza";
 import { createXmppError } from "#/lib/xmpp/errors";
 import { bareJid } from "#/lib/xmpp/jid";
+import { findMucService } from "#/lib/xmpp/muc-discovery";
+import { getRoomMemberJids as queryRoomMemberJids } from "#/lib/xmpp/room-member-query";
 import type { RoomInfo, XmppEvent } from "#/types/store";
 
 interface MucAdapterOptions {
@@ -18,7 +20,13 @@ export interface MucAdapter {
 		reason?: string,
 	): Promise<void>;
 	joinBookmarks(): Promise<void>;
-	joinInvitedRoom(jid: string, reason?: string): Promise<void>;
+	joinInvitedRoom(
+		jid: string,
+		reason?: string,
+		invitedBy?: string,
+	): Promise<void>;
+	declineInvite(jid: string, sender: string, reason?: string): void;
+	getRoomMemberJids(jid: string): Promise<string[]>;
 	getRoomNick(jid: string): string | undefined;
 }
 
@@ -62,7 +70,14 @@ export function createMucAdapter({
 		roomNicks.set(roomJid, nick);
 		emit({
 			type: "room",
-			room: { jid: roomJid, name, nick, occupants: {}, invites: {} },
+			room: {
+				jid: roomJid,
+				name,
+				nick,
+				occupants: {},
+				invites: {},
+				membership: "joining",
+			},
 		});
 
 		try {
@@ -77,6 +92,7 @@ export function createMucAdapter({
 				"Could not create the group chat.",
 			);
 		}
+		emit({ type: "room-membership", jid: roomJid, membership: "joined" });
 
 		// Instant rooms start locked; submit the default configuration so other
 		// members can join and the room stays around after the owner leaves.
@@ -96,12 +112,12 @@ export function createMucAdapter({
 					{
 						name: "muc#roomconfig_publicroom",
 						type: "boolean",
-						value: true,
+						value: false,
 					},
 					{
 						name: "muc#roomconfig_membersonly",
 						type: "boolean",
-						value: false,
+						value: true,
 					},
 					{
 						name: "muc#roomconfig_allowinvites",
@@ -132,6 +148,9 @@ export function createMucAdapter({
 		const roomJid = bareJid(jid);
 		for (const to of memberJids.map(bareJid).filter(Boolean)) {
 			try {
+				await client
+					.setRoomAffiliation(roomJid, to, "member")
+					.catch(() => undefined);
 				client.directInvite(roomJid, to, reason ? { reason } : undefined);
 			} catch {
 				// Continue inviting the rest of the contacts.
@@ -165,9 +184,20 @@ export function createMucAdapter({
 							nick: roomNick,
 							occupants: {},
 							invites: {},
+							membership: "joining",
 						},
 					});
-					await client.joinRoom(roomJid, roomNick).catch(() => undefined);
+					const joined = await client
+						.joinRoom(roomJid, roomNick)
+						.then(() => true)
+						.catch(() => false);
+					if (joined) {
+						emit({
+							type: "room-membership",
+							jid: roomJid,
+							membership: "joined",
+						});
+					}
 				}),
 		);
 	}
@@ -182,7 +212,11 @@ export function createMucAdapter({
 		await client?.removeBookmark(jid).catch(() => undefined);
 	}
 
-	async function joinInvitedRoom(room: string, reason?: string) {
+	async function joinInvitedRoom(
+		room: string,
+		reason?: string,
+		invitedBy?: string,
+	) {
 		const client = getClient();
 		if (!client) return;
 		const roomJid = bareJid(room);
@@ -201,39 +235,44 @@ export function createMucAdapter({
 				nick,
 				occupants: {},
 				invites: {},
+				membership: "joining",
+				invitedBy: invitedBy ? bareJid(invitedBy) : undefined,
 			},
 		});
-		await client.joinRoom(roomJid, nick).catch(() => undefined);
+		try {
+			await client.joinRoom(roomJid, nick);
+		} catch (error) {
+			emit({ type: "room-left", jid: roomJid });
+			throw createXmppError("unknown", error, "Could not join the group chat.");
+		}
+		emit({ type: "room-membership", jid: roomJid, membership: "joined" });
 		await client
 			.addBookmark({ jid: roomJid, name, nick, autoJoin: true })
 			.catch(() => undefined);
+	}
+
+	function declineInvite(jid: string, sender: string, reason?: string) {
+		const client = getClient();
+		if (!client) return;
+		client.declineInvite(bareJid(jid), bareJid(sender), reason);
+	}
+
+	async function getRoomMemberJids(room: string): Promise<string[]> {
+		const client = getClient();
+		if (!client) return [];
+		return queryRoomMemberJids(client, room);
 	}
 
 	return {
 		createRoom,
 		joinBookmarks,
 		joinInvitedRoom,
+		declineInvite,
+		getRoomMemberJids,
 		leaveRoom,
 		inviteToRoom,
 		getRoomNick: (jid) => roomNicks.get(jid),
 	};
-}
-
-async function findMucService(
-	client: Agent,
-	domain: string,
-): Promise<string | null> {
-	const items = await client.getDiscoItems(domain).catch(() => null);
-	for (const item of items?.items ?? []) {
-		if (!item.jid) continue;
-		const info = await client.getDiscoInfo(item.jid).catch(() => null);
-		const isConference = info?.identities?.some(
-			(identity) =>
-				identity.category === "conference" && identity.type === "text",
-		);
-		if (isConference) return bareJid(item.jid);
-	}
-	return null;
 }
 
 function nickFor(accountBareJid: string): string {

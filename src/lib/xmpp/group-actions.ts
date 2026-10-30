@@ -1,3 +1,4 @@
+import { removeInviteNotifications } from "#/lib/notifications/store";
 import { normalizeXmppError } from "#/lib/xmpp/errors";
 import { bareJid } from "#/lib/xmpp/jid";
 import type {
@@ -16,6 +17,7 @@ export function createGroupActions(
 ) {
 	function addInvites(jid: string, memberJids: string[]) {
 		const contacts = getState().contacts;
+		const invitedBy = getState().account?.bareJid;
 		const invites = memberJids.map((member) => {
 			const memberJid = bareJid(member);
 			return {
@@ -23,6 +25,7 @@ export function createGroupActions(
 				name: contacts[memberJid]?.name,
 				status: "pending" as const,
 				invitedAt: Date.now(),
+				invitedBy,
 			};
 		});
 		handleEvent({ type: "room-invites", jid, invites });
@@ -67,8 +70,25 @@ export function createGroupActions(
 			(item) => item.roomJid === jid,
 		);
 		try {
-			await adapter.acceptRoomInvite(jid, request?.roomName);
+			await adapter.acceptRoomInvite(jid, request?.roomName, request?.from);
+			if (request?.from) {
+				const inviterJid = bareJid(request.from);
+				handleEvent({
+					type: "room-invites",
+					jid,
+					invites: [
+						{
+							jid: inviterJid,
+							name: getState().contacts[inviterJid]?.name,
+							status: "accepted",
+							invitedAt: request.receivedAt,
+							invitedBy: inviterJid,
+						},
+					],
+				});
+			}
 			handleEvent({ type: "room-invite-request-cleared", roomJid: jid });
+			removeInviteNotifications(getState().account?.bareJid ?? null, jid);
 		} catch (error) {
 			onError(normalizeXmppError(error, "unknown"));
 			throw error;
@@ -76,12 +96,16 @@ export function createGroupActions(
 	}
 
 	async function declineRoomInvite(jid: string) {
+		const request = getState().roomInviteRequests.find(
+			(item) => item.roomJid === jid,
+		);
 		try {
-			await adapter.declineRoomInvite(jid);
+			await adapter.declineRoomInvite(jid, request?.from, request?.reason);
 		} catch {
 			// Declining locally is enough for this client.
 		}
 		handleEvent({ type: "room-invite-request-cleared", roomJid: jid });
+		removeInviteNotifications(getState().account?.bareJid ?? null, jid);
 	}
 
 	return {

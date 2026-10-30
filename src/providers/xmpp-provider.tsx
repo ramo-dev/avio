@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { createContext, useContext, useEffect, useRef, useState } from "react";
+import { createRoomInviteRequestStore } from "#/lib/storage/room-invite-requests";
 import { createRoomInviteStore } from "#/lib/storage/room-invites";
 import { createSessionStore } from "#/lib/storage/session";
 import { createAttachmentUploader } from "#/lib/uploads/attachment-uploader";
@@ -17,6 +18,7 @@ export function XmppProvider({ children }: { children: ReactNode }) {
 			uploader: createAttachmentUploader(adapter),
 			sessionStore: createSessionStore(),
 			roomInviteStore: createRoomInviteStore(),
+			roomInviteRequestStore: createRoomInviteRequestStore(),
 		});
 	});
 	const restored = useRef(false);

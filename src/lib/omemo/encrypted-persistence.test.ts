@@ -1,85 +1,26 @@
 // @vitest-environment node
 
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { decodeBase64, encodeBase64 } from "#/lib/omemo/base64";
+import { encodeBase64 } from "#/lib/omemo/base64";
 import { EncryptedOmemoPersistence } from "#/lib/omemo/encrypted-persistence";
+import {
+	ACCOUNT,
+	BOB_ADDRESS,
+	bytes,
+	createUnlocked,
+	expectBytes,
+	expectFixtureState,
+	fixtureState,
+	keyPair,
+	OTHER_ACCOUNT,
+	PASSPHRASE,
+	tamperCiphertext,
+	WRONG_PASSPHRASE,
+} from "#/lib/omemo/encrypted-persistence.fixtures";
 import { IndexedDbOmemoPersistence } from "#/lib/omemo/indexed-db-persistence";
 import { MemoryOmemoEnvelopePersistence } from "#/lib/omemo/memory-persistence";
 import { OmemoKeyStore } from "#/lib/omemo/store";
 import { createEmptyState } from "#/lib/omemo/store-state";
-import type { OmemoKeyPair, OmemoPersistedState } from "#/types/omemo";
-
-const ACCOUNT = "alice@example.com";
-const OTHER_ACCOUNT = "bob@example.com";
-const BOB_ADDRESS = "bob@example.com.1";
-const PASSPHRASE = "correct horse battery staple";
-const WRONG_PASSPHRASE = "incorrect horse battery staple";
-
-function bytes(...values: number[]): ArrayBuffer {
-	return Uint8Array.from(values).buffer;
-}
-
-const sequence = (start: number, length: number): ArrayBuffer =>
-	bytes(...Array.from({ length }, (_, index) => start + index));
-
-function keyPair(pub: number[], priv: number[]): OmemoKeyPair {
-	return { pubKey: bytes(...pub), privKey: bytes(...priv) };
-}
-
-function expectBytes(actual: ArrayBuffer | undefined, expected: ArrayBuffer) {
-	if (!actual) throw new Error("Expected key bytes to be present");
-	expect(new Uint8Array(actual)).toEqual(new Uint8Array(expected));
-}
-
-function fixtureState(): OmemoPersistedState {
-	return {
-		identityKeyPair: {
-			pubKey: sequence(1, 16),
-			privKey: sequence(17, 16),
-		},
-		registrationId: 4242,
-		deviceId: 5150,
-		currentSignedPreKeyId: 9,
-		preKeys: { "7": keyPair([33, 34], [35, 36]) },
-		signedPreKeys: { "9": keyPair([37, 38], [39, 40]) },
-		signedPreKeySignatures: { "9": bytes(44, 45) },
-		sessions: { [BOB_ADDRESS]: "session-record" },
-		identities: { [BOB_ADDRESS]: bytes(41, 42, 43) },
-		trustedIdentities: { [BOB_ADDRESS]: bytes(46, 47) },
-	};
-}
-
-function expectFixtureState(state: OmemoPersistedState | null): void {
-	if (!state) throw new Error("Expected persisted state to be present");
-	expectBytes(state.identityKeyPair?.pubKey, sequence(1, 16));
-	expectBytes(state.identityKeyPair?.privKey, sequence(17, 16));
-	expect(state.registrationId).toBe(4242);
-	expect(state.deviceId).toBe(5150);
-	expect(state.currentSignedPreKeyId).toBe(9);
-	expectBytes(state.preKeys["7"]?.pubKey, bytes(33, 34));
-	expectBytes(state.preKeys["7"]?.privKey, bytes(35, 36));
-	expectBytes(state.signedPreKeys["9"]?.pubKey, bytes(37, 38));
-	expectBytes(state.signedPreKeys["9"]?.privKey, bytes(39, 40));
-	expectBytes(state.signedPreKeySignatures["9"], bytes(44, 45));
-	expect(state.sessions[BOB_ADDRESS]).toBe("session-record");
-	expectBytes(state.identities[BOB_ADDRESS], bytes(41, 42, 43));
-	expectBytes(state.trustedIdentities[BOB_ADDRESS], bytes(46, 47));
-}
-
-function tamperCiphertext(value: string): string {
-	const decoded = decodeBase64(value);
-	if (!decoded) throw new Error("Expected valid base64 ciphertext");
-	decoded[0] ^= 0xff;
-	return encodeBase64(decoded);
-}
-
-async function createUnlocked(
-	raw: MemoryOmemoEnvelopePersistence,
-): Promise<EncryptedOmemoPersistence> {
-	const persistence = new EncryptedOmemoPersistence(ACCOUNT, raw);
-	await persistence.unlock(PASSPHRASE);
-	return persistence;
-}
 
 describe("EncryptedOmemoPersistence", { timeout: 20_000 }, () => {
 	afterEach(() => {

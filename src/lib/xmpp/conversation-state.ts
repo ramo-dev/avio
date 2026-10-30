@@ -150,11 +150,20 @@ export function reduceHistory(
 
 	for (const message of messages) {
 		const jid = message.conversationJid;
-		const existing = next.conversations[jid] ?? createConversation(jid);
+		const isGroupMessage = Boolean(message.senderNick);
+		const existing =
+			next.conversations[jid] ??
+			createConversation(
+				jid,
+				isGroupMessage ? "group" : "direct",
+				isGroupMessage ? jid : undefined,
+			);
 		const merged = appendMessage(existing.messages, message, 1000);
 		next = {
 			...next,
-			contacts: ensureContact(next.contacts, message.from),
+			contacts: isGroupMessage
+				? next.contacts
+				: ensureContact(next.contacts, message.from),
 			conversations: {
 				...next.conversations,
 				[jid]: {

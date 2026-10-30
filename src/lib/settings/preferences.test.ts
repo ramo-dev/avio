@@ -59,6 +59,10 @@ describe("settings preferences", () => {
 		expect(settings.appearance.theme).toBe("system");
 		expect(settings.sounds).toEqual({ muted: false, volume: 1 });
 		expect(settings.chats.typingIndicators).toBe(true);
+		expect(settings.security).toEqual({
+			defaultEncryption: "none",
+			rememberOmemoUnlock: false,
+		});
 	});
 
 	it("migrates the legacy sound keys once", () => {

@@ -1,3 +1,4 @@
+import { requestResult, transactionDone } from "#/lib/storage/indexed-db";
 import type { OmemoEnvelope, OmemoEnvelopePersistence } from "#/types/omemo";
 
 const DATABASE_NAME = "avio-omemo";
@@ -8,28 +9,6 @@ const LEGACY_STORE_NAME = "accounts";
 interface OmemoEnvelopeRecord {
 	accountJid: string;
 	envelope: OmemoEnvelope;
-}
-
-function requestResult<T>(request: IDBRequest<T>): Promise<T> {
-	return new Promise((resolve, reject) => {
-		request.onsuccess = () => resolve(request.result);
-		request.onerror = () =>
-			reject(request.error ?? new Error("OMEMO IndexedDB request failed"));
-	});
-}
-
-function transactionDone(transaction: IDBTransaction): Promise<void> {
-	return new Promise((resolve, reject) => {
-		transaction.oncomplete = () => resolve();
-		transaction.onerror = () =>
-			reject(
-				transaction.error ?? new Error("OMEMO IndexedDB transaction failed"),
-			);
-		transaction.onabort = () =>
-			reject(
-				transaction.error ?? new Error("OMEMO IndexedDB transaction aborted"),
-			);
-	});
 }
 
 /**

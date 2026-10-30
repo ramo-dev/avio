@@ -12,7 +12,13 @@ import {
 	normalizeXmppError,
 } from "#/lib/xmpp/errors";
 import { createGroupActions } from "#/lib/xmpp/group-actions";
+import {
+	loadInviteRequests,
+	persistInviteState,
+	persistRoomInvites,
+} from "#/lib/xmpp/invite-persistence";
 import { bareJid, isValidAccountJid, toAccount } from "#/lib/xmpp/jid";
+import { createOmemoStoreBridge } from "#/lib/xmpp/omemo-store";
 import { createOutgoingActions } from "#/lib/xmpp/outgoing-actions";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import {
@@ -21,15 +27,16 @@ import {
 	reduceEvent,
 } from "#/lib/xmpp/reducers";
 import { restoreSavedSession } from "#/lib/xmpp/session-restore";
+import type { ChatMessage } from "#/types/chat";
 import type {
 	ConnectionState,
+	RoomPreviewResult,
 	XmppEvent,
 	XmppState,
 	XmppStore,
 	XmppStoreDeps,
 } from "#/types/store";
 import type { ConnectCredentials, XmppError } from "#/types/xmpp";
-
 export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	let state = createInitialState();
 	const listeners = new Set<() => void>();
@@ -40,33 +47,33 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			globalThis.crypto?.randomUUID?.() ??
 			`${now()}-${Math.random().toString(36).slice(2)}`);
 
-	deps.adapter.subscribe(handleEvent);
-
+	const omemo = createOmemoStoreBridge(deps.adapter, handleEvent);
 	function getState() {
 		return state;
 	}
+	function addMessage(message: ChatMessage) {
+		handleEvent({ type: "message", message });
+	}
+	async function loadRoomPreview(jid: string): Promise<RoomPreviewResult> {
+		const result = await deps.adapter.loadRoomPreview(jid);
+		if (result.status === "ok" && result.messages.length > 0) {
+			handleEvent({ type: "history", messages: result.messages });
+		}
+		return result;
+	}
 
+	async function refreshRoomMembers(jid: string): Promise<void> {
+		const memberJids = await deps.adapter.getRoomMemberJids(jid);
+		handleEvent({ type: "room-members", jid, memberJids });
+	}
 	function subscribe(listener: () => void) {
 		listeners.add(listener);
 		return () => listeners.delete(listener);
 	}
-
 	function setState(next: XmppState) {
 		if (next === state) return;
 		state = next;
 		for (const listener of listeners) listener();
-	}
-
-	function persistInvites(next: XmppState) {
-		const accountJid = next.account?.bareJid;
-		if (!accountJid) return;
-		const rooms = Object.fromEntries(
-			Object.entries(next.rooms).map(([roomJid, room]) => [
-				roomJid,
-				Object.values(room.invites),
-			]),
-		);
-		deps.roomInviteStore.save(accountJid, rooms);
 	}
 
 	function handleEvent(event: XmppEvent) {
@@ -83,7 +90,12 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 
 		const next = reduceEvent(state, nextEvent);
 		setState(next);
-		if (nextEvent.type.startsWith("room")) persistInvites(next);
+		persistInviteState(
+			deps.roomInviteStore,
+			deps.roomInviteRequestStore,
+			nextEvent,
+			next,
+		);
 	}
 
 	function setConnection(connection: ConnectionState) {
@@ -109,7 +121,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		handleEvent,
 		setError,
 	);
-
 	async function connect(credentials: ConnectCredentials) {
 		if (!isValidAccountJid(credentials.jid)) {
 			setError(createXmppError("invalid-jid"));
@@ -129,11 +140,16 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			resource: credentials.resource,
 		});
 		deps.sessionStore.savePassword(credentials.password);
+		const savedRequests = loadInviteRequests(
+			deps.roomInviteRequestStore,
+			account.bareJid,
+		);
 
 		setState({
 			...createInitialState(),
 			restorePending: false,
 			account,
+			roomInviteRequests: savedRequests,
 			connection: { status: "connecting", error: null, jid: account.bareJid },
 		});
 
@@ -160,7 +176,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			});
 		}
 	}
-
 	async function restoreSession() {
 		await restoreSavedSession({
 			getState,
@@ -169,7 +184,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			connect,
 		});
 	}
-
 	async function disconnect() {
 		deps.sessionStore.clearPassword();
 		try {
@@ -212,13 +226,12 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		}
 		const next = deleteConversationState(state, jid);
 		setState(next);
-		persistInvites(next);
+		persistRoomInvites(deps.roomInviteStore, next);
 	}
 
 	function deleteMessage(jid: string, messageId: string) {
 		setState(deleteMessageState(state, jid, messageId));
 	}
-
 	async function addContact(jid: string) {
 		const contactJid = bareJid(jid);
 		if (contactJid.toLowerCase() === state.account?.bareJid.toLowerCase())
@@ -234,7 +247,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			setError(normalizeXmppError(error, "unknown"));
 		}
 	}
-
 	async function acceptSubscription(jid: string) {
 		const contactJid = bareJid(jid);
 		try {
@@ -261,6 +273,11 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		disconnect,
 		...outgoing,
 		...groups,
+		addMessage,
+		loadRoomPreview,
+		refreshRoomMembers,
+		getOmemoPep: omemo.getOmemoPep,
+		subscribeOmemo: omemo.subscribe,
 		uploadAttachment: (file, onProgress) =>
 			uploadAttachmentWithErrors({
 				uploader: deps.uploader,

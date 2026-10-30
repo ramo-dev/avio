@@ -32,6 +32,11 @@ export interface RoomInviteStore {
 	save(accountJid: string, rooms: Record<string, RoomInvite[]>): void;
 }
 
+export interface RoomInviteRequestStore {
+	load(accountJid: string): RoomInviteRequest[];
+	save(accountJid: string, requests: RoomInviteRequest[]): void;
+}
+
 export interface ConnectionState {
 	status: ConnectionStatus;
 	error: XmppError | null;
@@ -83,6 +88,12 @@ export type XmppEvent =
 	| { type: "history"; messages: ChatMessage[] }
 	| { type: "room"; room: RoomState }
 	| {
+			type: "room-membership";
+			jid: string;
+			membership: RoomState["membership"];
+	  }
+	| { type: "room-members"; jid: string; memberJids: string[] }
+	| {
 			type: "room-occupant";
 			jid: string;
 			occupant: RoomOccupant;
@@ -93,6 +104,7 @@ export type XmppEvent =
 	| { type: "room-invites"; jid: string; invites: RoomInvite[] }
 	| { type: "room-invite-request"; request: RoomInviteRequest }
 	| { type: "room-invite-request-cleared"; roomJid: string }
+	| { type: "room-invite-declined"; roomJid: string; from: string }
 	| {
 			type: "message-status";
 			id?: string;
@@ -119,6 +131,7 @@ export interface SendMessageInput {
 export interface SendMessageOptions {
 	replyTo?: MessageReply;
 	editId?: string;
+	unencryptedFallback?: boolean;
 }
 
 export interface RoomInfo {
@@ -126,6 +139,11 @@ export interface RoomInfo {
 	name: string;
 	nick: string;
 }
+
+export type RoomPreviewResult =
+	| { status: "ok"; messages: ChatMessage[] }
+	| { status: "restricted" }
+	| { status: "unavailable" };
 
 export interface XmppAdapter {
 	connect(credentials: ConnectCredentials): Promise<void>;
@@ -151,8 +169,16 @@ export interface XmppAdapter {
 		memberJids: string[],
 		reason?: string,
 	): Promise<void>;
-	acceptRoomInvite(jid: string, reason?: string): Promise<void>;
-	declineRoomInvite(jid: string): Promise<void>;
+	acceptRoomInvite(
+		jid: string,
+		reason?: string,
+		invitedBy?: string,
+	): Promise<void>;
+	declineRoomInvite(
+		jid: string,
+		sender?: string,
+		reason?: string,
+	): Promise<void>;
 	getUploadService(): Promise<UploadService>;
 	getUploadSlot(
 		serviceJid: string,
@@ -161,6 +187,8 @@ export interface XmppAdapter {
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
 	getOmemoPep(): Promise<OmemoPepClient>;
+	loadRoomPreview(jid: string): Promise<RoomPreviewResult>;
+	getRoomMemberJids(jid: string): Promise<string[]>;
 	subscribe(listener: (event: XmppEvent) => void): () => void;
 }
 
@@ -176,6 +204,20 @@ export interface XmppStore {
 		attachments?: MessageAttachment[],
 		options?: SendMessageOptions,
 	): Promise<ChatMessage | null>;
+	/** Sends an already-encrypted envelope. Never falls back to plaintext. */
+	sendEncryptedMessage(
+		to: string,
+		body: string,
+		envelope: OmemoEncryptedMessage,
+	): Promise<ChatMessage | null>;
+	/** Adds a decrypted or placeholder message to the conversation timeline. */
+	addMessage(message: ChatMessage): void;
+	getOmemoPep(): Promise<OmemoPepClient>;
+	loadRoomPreview(jid: string): Promise<RoomPreviewResult>;
+	refreshRoomMembers(jid: string): Promise<void>;
+	subscribeOmemo(
+		listener: (event: Extract<XmppEvent, { type: "omemo-message" }>) => void,
+	): () => void;
 	uploadAttachment(
 		file: File,
 		onProgress?: (percent: number) => void,
@@ -214,6 +256,7 @@ export interface XmppStoreDeps {
 	uploader: AttachmentUploader;
 	sessionStore: SessionStore;
 	roomInviteStore: RoomInviteStore;
+	roomInviteRequestStore: RoomInviteRequestStore;
 	now?: () => number;
 	idFactory?: () => string;
 	reactionDelayMs?: number;
