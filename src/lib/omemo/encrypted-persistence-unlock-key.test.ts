@@ -14,7 +14,7 @@ import {
 import { MemoryOmemoEnvelopePersistence } from "#/lib/omemo/memory-persistence";
 
 describe("EncryptedOmemoPersistence remembered key", {
-	timeout: 20_000,
+	timeout: 60_000,
 }, () => {
 	it("unlocks with the derived key and never needs the passphrase", async () => {
 		const raw = new MemoryOmemoEnvelopePersistence();

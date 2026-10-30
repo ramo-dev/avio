@@ -4,12 +4,39 @@ import {
 	RiShieldCheckLine,
 } from "@remixicon/react";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { SettingsOmemoCard } from "#/components/settings/settings-omemo-card/settings-omemo-card";
 import { SettingsOmemoPreferences } from "#/components/settings/settings-omemo-card/settings-omemo-preferences";
 import { SettingsSection } from "#/components/settings/settings-section/settings-section";
 import { Badge } from "#/components/ui/badge";
+import { cn } from "#/lib/utils";
+import { useSettings } from "#/providers/settings-provider";
 
-export function SettingsSecurity() {
+export const OMEMO_SETTINGS_ID = "settings-omemo";
+
+const OMEMO_FOCUS_MS = 1_600;
+
+export function SettingsSecurity({ anchor }: { anchor?: "omemo" }) {
+	const { clearTarget } = useSettings();
+	const [focusOmemo, setFocusOmemo] = useState(anchor === "omemo");
+
+	useEffect(() => {
+		if (!focusOmemo) return;
+		const frame = window.requestAnimationFrame(() => {
+			document
+				.getElementById(OMEMO_SETTINGS_ID)
+				?.scrollIntoView({ behavior: "smooth", block: "center" });
+		});
+		const timer = window.setTimeout(() => {
+			setFocusOmemo(false);
+			clearTarget();
+		}, OMEMO_FOCUS_MS);
+		return () => {
+			window.cancelAnimationFrame(frame);
+			window.clearTimeout(timer);
+		};
+	}, [clearTarget, focusOmemo]);
+
 	return (
 		<SettingsSection
 			title="Security"
@@ -39,7 +66,15 @@ export function SettingsSecurity() {
 				/>
 			</div>
 
-			<SettingsOmemoCard />
+			<div
+				id={OMEMO_SETTINGS_ID}
+				className={cn(
+					"rounded-xl transition-[box-shadow] duration-300",
+					focusOmemo && "ring-2 ring-ring/60",
+				)}
+			>
+				<SettingsOmemoCard />
+			</div>
 			<SettingsOmemoPreferences />
 
 			<p className="text-xs leading-relaxed text-muted-foreground">

@@ -8,10 +8,11 @@ export function sendReactionStanza(
 	to: string,
 	messageId: string,
 	reactions: string[],
+	roomType: "chat" | "groupchat" = "chat",
 ): void {
 	agent.sendMessage({
 		to: bareJid(to),
-		type: "chat",
+		type: roomType,
 		reactions: { id: messageId, reactions },
 	});
 }

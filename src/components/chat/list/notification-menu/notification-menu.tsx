@@ -156,7 +156,6 @@ export function NotificationMenu() {
 										<UserAvatar
 											jid={item.jid}
 											name={item.name}
-											size="sm"
 											className="size-9"
 										/>
 									)}

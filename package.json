@@ -10,7 +10,8 @@
   "scripts": {
     "dev": "vite dev --port 3000",
     "generate-routes": "tsr generate",
-    "build": "vite build",
+    "build": "vite build && node scripts/generate-csp.mjs",
+    "serve:static": "node scripts/serve-static.mjs",
     "preview": "vite preview",
     "format": "biome format --write .",
     "lint": "biome lint .",
@@ -24,7 +25,7 @@
     "xmpp:up": "docker compose -f dev/xmpp/compose.yml up -d",
     "xmpp:down": "docker compose -f dev/xmpp/compose.yml down",
     "xmpp:wipe": "docker compose -f dev/xmpp/compose.yml down -v",
-    "test:integration": "XMPP_INTEGRATION=1 vitest run src/lib/xmpp/client.integration.test.ts src/lib/xmpp/omemo-pep.integration.test.ts src/lib/xmpp/omemo-message.integration.test.ts src/lib/xmpp/group-invite.integration.test.ts",
+    "test:integration": "XMPP_INTEGRATION=1 vitest run src/lib/xmpp/client.integration.test.ts src/lib/xmpp/omemo-pep.integration.test.ts src/lib/xmpp/omemo-message.integration.test.ts src/lib/xmpp/group-invite.integration.test.ts src/lib/xmpp/group-reactions.integration.test.ts",
     "react:doctor": "pnpm dlx react-doctor@latest ."
   },
   "dependencies": {

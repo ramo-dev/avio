@@ -1,8 +1,27 @@
+import type { RoomInvite } from "#/types/chat";
 import type {
 	RoomInviteRequestStore,
 	RoomInviteStore,
+	XmppEvent,
 	XmppState,
 } from "#/types/store";
+
+/**
+ * Restores invites persisted across reloads onto a fresh `room` event, so a
+ * restored room keeps its pending/accepted invite records.
+ */
+export function restoreRoomInvites(
+	store: RoomInviteStore,
+	state: XmppState,
+	event: XmppEvent,
+): XmppEvent {
+	if (event.type !== "room" || !state.account) return event;
+	const saved = store.load(state.account.bareJid)[event.room.jid] ?? [];
+	if (saved.length === 0) return event;
+	const invites: Record<string, RoomInvite> = { ...event.room.invites };
+	for (const invite of saved) invites[invite.jid] = invite;
+	return { ...event, room: { ...event.room, invites } };
+}
 
 export function persistRoomInvites(
 	store: RoomInviteStore,

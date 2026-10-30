@@ -1,5 +1,4 @@
 import { useLayoutEffect, useRef, useState } from "react";
-import { toast } from "react-hot-toast";
 import { Textarea } from "#/components/ui/textarea";
 import { useFileDrop } from "#/hooks/use-file-drop";
 import { useSettings } from "#/hooks/use-settings";
@@ -8,6 +7,7 @@ import { useTyping } from "#/hooks/use-typing";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { cn } from "#/lib/utils";
 import { useOmemo } from "#/providers/omemo-provider";
+import { useSettings as useSettingsDialog } from "#/providers/settings-provider";
 import type { ChatMessage } from "#/types/chat";
 import { AttachmentTray } from "./attachment-tray";
 import { ComposerActions } from "./composer-actions/composer-actions";
@@ -16,6 +16,7 @@ import { ComposerFallbackDialog } from "./composer-fallback-dialog";
 import { DropOverlay } from "./drop-overlay";
 import { useComposerEncryption } from "./use-composer-encryption";
 import { useComposerInsert } from "./use-composer-insert";
+import { composerPlaceholder, createComposerSend } from "./use-composer-send";
 
 /** scrollHeight above this means the text wrapped to a second line. */
 const SINGLE_LINE_MAX = 44;
@@ -48,6 +49,7 @@ export function Composer({
 	const omemo = useOmemo();
 	const state = useXmppState();
 	const { chats } = useSettings();
+	const { openSettings } = useSettingsDialog();
 	const notifyTyping = useTyping(jid, !disabled && chats.typingIndicators);
 	const isDirect = state.conversations[jid]?.kind !== "group";
 	const encryptionEnabled = isDirect && omemo.isEncryptionEnabled(jid);
@@ -74,6 +76,7 @@ export function Composer({
 		resetUploading,
 	} = useStagedFiles(canAttach, () => textareaRef.current?.focus());
 	const {
+		encryptionAttention,
 		fallbackBody,
 		setFallbackBody,
 		toggleEncryption,
@@ -134,78 +137,39 @@ export function Composer({
 		event.preventDefault();
 		textareaRef.current?.focus();
 	}
-	async function send() {
-		if (!canSend) return;
-		const value = body.trim();
-
-		if (encryptionEnabled) {
-			if (contextActive) {
-				toast.error("Encrypted replies and edits are not available yet.", {
-					id: "omemo-context",
-				});
-				return;
-			}
-			if (omemo.status !== "ready") {
-				toast.error("Unlock OMEMO before sending encrypted messages.", {
-					id: "omemo-send",
-				});
-				return;
-			}
-			const result = await omemo.sendMessage(jid, value);
-			if (result.message) {
-				setBody("");
-				return;
-			}
-			if (result.error === "no-recipients") {
-				setFallbackBody(value);
-			}
-			return;
-		}
-
-		if (staged.length > 0 && onSendFiles && !contextActive) {
-			markUploading();
-			try {
-				await onSendFiles(
-					staged.map((item) => item.file),
-					value,
-					setProgress,
-				);
-				clear();
-				setBody("");
-				onContextDone?.();
-			} catch {
-				resetUploading();
-			}
-			return;
-		}
-
-		if (value) {
-			const options = editing
-				? { editId: editing.id }
-				: replyTo
-					? { replyTo: { id: replyTo.id, to: replyTo.from } }
-					: undefined;
-			void actions.sendMessage(jid, value, undefined, options);
-			setBody("");
-			draftBeforeEdit.current = "";
-			onContextDone?.();
-		}
-	}
+	const send = createComposerSend({
+		jid,
+		encryptionEnabled,
+		encryptionAttention,
+		omemo,
+		actions,
+		staged,
+		onSendFiles,
+		markUploading,
+		resetUploading,
+		clear,
+		setProgress,
+		body,
+		setBody,
+		setFallbackBody,
+		contextActive,
+		replyTo: replyTo ?? null,
+		editing: editing ?? null,
+		onContextDone,
+		draftBeforeEdit,
+	});
 	function cancelContext() {
 		if (editing) setBody(draftBeforeEdit.current);
 		draftBeforeEdit.current = "";
 		onContextDone?.();
 	}
 
-	const placeholder = disabled
-		? "Reconnect to send messages"
-		: editing
-			? "Edit message"
-			: replyTo
-				? "Write a reply"
-				: staged.length > 0
-					? "Add a caption"
-					: "Write a message";
+	const placeholder = composerPlaceholder({
+		disabled,
+		stagedCount: staged.length,
+		replyTo: replyTo ?? null,
+		editing: editing ?? null,
+	});
 
 	return (
 		<>
@@ -270,6 +234,7 @@ export function Composer({
 							className={cn(
 								"max-h-40 min-h-9 w-full resize-none border-0 bg-transparent py-2 shadow-none [field-sizing:content] focus-visible:ring-0 dark:bg-transparent",
 								isDirect && canAttach ? "pl-24!" : "pl-12!",
+								(replyTo || editing) && encryptionEnabled ? "pl-4!" : "pl-12",
 								expanded ? "px-4" : canAttach ? "pl-12 pr-24" : "pl-4 pr-24",
 							)}
 						/>
@@ -280,7 +245,16 @@ export function Composer({
 							canAttach={canAttach}
 							showEncryption={isDirect}
 							encryptionEnabled={encryptionEnabled}
-							onToggleEncryption={toggleEncryption}
+							encryptionAttention={encryptionAttention}
+							onToggleEncryption={
+								encryptionAttention
+									? () =>
+											openSettings({
+												section: "security",
+												anchor: "omemo",
+											})
+									: toggleEncryption
+							}
 							onStage={stage}
 							onEmojiSelect={insertAtCaret}
 							textareaRef={textareaRef}

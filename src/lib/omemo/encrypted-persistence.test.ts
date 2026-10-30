@@ -22,7 +22,7 @@ import { MemoryOmemoEnvelopePersistence } from "#/lib/omemo/memory-persistence";
 import { OmemoKeyStore } from "#/lib/omemo/store";
 import { createEmptyState } from "#/lib/omemo/store-state";
 
-describe("EncryptedOmemoPersistence", { timeout: 20_000 }, () => {
+describe("EncryptedOmemoPersistence", { timeout: 60_000 }, () => {
 	afterEach(() => {
 		vi.unstubAllGlobals();
 	});

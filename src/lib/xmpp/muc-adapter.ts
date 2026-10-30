@@ -2,6 +2,10 @@ import type { Agent } from "stanza";
 import { createXmppError } from "#/lib/xmpp/errors";
 import { bareJid } from "#/lib/xmpp/jid";
 import { findMucService } from "#/lib/xmpp/muc-discovery";
+import {
+	ROOM_CONFIGURATION_FIELDS,
+	warnRoomConfigFailure,
+} from "#/lib/xmpp/room-config";
 import { getRoomMemberJids as queryRoomMemberJids } from "#/lib/xmpp/room-member-query";
 import type { RoomInfo, XmppEvent } from "#/types/store";
 
@@ -98,35 +102,9 @@ export function createMucAdapter({
 		// members can join and the room stays around after the owner leaves.
 		await client
 			.configureRoom(roomJid, {
-				fields: [
-					{
-						name: "FORM_TYPE",
-						type: "hidden",
-						value: "http://jabber.org/protocol/muc#roomconfig",
-					},
-					{
-						name: "muc#roomconfig_persistentroom",
-						type: "boolean",
-						value: true,
-					},
-					{
-						name: "muc#roomconfig_publicroom",
-						type: "boolean",
-						value: false,
-					},
-					{
-						name: "muc#roomconfig_membersonly",
-						type: "boolean",
-						value: true,
-					},
-					{
-						name: "muc#roomconfig_allowinvites",
-						type: "boolean",
-						value: true,
-					},
-				],
+				fields: [...ROOM_CONFIGURATION_FIELDS],
 			})
-			.catch(() => undefined);
+			.catch(warnRoomConfigFailure);
 
 		await inviteToRoom(roomJid, memberJids, name);
 

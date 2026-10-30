@@ -20,6 +20,7 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 		}),
 		sendEncryptedMessage: vi.fn(async () => undefined),
 		sendReaction: vi.fn(async () => undefined),
+		sendDisplayedMarker: vi.fn(async () => undefined),
 		forwardMessage: vi.fn(async () => undefined),
 		sendChatState: vi.fn(async () => undefined),
 		getRoster: vi.fn(async () => [

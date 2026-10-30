@@ -3,6 +3,7 @@ import {
 	fileNameFromUrl,
 	formatBytes,
 	getKind,
+	isSafeAttachmentUrl,
 	kindFromName,
 } from "#/lib/chat/attachments";
 
@@ -32,6 +33,18 @@ describe("attachment helpers", () => {
 			fileNameFromUrl("https://files.example.com/a/voice%20note.ogg"),
 		).toBe("voice note.ogg");
 		expect(fileNameFromUrl("not a url")).toBe("Attachment");
+	});
+
+	it("allows only http(s) attachment URLs", () => {
+		expect(isSafeAttachmentUrl("https://files.example.com/a.png")).toBe(true);
+		expect(isSafeAttachmentUrl("http://localhost:5280/upload/a.png")).toBe(
+			true,
+		);
+		expect(isSafeAttachmentUrl("javascript:alert(1)")).toBe(false);
+		expect(isSafeAttachmentUrl("JaVaScRiPt:alert(1)")).toBe(false);
+		expect(isSafeAttachmentUrl("data:image/svg+xml,<svg/>")).toBe(false);
+		expect(isSafeAttachmentUrl("blob:https://example.com/id")).toBe(false);
+		expect(isSafeAttachmentUrl("not a url")).toBe(false);
 	});
 
 	it("formats byte sizes", () => {

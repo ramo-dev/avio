@@ -16,7 +16,7 @@ import type {
 	RoomState,
 } from "#/types/chat";
 import type { OmemoEncryptedMessage, OmemoPepClient } from "#/types/omemo";
-import type { StoredSession } from "#/types/storage";
+import type { RoomReactionStore, StoredSession } from "#/types/storage";
 import type {
 	Account,
 	ChatState,
@@ -82,6 +82,8 @@ export type XmppEvent =
 			jid: string;
 			messageId: string;
 			senderJid: string;
+			/** Occupant nick for group reactions, resolved against room occupants. */
+			senderNick?: string;
 			reactions: string[];
 	  }
 	| { type: "edit"; jid: string; messageId: string; body: string }
@@ -158,6 +160,7 @@ export interface XmppAdapter {
 		to: string,
 		messageId: string,
 		reactions: string[],
+		roomType?: "chat" | "groupchat",
 	): Promise<void>;
 	forwardMessage(to: string, message: ChatMessage, id?: string): Promise<void>;
 	sendChatState(to: string, state: ChatState): Promise<void>;
@@ -186,6 +189,8 @@ export interface XmppAdapter {
 	): Promise<UploadSlot>;
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
+	/** Sends a XEP-0333 displayed marker for the latest read incoming message. */
+	sendDisplayedMarker(to: string, messageId: string): Promise<void>;
 	getOmemoPep(): Promise<OmemoPepClient>;
 	loadRoomPreview(jid: string): Promise<RoomPreviewResult>;
 	getRoomMemberJids(jid: string): Promise<string[]>;
@@ -229,6 +234,7 @@ export interface XmppStore {
 	setActiveConversation(jid: string | null): void;
 	ensureConversation(jid: string): void;
 	markConversationUnread(jid: string): void;
+	markConversationRead(jid: string): void;
 	markAllRead(): void;
 	deleteConversation(jid: string): void;
 	deleteMessage(jid: string, messageId: string): void;
@@ -257,6 +263,8 @@ export interface XmppStoreDeps {
 	sessionStore: SessionStore;
 	roomInviteStore: RoomInviteStore;
 	roomInviteRequestStore: RoomInviteRequestStore;
+	/** Tab-scoped room reaction snapshots; default store uses sessionStorage. */
+	roomReactionStore?: RoomReactionStore;
 	now?: () => number;
 	idFactory?: () => string;
 	reactionDelayMs?: number;

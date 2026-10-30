@@ -15,7 +15,10 @@ import { loadRoomPreview as loadRoomPreviewWithClient } from "#/lib/xmpp/room-pr
 import { createRosterAdapter } from "#/lib/xmpp/roster-adapter";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
 import { mapHistory, mapHistoryActions } from "#/lib/xmpp/stanza-mappers";
-import type { UploadService, UploadSlot } from "#/types/attachment";
+import {
+	requestUploadService,
+	requestUploadSlot,
+} from "#/lib/xmpp/upload-adapter";
 import type { ChatMessage } from "#/types/chat";
 import type {
 	RoomPreviewResult,
@@ -228,9 +231,17 @@ export function createStanzaAdapter(): XmppAdapter {
 		to: string,
 		messageId: string,
 		reactions: string[],
+		roomType?: "chat" | "groupchat",
 	): Promise<void> {
 		if (!client) throw createXmppError("not-connected");
-		sendReactionStanza(client, to, messageId, reactions);
+		sendReactionStanza(client, to, messageId, reactions, roomType);
+	}
+	async function sendDisplayedMarker(
+		to: string,
+		messageId: string,
+	): Promise<void> {
+		if (!client) throw createXmppError("not-connected");
+		client.sendMessage({ to, marker: { id: messageId, type: "displayed" } });
 	}
 	async function forwardMessage(
 		to: string,
@@ -248,26 +259,6 @@ export function createStanzaAdapter(): XmppAdapter {
 		if (!client) throw createXmppError("not-connected");
 		return loadRoomPreviewWithClient(client, jid, accountBareJid);
 	}
-	async function getUploadService(): Promise<UploadService> {
-		if (!client) throw createXmppError("not-connected");
-		const service = await client.getUploadService();
-		return { jid: service.jid, maxSize: service.maxSize };
-	}
-
-	async function getUploadSlot(
-		serviceJid: string,
-		request: { name: string; size: number; mediaType?: string },
-	): Promise<UploadSlot> {
-		if (!client) throw createXmppError("not-connected");
-		const slot = await client.getUploadSlot(serviceJid, request);
-		return {
-			download: slot.download,
-			upload: {
-				url: slot.upload.url,
-				headers: slot.upload.headers,
-			},
-		};
-	}
 
 	return {
 		connect,
@@ -275,6 +266,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		sendMessage,
 		...omemo,
 		sendReaction,
+		sendDisplayedMarker,
 		forwardMessage,
 		sendChatState,
 		...roster,
@@ -287,8 +279,9 @@ export function createStanzaAdapter(): XmppAdapter {
 			if (!sender) return;
 			muc.declineInvite(jid, sender, reason);
 		},
-		getUploadService,
-		getUploadSlot,
+		getUploadService: () => requestUploadService(client),
+		getUploadSlot: (serviceJid, request) =>
+			requestUploadSlot(client, serviceJid, request),
 		loadRoomPreview,
 		getRoomMemberJids: muc.getRoomMemberJids,
 		subscribe(listener) {

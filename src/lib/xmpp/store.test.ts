@@ -102,6 +102,7 @@ describe("xmpp store", () => {
 			"bob@example.com",
 			"local-fixed",
 			["👍"],
+			"chat",
 		);
 		expect(
 			store.getState().conversations["bob@example.com"]?.messages[0]?.reactions,
@@ -178,6 +179,7 @@ describe("xmpp store", () => {
 			"bob@example.com",
 			"shared-id",
 			["👍"],
+			"chat",
 		);
 	});
 

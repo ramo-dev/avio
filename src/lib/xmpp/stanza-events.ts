@@ -4,6 +4,7 @@ import { bareJid, jidResource } from "#/lib/xmpp/jid";
 import { createOmemoEventEmitter } from "#/lib/xmpp/omemo-events";
 import { normalizePresence } from "#/lib/xmpp/presence";
 import {
+	mapMessageActions,
 	mapRoster,
 	normalizeGroupMessage,
 	normalizeStanzaMessage,
@@ -34,30 +35,15 @@ export function attachStanzaEvents(
 		fallbackFrom: string,
 		fallbackTo: string,
 	): boolean {
-		const from = message.from ?? fallbackFrom;
-		const to = message.to ?? fallbackTo;
-		const outgoing =
-			bareJid(from).toLowerCase() === accountBareJid().toLowerCase();
-		const jid = outgoing ? bareJid(to) : bareJid(from);
-
-		if (message.reactions?.id) {
-			emit({
-				type: "reactions",
-				jid,
-				messageId: message.reactions.id,
-				senderJid: outgoing ? accountBareJid() : bareJid(from),
-				reactions: message.reactions.reactions ?? [],
-			});
-			return true;
-		}
-
-		if (message.replace) {
-			const body = message.body?.trim();
-			if (body) emit({ type: "edit", jid, messageId: message.replace, body });
-			return true;
-		}
-
-		return false;
+		const event = mapMessageActions(
+			message,
+			fallbackFrom,
+			fallbackTo,
+			accountBareJid(),
+		);
+		if (!event) return false;
+		emit(event);
+		return true;
 	}
 
 	agent.on("session:started", handlers.onSessionStarted);

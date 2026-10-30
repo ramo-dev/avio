@@ -12,7 +12,8 @@ export type OmemoStorageErrorCode =
 const MESSAGES: Record<OmemoStorageErrorCode, string> = {
 	locked: "The OMEMO key store is locked.",
 	"invalid-passphrase": "The OMEMO passphrase is incorrect.",
-	"weak-passphrase": "Use an OMEMO passphrase of at least 8 characters.",
+	"weak-passphrase":
+		"Use an OMEMO passphrase of at least 12 characters that is not common or repetitive.",
 	"already-configured": "OMEMO is already set up for this account.",
 	"not-configured": "OMEMO is not set up for this account.",
 	"decryption-failed": "The OMEMO key data could not be decrypted.",

@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import { toast } from "react-hot-toast";
+import { resolveEncryptionAttention } from "#/lib/omemo/attention";
 import type { OmemoContextValue } from "#/providers/omemo-provider";
 
 interface ComposerEncryptionOptions {
@@ -11,7 +12,7 @@ interface ComposerEncryptionOptions {
 	setBody: (body: string) => void;
 }
 
-/** Per-composer OMEMO toggle and insecure-send fallback state. */
+/** Per-composer OMEMO toggle, attention state, and insecure-send fallback. */
 export function useComposerEncryption({
 	jid,
 	isDirect,
@@ -22,15 +23,15 @@ export function useComposerEncryption({
 }: ComposerEncryptionOptions) {
 	const [fallbackBody, setFallbackBody] = useState<string | null>(null);
 	const encryptionEnabled = isDirect && omemo.isEncryptionEnabled(jid);
+	const encryptionIntended = isDirect && omemo.isEncryptionIntended(jid);
+	const encryptionAttention = resolveEncryptionAttention(
+		isDirect,
+		encryptionIntended,
+		omemo.status,
+	);
 
 	const toggleEncryption = useCallback(() => {
 		if (!isDirect) return;
-		if (!encryptionEnabled && omemo.status !== "ready") {
-			toast.error("Set up and unlock OMEMO in Security settings first.", {
-				id: "omemo-toggle",
-			});
-			return;
-		}
 		if (!encryptionEnabled && stagedCount > 0) {
 			clearStaged();
 			toast("Attachments were removed because encryption is on.", {
@@ -51,6 +52,7 @@ export function useComposerEncryption({
 
 	return {
 		encryptionEnabled,
+		encryptionAttention,
 		fallbackBody,
 		setFallbackBody,
 		toggleEncryption,

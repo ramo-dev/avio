@@ -14,10 +14,13 @@ import { Input } from "#/components/ui/input";
 import { Label } from "#/components/ui/label";
 import { useSettings } from "#/hooks/use-settings";
 import { useXmppState } from "#/hooks/xmpp/use-xmpp";
+import {
+	MIN_PASSPHRASE_LENGTH,
+	passphraseIssue,
+	passphraseIssueMessage,
+} from "#/lib/omemo/passphrase";
 import { useOmemo } from "#/providers/omemo-provider";
 import type { OmemoAccountStatus } from "#/types/omemo";
-
-const MIN_PASSPHRASE_LENGTH = 8;
 
 const STATUS_LABELS: Record<OmemoAccountStatus, string> = {
 	disabled: "Not connected",
@@ -56,10 +59,9 @@ export function SettingsOmemoCard() {
 
 	async function submitSetup(event: FormEvent) {
 		event.preventDefault();
-		if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
-			toast.error("Use a passphrase of at least 8 characters.", {
-				id: "omemo-passphrase",
-			});
+		const issue = passphraseIssue(passphrase);
+		if (issue) {
+			toast.error(passphraseIssueMessage(issue), { id: "omemo-passphrase" });
 			return;
 		}
 		if (passphrase !== confirmation) {
@@ -146,7 +148,7 @@ export function SettingsOmemoCard() {
 							autoComplete="new-password"
 							value={passphrase}
 							onChange={(event) => setPassphrase(event.target.value)}
-							placeholder="At least 8 characters"
+							placeholder={`At least ${MIN_PASSPHRASE_LENGTH} characters`}
 							disabled={working}
 						/>
 					</div>

@@ -87,6 +87,27 @@ describe("message helpers", () => {
 		});
 	});
 
+	it("drops OOB links that are not http(s)", () => {
+		const result = normalizeMessage(
+			{
+				from: "mallory@example.com/phone",
+				to: "alice@example.com/web",
+				body: "",
+				links: [
+					{ url: "javascript:alert(document.cookie)", description: "a" },
+					{ url: "data:text/html,<script>x</script>", description: "b" },
+					{ url: "blob:https://example.com/abc", description: "c" },
+					{ url: "https://cdn.example.com/doc.pdf", description: "doc.pdf" },
+				],
+			},
+			{ accountBareJid: "alice@example.com" },
+		);
+
+		expect(result?.attachments?.map((attachment) => attachment.url)).toEqual([
+			"https://cdn.example.com/doc.pdf",
+		]);
+	});
+
 	it("ignores empty bodies", () => {
 		expect(
 			normalizeMessage(

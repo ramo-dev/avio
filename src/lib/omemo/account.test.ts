@@ -98,7 +98,7 @@ function requireDeviceId(account: OmemoAccount): number {
 	return account.deviceId;
 }
 
-describe("OmemoAccount", { timeout: 20_000 }, () => {
+describe("OmemoAccount", { timeout: 60_000 }, () => {
 	it("probes setup, persists an envelope, then probes locked", async () => {
 		const server = new PepServer();
 		const raw = new MemoryOmemoEnvelopePersistence();

@@ -30,6 +30,8 @@ export interface OmemoContextValue {
 	unlock(passphrase: string): Promise<boolean>;
 	lock(): void;
 	isEncryptionEnabled(jid: string): boolean;
+	/** Whether encryption should be on for this chat, ignoring account state. */
+	isEncryptionIntended(jid: string): boolean;
 	setEncryptionEnabled(jid: string, enabled: boolean): void;
 	sendMessage(
 		jid: string,
@@ -119,7 +121,7 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 		});
 	}, [handleIncoming, store]);
 
-	const isEncryptionEnabled = useCallback(
+	const isEncryptionIntended = useCallback(
 		(jid: string) => {
 			const key = bareJid(jid);
 			if (Object.hasOwn(encryptedJids, key)) {
@@ -131,6 +133,12 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 			);
 		},
 		[encryptedJids, security.defaultEncryption, state.conversations],
+	);
+
+	/** Encryption is only truly on when OMEMO is ready to encrypt. */
+	const isEncryptionEnabled = useCallback(
+		(jid: string) => status === "ready" && isEncryptionIntended(jid),
+		[isEncryptionIntended, status],
 	);
 
 	const setEncryptionEnabled = useCallback((jid: string, enabled: boolean) => {
@@ -149,10 +157,14 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 	const sendMessage = useCallback(
 		async (jid: string, body: string) => {
 			const account = accountRef.current;
-			if (!account || account.status !== "ready") {
-				toast.error("Unlock OMEMO before sending encrypted messages.", {
-					id: "omemo-send",
-				});
+			const accountStatus = account?.status;
+			if (!account || accountStatus !== "ready") {
+				toast.error(
+					accountStatus === "locked"
+						? "Unlock OMEMO in Security settings to send encrypted messages."
+						: "Set up OMEMO in Security settings to send encrypted messages.",
+					{ id: "omemo-send" },
+				);
 				return { message: null };
 			}
 			if (!isEncryptionEnabled(jid)) {
@@ -245,6 +257,7 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 			unlock: session.unlock,
 			lock: session.lock,
 			isEncryptionEnabled,
+			isEncryptionIntended,
 			setEncryptionEnabled,
 			sendMessage,
 			sendUnencrypted,
@@ -260,6 +273,7 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 			session.unlock,
 			session.lock,
 			isEncryptionEnabled,
+			isEncryptionIntended,
 			setEncryptionEnabled,
 			sendMessage,
 			sendUnencrypted,

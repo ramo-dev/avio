@@ -1,7 +1,5 @@
 import { RiArrowLeftLine, RiGroupLine } from "@remixicon/react";
-import { ContactInfoPanel } from "#/components/chat/conversation/header/contact-info-panel/contact-info-panel";
 import { HeaderActions } from "#/components/chat/conversation/header/header-actions/header-actions";
-import { RoomInfoPanel } from "#/components/chat/conversation/header/room-info-panel/room-info-panel";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
 import { Button } from "#/components/ui/button";
 import { presenceDotClassName } from "#/lib/format/presence";
@@ -46,19 +44,7 @@ export function ConversationHeader({
 				: presence.status || presenceLabel(presence);
 
 	function openInfo() {
-		open(
-			isGroup
-				? {
-						title: name,
-						description: "Group chat",
-						content: <RoomInfoPanel jid={jid} />,
-					}
-				: {
-						title: "Contact info",
-						description: "Direct XMPP conversation",
-						content: <ContactInfoPanel jid={jid} />,
-					},
-		);
+		open(isGroup ? { kind: "room", jid } : { kind: "contact", jid });
 	}
 
 	return (

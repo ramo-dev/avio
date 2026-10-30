@@ -14,3 +14,19 @@ export interface OmemoUnlockStore {
 	/** Removes passphrase copies written by earlier builds. */
 	clearLegacyPassphrases(): void;
 }
+
+/**
+ * Tab-scoped snapshot of room reaction maps (see `room-reactions.ts`).
+ */
+export interface RoomReactionSnapshotEntry {
+	[messageId: string]: { [senderJid: string]: string[] };
+}
+
+export interface RoomReactionSnapshot {
+	[roomJid: string]: RoomReactionSnapshotEntry;
+}
+
+export interface RoomReactionStore {
+	load(): RoomReactionSnapshot;
+	save(snapshot: RoomReactionSnapshot): void;
+}

@@ -58,6 +58,7 @@ export function createReactionActions(deps: ReactionActionDeps) {
 				entry.to,
 				message.stanzaId ?? message.id,
 				current,
+				entryRoomType(getState(), entry.to),
 			);
 			entry.sending = false;
 			if (entry.dirty) {
@@ -77,6 +78,13 @@ export function createReactionActions(deps: ReactionActionDeps) {
 				reactions: entry.original,
 			});
 		}
+	}
+
+	/** Rooms broadcast reactions as groupchat; DMs send a chat stanza. */
+	function entryRoomType(state: XmppState, to: string): "chat" | "groupchat" {
+		return state.conversations[bareJid(to)]?.kind === "group"
+			? "groupchat"
+			: "chat";
 	}
 
 	function schedule(key: string, entry: PendingReaction) {

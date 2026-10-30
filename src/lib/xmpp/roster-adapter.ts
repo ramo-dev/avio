@@ -22,6 +22,10 @@ export function createRosterAdapter(getClient: () => Agent | null) {
 			const client = getClient();
 			if (!client) throw createXmppError("not-connected");
 			client.acceptSubscription(jid);
+			// Granting presence is one direction only; ask for theirs in return so
+			// both sides see each other online. This is the usual mutual-subscription
+			// behavior for a contact request.
+			client.subscribe(jid);
 		},
 	};
 }

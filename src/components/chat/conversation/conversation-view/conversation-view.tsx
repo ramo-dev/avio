@@ -2,6 +2,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Composer } from "#/components/chat/composer/composer";
+import { useMarkConversationRead } from "#/components/chat/conversation/conversation-view/use-mark-read";
 import { useRoomInvitePreview } from "#/components/chat/conversation/conversation-view/use-room-invite-preview";
 import { ConversationHeader } from "#/components/chat/conversation/header/conversation-header/conversation-header";
 import { InThreadSearch } from "#/components/chat/conversation/search/in-thread-search/in-thread-search";
@@ -79,6 +80,7 @@ export function ConversationView({
 		[messages, searchOpen, searchQuery],
 	);
 	const activeMatch = matches[matchIndex];
+	useMarkConversationRead(jid, messages, actions.markConversationRead);
 
 	useEffect(() => {
 		if (!hasJoinedRoom) return;

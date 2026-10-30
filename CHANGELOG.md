@@ -39,8 +39,28 @@ without a deprecation period.
 - Added an explicit unencrypted fallback confirmation and message marker when
   no OMEMO device is available.
 - Added a development-only warning that this build is not production ready.
+- Production builds ship a Content-Security-Policy with hashed inline scripts
+  and no `'unsafe-eval'`. See `docs/threat-model.md`.
+- Incoming attachment links are limited to http(s), so unsafe schemes such as
+  `javascript:` are dropped before rendering.
+- New OMEMO passphrases need at least 12 characters and must not be common or
+  repetitive. Existing passphrases still unlock.
 
 ### Changed
+
+- The web build is now a static SPA with a prerendered shell
+  (`.output/public`). Serve it with SPA fallback to `index.html`;
+  `pnpm serve:static` does this locally.
+- The contact/group info side panel is backed by a `panel` URL search param, so
+  a refresh restores the panel for the selected conversation.
+- Group reactions are sent as `groupchat` stanzas, rooms expose member JIDs to
+  each other, and reaction chips now name who reacted.
+- Group reactions are restored after a refresh from a tab-scoped snapshot,
+  because Prosody's MUC history and MAM do not replay reaction-only stanzas.
+- Accepting a contact request now also subscribes to that contact's presence,
+  so presence is mutual instead of one-directional.
+- The open conversation sends XEP-0333 displayed markers for new incoming
+  messages, so other clients can show read receipts.
 
 - Unified the conversation list for DMs and rooms, with stacked participant
   avatars and a group badge.

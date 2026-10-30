@@ -11,6 +11,7 @@ import {
 } from "#/lib/omemo/fingerprint";
 import { IndexedDbOmemoPersistence } from "#/lib/omemo/indexed-db-persistence";
 import { OmemoMessageCipher } from "#/lib/omemo/message";
+import { passphraseIssue } from "#/lib/omemo/passphrase";
 import { OmemoKeyStore } from "#/lib/omemo/store";
 import { bareJid } from "#/lib/xmpp/jid";
 import type {
@@ -21,8 +22,6 @@ import type {
 	OmemoEnvelopePersistence,
 	OmemoPepClient,
 } from "#/types/omemo";
-
-const MIN_PASSPHRASE_LENGTH = 8;
 
 export interface OmemoAccountOptions {
 	accountJid: string;
@@ -83,7 +82,7 @@ export class OmemoAccount {
 	 * unlock. The passphrase itself is not returned.
 	 */
 	async setup(passphrase: string): Promise<CryptoKey> {
-		if (passphrase.length < MIN_PASSPHRASE_LENGTH) {
+		if (passphraseIssue(passphrase)) {
 			throw new OmemoStorageError("weak-passphrase");
 		}
 		const existing = await this.raw.loadEnvelope(this.accountJid);

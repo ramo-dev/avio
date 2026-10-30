@@ -1,5 +1,5 @@
 import { useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { IconRail } from "#/components/layout/icon-rail/icon-rail";
 import { RightSidebarCard } from "#/components/layout/right-sidebar/right-sidebar-card/right-sidebar-card";
 import { RightSidebarDrawer } from "#/components/layout/right-sidebar/right-sidebar-drawer/right-sidebar-drawer";
@@ -40,9 +40,19 @@ function ChatShellFrame({
 		select: (state) => state.location.pathname,
 	});
 	const desktopSidebar = useMediaQuery("(min-width: 1024px)");
+	// The panel is URL-backed, so the first render may be a refresh restoring a
+	// panel. Close only when the pathname actually changes (conversation switch).
+	const previousPathname = useRef<string | null>(null);
 
 	useEffect(() => {
-		if (pathname) close();
+		if (previousPathname.current === null) {
+			previousPathname.current = pathname;
+			return;
+		}
+		if (previousPathname.current !== pathname) {
+			close();
+		}
+		previousPathname.current = pathname;
 	}, [close, pathname]);
 
 	return (
