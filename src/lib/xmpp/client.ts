@@ -1,6 +1,7 @@
 import type { Agent } from "stanza";
 import * as XMPP from "stanza";
 import type * as StanzaProtocol from "stanza/protocol";
+import { OmemoPep } from "#/lib/omemo/pep";
 import { reconnectDelay } from "#/lib/xmpp/backoff";
 import { createXmppError, isXmppError } from "#/lib/xmpp/errors";
 import { bareJid, toAccount } from "#/lib/xmpp/jid";
@@ -9,12 +10,14 @@ import {
 	sendReactionStanza,
 } from "#/lib/xmpp/message-stanzas";
 import { createMucAdapter } from "#/lib/xmpp/muc-adapter";
+import { createStanzaOmemoPep } from "#/lib/xmpp/omemo-pep";
 import { registerMessageExtensions } from "#/lib/xmpp/protocol";
 import { createRosterAdapter } from "#/lib/xmpp/roster-adapter";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
 import { mapHistory, mapHistoryActions } from "#/lib/xmpp/stanza-mappers";
 import type { UploadService, UploadSlot } from "#/types/attachment";
 import type { ChatMessage } from "#/types/chat";
+import type { OmemoPepClient } from "#/types/omemo";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
 import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
 
@@ -242,6 +245,12 @@ export function createStanzaAdapter(): XmppAdapter {
 		client.sendMessage({ to, type: "chat", chatState: state });
 	}
 
+	async function getOmemoPep(): Promise<OmemoPepClient> {
+		if (!client) throw createXmppError("not-connected");
+		const agent = client;
+		return new OmemoPep(createStanzaOmemoPep(agent, accountBareJid));
+	}
+
 	async function getUploadService(): Promise<UploadService> {
 		if (!client) throw createXmppError("not-connected");
 		const service = await client.getUploadService();
@@ -278,6 +287,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		declineRoomInvite: async () => undefined,
 		getUploadService,
 		getUploadSlot,
+		getOmemoPep,
 		subscribe(listener) {
 			listeners.add(listener);
 			return () => listeners.delete(listener);

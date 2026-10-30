@@ -47,6 +47,9 @@ export function createStoreHarness(options: { idFactory?: () => string } = {}) {
 		inviteToRoom: vi.fn(async () => undefined),
 		acceptRoomInvite: vi.fn(async () => undefined),
 		declineRoomInvite: vi.fn(async () => undefined),
+		getOmemoPep: vi.fn(async () => {
+			throw new Error("OMEMO PEP is unavailable in the store test harness.");
+		}),
 		subscribe: (next) => {
 			listener = next;
 			return () => {

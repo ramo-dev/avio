@@ -34,7 +34,12 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **OMEMO 1:1 (XEP-0384)** — primary E2EE goal. The project is GPLv3, so
   `libomemo.js` (GPLv3) is a candidate crypto engine. It is not audited yet.
   The key store and passphrase-encrypted storage boundary now live in
-  `src/lib/omemo`; PEP, trust UI, and the message flow are still pending.
+  `src/lib/omemo`; the legacy OMEMO 0.3.0 device-list and bundle PEP boundary
+  lives in `src/lib/xmpp/omemo-pep.ts`. Trust UI and the message flow are still
+  pending.
+- **OMEMO2 PEP (XEP-0384)** — legacy 0.3.0 device lists and bundles are
+  implemented. Add the `urn:xmpp:omemo:2` device-list/bundle nodes and
+  version-aware selection after 1:1 messaging works.
 - **OpenPGP for XMPP (XEP-0374)** — Gajim supports it for 1:1, groups, and files.
   Defer until OMEMO 1:1 is stable; `openpgp` is LGPL-3.0+ and GPLv3-compatible.
 - **Key storage** — passphrase-encrypted IndexedDB storage exists in

@@ -30,3 +30,46 @@ export class OmemoStorageError extends Error {
 		this.code = code;
 	}
 }
+
+export type OmemoPepErrorCode =
+	| "invalid-device-list"
+	| "invalid-bundle"
+	| "publish-failed"
+	| "fetch-failed"
+	| "configure-failed"
+	| "subscribe-failed"
+	| "invalid-account";
+
+const PEP_MESSAGES: Record<OmemoPepErrorCode, string> = {
+	"invalid-device-list": "The OMEMO device list is invalid.",
+	"invalid-bundle": "The OMEMO bundle is invalid.",
+	"publish-failed": "The OMEMO data could not be published.",
+	"fetch-failed": "The OMEMO data could not be fetched.",
+	"configure-failed": "The OMEMO node could not be configured.",
+	"subscribe-failed": "Could not subscribe to the OMEMO device list.",
+	"invalid-account": "A valid account JID is required.",
+};
+
+/**
+ * Typed failure for OMEMO PEP operations.
+ *
+ * Messages are fixed per code and never include stanza payloads, keys, or
+ * account credentials.
+ */
+export class OmemoPepError extends Error {
+	readonly code: OmemoPepErrorCode;
+
+	constructor(code: OmemoPepErrorCode, message = PEP_MESSAGES[code]) {
+		super(message);
+		this.name = "OmemoPepError";
+		this.code = code;
+	}
+}
+
+/** Wraps unknown transport failures without leaking their payloads. */
+export function wrapOmemoPepError(
+	code: OmemoPepErrorCode,
+	cause: unknown,
+): OmemoPepError {
+	return cause instanceof OmemoPepError ? cause : new OmemoPepError(code);
+}

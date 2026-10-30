@@ -86,6 +86,10 @@ export function createLazyAdapter(): XmppAdapter {
 			const adapter = await ensure();
 			return adapter.getUploadSlot(serviceJid, request);
 		},
+		async getOmemoPep() {
+			const adapter = await ensure();
+			return adapter.getOmemoPep();
+		},
 		async addContact(jid) {
 			const adapter = await ensure();
 			await adapter.addContact(jid);

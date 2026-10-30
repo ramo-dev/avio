@@ -61,3 +61,56 @@ export interface OmemoEnvelopePersistence {
 	saveEnvelope(accountJid: string, envelope: OmemoEnvelope): Promise<void>;
 	clear(accountJid: string): Promise<void>;
 }
+
+/** A single legacy OMEMO pre-key published in a PEP bundle. */
+export interface OmemoPepPreKey {
+	id: number;
+	publicKey: string;
+}
+
+/**
+ * Legacy OMEMO 0.3.0 bundle as stored in a PEP node.
+ *
+ * Binary key material is base64 encoded so the domain type stays free of
+ * Stanza buffers and works with persistence, UI, and tests alike.
+ */
+export interface OmemoPepBundle {
+	deviceId: number;
+	identityKey: string;
+	signedPreKeyId: number;
+	signedPreKeyPublic: string;
+	signedPreKeySignature: string;
+	preKeys: OmemoPepPreKey[];
+}
+
+/**
+ * PEP transport bound to the connected account.
+ *
+ * Publishing targets the bound account; fetching accepts any account JID.
+ */
+export interface OmemoPepTransport {
+	publishDeviceList(deviceIds: number[]): Promise<void>;
+	fetchDeviceList(accountJid: string): Promise<number[] | null>;
+	publishBundle(bundle: OmemoPepBundle): Promise<void>;
+	fetchBundle(
+		accountJid: string,
+		deviceId: number,
+	): Promise<OmemoPepBundle | null>;
+	subscribeToDeviceList(accountJid: string): Promise<void>;
+}
+
+/**
+ * Validated, normalized OMEMO PEP boundary exposed to the application.
+ *
+ * Publish operations always target the connected account.
+ */
+export interface OmemoPepClient {
+	publishDeviceList(deviceIds: number[]): Promise<void>;
+	fetchDeviceList(accountJid: string): Promise<number[] | null>;
+	publishBundle(bundle: OmemoPepBundle): Promise<void>;
+	fetchBundle(
+		accountJid: string,
+		deviceId: number,
+	): Promise<OmemoPepBundle | null>;
+	subscribeToDeviceList(accountJid: string): Promise<void>;
+}

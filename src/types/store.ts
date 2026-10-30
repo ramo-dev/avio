@@ -15,6 +15,7 @@ import type {
 	RoomOccupant,
 	RoomState,
 } from "#/types/chat";
+import type { OmemoPepClient } from "#/types/omemo";
 import type { StoredSession } from "#/types/storage";
 import type {
 	Account,
@@ -143,6 +144,7 @@ export interface XmppAdapter {
 	): Promise<UploadSlot>;
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
+	getOmemoPep(): Promise<OmemoPepClient>;
 	subscribe(listener: (event: XmppEvent) => void): () => void;
 }
 
