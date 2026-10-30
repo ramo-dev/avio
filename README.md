@@ -115,8 +115,8 @@ A dropped connection is a pause, not an interruption.
   auth failure. The Tauri build will use the OS keychain.
 - Avio remembers your address and connection details on your device, and nothing more.
 - **End-to-end encryption is not implemented yet.** Messages are protected in
-  transit by TLS, but the server can read them. OMEMO is planned; see
-  [`tmp/0001-encryption-and-licensing.md`](tmp/0001-encryption-and-licensing.md).
+  transit by TLS, but the server can read them. OMEMO is planned and is not
+  enabled.
 - Messages render as plain text. Nothing inside a message can execute in your app.
 - Your history lives on your server, under your rules. Back it up, move it, or delete
   it on your own terms.
