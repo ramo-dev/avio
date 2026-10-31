@@ -91,6 +91,10 @@ without a deprecation period.
   the PEP list) to Security settings.
 - Nested dialogs opened from Settings (such as Reset OMEMO) now render a
   dimming overlay above the parent dialog instead of inheriting its muted layer.
+- Added repo Playwright smoke suites: `pnpm test:e2e` covers mutual presence,
+  DM/group delivery, group invite/join, reactions (including refresh restore),
+  transcript scrolling, and panel restore; `pnpm test:csp` checks the static
+  build for CSP violations. Added a GitHub Actions workflow for both.
 - Reaction tooltips expose tooltip semantics, and the group "Not encrypted"
   badge becomes icon-only on narrow screens so group names fit.
 - README diagrams now show the federation trust boundary and the message/receipt

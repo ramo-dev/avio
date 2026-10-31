@@ -1,0 +1,28 @@
+name: e2e
+
+on:
+  push:
+    branches: [main, feat/security]
+  pull_request:
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.3.4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm exec playwright install --with-deps chromium
+      - run: pnpm xmpp:up
+      - run: sleep 5
+      - run: pnpm test:e2e
+      - run: pnpm build
+      - run: pnpm test:csp
+      - if: always()
+        run: pnpm xmpp:down
