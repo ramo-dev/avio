@@ -12,7 +12,7 @@
 			"**/.vscode/**/*",
 			"**/index.html",
 			"**/vite.config.ts",
-			"!**/.output/**",
+			"!**/.output",
 			"!**/src/routeTree.gen.ts",
 			"!**/src/styles.css"
 		]

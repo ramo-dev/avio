@@ -10,6 +10,8 @@ export interface RoomReactionsKeeper {
 	 * messages against it. Returns the possibly-updated state to set.
 	 */
 	note(event: XmppEvent, before: XmppState, after: XmppState): XmppState;
+	/** Drops the snapshot; used on logout. */
+	clear(): void;
 }
 
 function isRoomEvent(next: XmppState, jid: string): boolean {
@@ -67,6 +69,9 @@ export function createRoomReactionsKeeper(
 		note(event, before, after) {
 			recordReaction(event, before, after, store);
 			return reconcileMessage(event, after, store);
+		},
+		clear() {
+			store.clear();
 		},
 	};
 }

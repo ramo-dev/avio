@@ -190,6 +190,9 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	}
 	async function disconnect() {
 		deps.sessionStore.clearPassword();
+		// Reaction snapshots contain room and participant identifiers; they must
+		// not outlive the signed-in session in this tab.
+		reactions.clear();
 		try {
 			await deps.adapter.disconnect();
 		} catch {

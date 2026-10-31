@@ -9,9 +9,11 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Upload cancellation and retry** — the XEP-0363 upload path stages files, reports progress, sends OOB links, and renders image/file/video cards. Add per-file cancel/retry controls for failed uploads.
 - **Message search** — local search over the in-memory conversation store first, then MAM search.
 - **Delivery/read receipt parity** — displayed markers are now sent for direct
-  chats while the conversation is open and the tab is visible. Remaining: verify
-  group/room receipts and decide whether users can disable receipts from
-  Settings > Chats (privacy control).
+  chats while the conversation is open and the tab is visible. Remaining:
+  persist or replay read state so a refresh does not revert already-read
+  messages to sent (markers are not archived in MAM); verify group/room
+  receipts; and decide whether users can disable receipts from Settings > Chats
+  (privacy control).
 
 ## Chat UI
 
@@ -37,8 +39,9 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
   shown with author tooltips. Rooms created by Avio are non-anonymous so member
   JIDs are visible. On refresh, reactions are restored from a tab-scoped
   `sessionStorage` snapshot because Prosody does not replay body-less reaction
-  stanzas. Pending: confirm other servers' behavior, and replace the snapshot
-  with room MAM once reaction archiving is reliable.
+  stanzas. The snapshot is cleared on logout. Pending: confirm other servers'
+  behavior, and replace the snapshot with room MAM once reaction archiving is
+  reliable.
 - **Jingle / WebRTC** — use `webrtc-adapter` before creating `RTCPeerConnection`; add audio/video call UI and permission handling.
 - **Screen sharing** — depends on Jingle negotiation.
 
@@ -71,9 +74,9 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Remembered unlock on web (option B, done)** — "Remember unlock on this
   device" stores the non-extractable AES-GCM key derived from the passphrase in
   IndexedDB (`avio-omemo-unlock`), never the passphrase. The key is cleared by
-  Lock, logout, and auto-lock. Remaining: a configurable hard expiry, since a
-  force-closed tab keeps the key until the next auto-lock; and CSP, since script
-  running in the page can still use the key.
+  Lock, logout, and auto-lock, and expires after 24 hours. Remaining: make the
+  expiry configurable, and rely on CSP because script running in the page can
+  still use the key.
 - **Native unlock via OS keychain (option C)** — Tauri should store the unlock
   secret in the OS keychain, not IndexedDB. Add a `passphrase` variant to
   `OmemoUnlockSecret`, handle it in `restoreRememberedUnlock`, and implement
@@ -85,9 +88,11 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Security threat model and CSP** — `docs/threat-model.md` is the working
   draft. Done: attachment URLs are limited to http(s) at normalization; the app
   is a static SPA with a generated CSP (`scripts/generate-csp.mjs`) that hashes
-  the shell's inline scripts. Open: browser-verify the static build for CSP
-  violations during connect, messaging, OMEMO, and attachments. Converse.js is
-  MPL-2.0, but its OMEMO dependency `libomemo.js` is GPLv3 and unaudited.
+  the shell's inline scripts. Browser-verified with Playwright: boot,
+  navigation, authenticated login, and Settings > Security have no violations.
+  The check found and fixed a blocked `wasm-eval` (OMEMO's libsignal), now
+  allowed narrowly via `'wasm-unsafe-eval'`. Converse.js is MPL-2.0, but its
+  OMEMO dependency `libomemo.js` is GPLv3 and unaudited.
 - **OMEMO passphrase policy (done)** — new passphrases need at least 12
   characters, must not be common, and need at least four distinct characters
   (`src/lib/omemo/passphrase.ts`). Existing shorter passphrases still unlock.

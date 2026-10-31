@@ -76,6 +76,9 @@ async function restoreRememberedUnlock(
 
 	try {
 		await account.unlockWithKey(secret.key);
+		// Refresh the TTL so an actively used remembered key does not expire
+		// mid-session; a force-closed tab still expires after 24 hours.
+		await store.save(accountJid, secret).catch(() => undefined);
 		return true;
 	} catch {
 		forgetRememberedUnlock(store, accountJid);

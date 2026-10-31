@@ -1,8 +1,9 @@
 // @vitest-environment node
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
 	createMemoryOmemoUnlockStore,
+	REMEMBERED_UNLOCK_TTL_MS,
 	removeLegacyPassphrases,
 } from "#/lib/storage/omemo-unlock-key";
 
@@ -35,6 +36,10 @@ async function generateKey(): Promise<CryptoKey> {
 }
 
 describe("createMemoryOmemoUnlockStore", () => {
+	afterEach(() => {
+		vi.useRealTimers();
+	});
+
 	it("saves, loads, and clears one unlock secret per account", async () => {
 		const store = createMemoryOmemoUnlockStore();
 		const key = await generateKey();
@@ -45,6 +50,18 @@ describe("createMemoryOmemoUnlockStore", () => {
 		expect(await store.load(BOB)).toBeNull();
 
 		await store.clear(ALICE);
+		expect(await store.load(ALICE)).toBeNull();
+	});
+
+	it("expires a remembered key after the TTL", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date("2026-01-01T00:00:00Z"));
+		const store = createMemoryOmemoUnlockStore();
+		const key = await generateKey();
+		await store.save(ALICE, { type: "key", key });
+		expect(await store.load(ALICE)).toEqual({ type: "key", key });
+
+		vi.setSystemTime(new Date(Date.now() + REMEMBERED_UNLOCK_TTL_MS + 1_000));
 		expect(await store.load(ALICE)).toBeNull();
 	});
 });

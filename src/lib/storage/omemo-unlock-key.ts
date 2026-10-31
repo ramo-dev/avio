@@ -6,6 +6,8 @@ const DATABASE_NAME = "avio-omemo-unlock";
 const DATABASE_VERSION = 1;
 const STORE_NAME = "secrets";
 const OPERATION_TIMEOUT_MS = 5_000;
+/** Force-closed tabs must not keep a remembered unlock forever. */
+export const REMEMBERED_UNLOCK_TTL_MS = 24 * 60 * 60 * 1000;
 const LEGACY_PASSPHRASE_PREFIX = "avio.omemo.passphrase.v1:";
 
 interface UnlockRecord {
@@ -63,6 +65,9 @@ function isUnlockRecord(
 	if (typeof value !== "object" || value === null) return false;
 	const record = value as Partial<UnlockRecord>;
 	if (record.accountJid !== accountJid) return false;
+	if (typeof record.savedAt !== "number" || !Number.isFinite(record.savedAt)) {
+		return false;
+	}
 	const secret = record.secret;
 	if (secret?.type !== "key") return false;
 	const key = secret.key as Partial<CryptoKey> | undefined;
@@ -72,6 +77,14 @@ function isUnlockRecord(
 		key.type === "secret" &&
 		key.extractable === false
 	);
+}
+
+/** A remembered key older than the TTL must be re-entered manually. */
+export function isRememberedUnlockExpired(
+	savedAt: number,
+	now = Date.now(),
+): boolean {
+	return now - savedAt > REMEMBERED_UNLOCK_TTL_MS;
 }
 
 async function readRecord(accountJid: string): Promise<unknown> {
@@ -121,7 +134,10 @@ export function createOmemoUnlockStore(): OmemoUnlockStore {
 		async load(accountJid) {
 			const record = await withTimeout(readRecord(accountJid));
 			if (record === undefined) return null;
-			if (!isUnlockRecord(record, accountJid)) {
+			if (
+				!isUnlockRecord(record, accountJid) ||
+				isRememberedUnlockExpired(record.savedAt)
+			) {
 				await withTimeout(deleteRecord(accountJid));
 				return null;
 			}
@@ -154,9 +170,15 @@ export function createMemoryOmemoUnlockStore(): OmemoUnlockStore {
 	return {
 		async load(accountJid) {
 			const record = records.get(accountJid);
-			return record && isUnlockRecord(record, accountJid)
-				? record.secret
-				: null;
+			if (
+				record &&
+				isUnlockRecord(record, accountJid) &&
+				!isRememberedUnlockExpired(record.savedAt)
+			) {
+				return record.secret;
+			}
+			records.delete(accountJid);
+			return null;
 		},
 		async save(accountJid, secret) {
 			records.set(accountJid, { accountJid, secret, savedAt: Date.now() });

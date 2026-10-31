@@ -29,4 +29,6 @@ export interface RoomReactionSnapshot {
 export interface RoomReactionStore {
 	load(): RoomReactionSnapshot;
 	save(snapshot: RoomReactionSnapshot): void;
+	/** Drops all room reaction state, e.g. on logout. */
+	clear(): void;
 }

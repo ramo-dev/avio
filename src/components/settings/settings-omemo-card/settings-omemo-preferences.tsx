@@ -36,7 +36,7 @@ export function SettingsOmemoPreferences() {
 			/>
 			<SettingRow
 				title="Remember unlock on this device"
-				description="Keeps a non-exportable key in this browser so a refresh can unlock OMEMO without your passphrase. The passphrase is never stored. The key is cleared by Lock, logout, or 10 minutes of inactivity. It takes effect after the next unlock and does not protect against malicious scripts in this app."
+				description="Keeps a non-exportable key in this browser so a refresh can unlock OMEMO without your passphrase. The passphrase is never stored. The key is cleared by Lock, logout, or 10 minutes of inactivity, and expires after 24 hours. It takes effect after the next unlock and does not protect against malicious scripts in this app."
 				control={
 					<Switch
 						aria-label="Remember OMEMO unlock on this device"

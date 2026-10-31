@@ -67,6 +67,17 @@ without a deprecation period.
 - Remote images, video, and audio load only after an explicit tap. Messages no
   longer contact file hosts automatically, so reading a chat does not reveal
   your IP or read time to the sender's host.
+- Remembered OMEMO unlock keys expire after 24 hours; room reaction
+  snapshots are cleared on logout.
+- Group chats show a "Not encrypted" badge with an explanatory tooltip, since
+  group OMEMO is not implemented yet.
+- The generated CSP now allows `'wasm-unsafe-eval'` only, so libsignal's
+  WebAssembly OMEMO engine works under the production policy. Browser smoke
+  checks show no other CSP violations.
+- Fixed transcript scrolling where new outgoing messages could leave a large
+  un-scrollable blank area. Fixed a nested button in the group info tooltip,
+  canonicalized the `?panel=` URL, and clarified invite previews (invite-only
+  member label, bare inviter JID, join hint in the composer).
 
 - Unified the conversation list for DMs and rooms, with stacked participant
   avatars and a group badge.

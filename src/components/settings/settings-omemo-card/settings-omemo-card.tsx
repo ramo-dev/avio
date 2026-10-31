@@ -120,7 +120,7 @@ export function SettingsOmemoCard() {
 				<RiAlertLine className="mt-0.5 size-4 shrink-0" />
 				<p>
 					{security.rememberOmemoUnlock
-						? "Your passphrase is never stored. This browser keeps a non-exportable key that unlocks OMEMO until you lock, log out, or the session auto-locks. The passphrase cannot be recovered if lost."
+						? "Your passphrase is never stored. This browser keeps a non-exportable key that unlocks OMEMO until you lock, log out, or the session auto-locks. It expires after 24 hours. The passphrase cannot be recovered if lost."
 						: "Your passphrase is never stored and cannot be recovered. Losing it locks this device's OMEMO keys."}{" "}
 					Sessions lock after 10 minutes of inactivity.
 				</p>

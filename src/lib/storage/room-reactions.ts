@@ -102,6 +102,13 @@ function createStorage(adapter: () => Storage | null): RoomReactionStore {
 				// Storage can be full or disabled. The snapshot is best-effort.
 			}
 		},
+		clear() {
+			try {
+				adapter()?.removeItem(STORAGE_KEY);
+			} catch {
+				// Ignore storage failures during logout.
+			}
+		},
 	};
 }
 
@@ -117,6 +124,9 @@ export function createMemoryRoomReactionStore(): RoomReactionStore {
 		load: () => snapshot,
 		save(next) {
 			snapshot = next;
+		},
+		clear() {
+			snapshot = {};
 		},
 	};
 }

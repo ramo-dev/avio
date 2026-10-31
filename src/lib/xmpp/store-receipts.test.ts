@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createMemoryRoomReactionStore } from "#/lib/storage/room-reactions";
 import { createStoreHarness } from "#/lib/xmpp/store-test-harness";
 
 const credentials = {
@@ -92,5 +93,55 @@ describe("xmpp read state and subscriptions", () => {
 
 		store.markConversationRead("dev@conference.example.com");
 		expect(adapter.sendDisplayedMarker).not.toHaveBeenCalled();
+	});
+
+	it("clears room reaction snapshots on logout", async () => {
+		const roomReactionStore = createMemoryRoomReactionStore();
+		const { store, emit } = createStoreHarness({ roomReactionStore });
+		await store.connect(credentials);
+
+		const roomJid = "dev@conference.example.com";
+		emit({
+			type: "room",
+			room: {
+				jid: roomJid,
+				name: "Dev",
+				nick: "alice",
+				occupants: {
+					mary: {
+						nick: "mary",
+						jid: "mary@example.com",
+						presence: { show: "available", priority: 0 },
+					},
+				},
+				invites: {},
+			},
+		});
+		emit({
+			type: "message",
+			message: {
+				id: "server-1",
+				stanzaId: "server-1",
+				conversationJid: roomJid,
+				from: `${roomJid}/mary`,
+				to: "alice@example.com",
+				body: "hi",
+				timestamp: 1_000,
+				direction: "incoming",
+				status: "delivered",
+			},
+		});
+		emit({
+			type: "reactions",
+			jid: roomJid,
+			messageId: "server-1",
+			senderJid: `${roomJid}/mary`,
+			senderNick: "mary",
+			reactions: ["👍"],
+		});
+		expect(roomReactionStore.load()).not.toEqual({});
+
+		await store.disconnect();
+		expect(roomReactionStore.load()).toEqual({});
 	});
 });

@@ -37,7 +37,9 @@ function inlineScriptHashes(html) {
 function buildDirectives(scriptHashes) {
 	return {
 		"default-src": ["'self'"],
-		"script-src": ["'self'", ...scriptHashes],
+		// libsignal (OMEMO) compiles WebAssembly; CSP3 gates that separately from
+		// JavaScript eval, so allow only the wasm variant.
+		"script-src": ["'self'", "'wasm-unsafe-eval'", ...scriptHashes],
 		"style-src": ["'self'", "'unsafe-inline'"],
 		"img-src": ["'self'", "blob:", "data:", "https:"],
 		"media-src": ["'self'", "blob:", "https:"],
