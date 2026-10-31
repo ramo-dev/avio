@@ -8,6 +8,8 @@ import {
 import { type FormEvent, useState } from "react";
 import { toast } from "react-hot-toast";
 import { ContactInfoOmemo } from "#/components/chat/conversation/header/contact-info-panel/contact-info-omemo";
+import { InfoTooltip } from "#/components/common/info-tooltip/info-tooltip";
+import { SettingsOmemoResetDialog } from "#/components/settings/settings-omemo-reset-dialog/settings-omemo-reset-dialog";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import { Input } from "#/components/ui/input";
@@ -51,11 +53,25 @@ export function SettingsOmemoCard() {
 	const [passphrase, setPassphrase] = useState("");
 	const [confirmation, setConfirmation] = useState("");
 	const [busy, setBusy] = useState(false);
+	const [maintenance, setMaintenance] = useState(false);
+	const [resetOpen, setResetOpen] = useState(false);
 
 	const setupMode = omemo.status === "setup";
 	const unlockMode = omemo.status === "locked";
 	const ready = omemo.status === "ready";
 	const working = busy || omemo.status === "unlocking";
+
+	async function repairKeys() {
+		setMaintenance(true);
+		try {
+			const ok = await omemo.repair();
+			if (ok) {
+				toast.success("Device keys republished.", { id: "omemo-repair" });
+			}
+		} finally {
+			setMaintenance(false);
+		}
+	}
 
 	async function submitSetup(event: FormEvent) {
 		event.preventDefault();
@@ -109,21 +125,25 @@ export function SettingsOmemoCard() {
 							{STATUS_LABELS[omemo.status]}
 						</Badge>
 					</div>
-					<p className="mt-0.5 text-xs leading-relaxed text-muted-foreground">
-						Experimental and unaudited. Direct messages only. Encryption is off
-						by default and never falls back to plaintext.
+					<p className="mt-0.5 text-xs text-muted-foreground">
+						Experimental · unaudited · direct chats only
 					</p>
 				</div>
 			</div>
 
-			<div className="flex items-start gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-xs leading-relaxed text-muted-foreground">
-				<RiAlertLine className="mt-0.5 size-4 shrink-0" />
-				<p>
+			<div className="flex items-center gap-2 rounded-lg border border-border/60 bg-muted/40 px-3 py-2 text-xs text-muted-foreground">
+				<RiAlertLine className="size-4 shrink-0" />
+				<p className="min-w-0">
 					{security.rememberOmemoUnlock
-						? "Your passphrase is never stored. This browser keeps a non-exportable key that unlocks OMEMO until you lock, log out, or the session auto-locks. It expires after 24 hours. The passphrase cannot be recovered if lost."
-						: "Your passphrase is never stored and cannot be recovered. Losing it locks this device's OMEMO keys."}{" "}
-					Sessions lock after 10 minutes of inactivity.
+						? "Passphrase cannot be recovered. Remembered unlock expires after 24 hours."
+						: "Passphrase cannot be recovered. Sessions lock after 10 minutes."}
 				</p>
+				<InfoTooltip label="Passphrase and session details" side="bottom">
+					The passphrase is never stored.{" "}
+					{security.rememberOmemoUnlock
+						? "This browser keeps a non-exportable key until you lock, log out, or the session auto-locks."
+						: "Losing it locks this device's OMEMO keys."}
+				</InfoTooltip>
 			</div>
 
 			{omemo.status === "disabled" && (
@@ -215,16 +235,35 @@ export function SettingsOmemoCard() {
 						button in the composer, then trust the contact's device in their
 						contact info before sending.
 					</p>
-					<Button
-						type="button"
-						size="sm"
-						variant="outline"
-						onClick={omemo.lock}
-						className="self-start"
-					>
-						<RiLockLine />
-						Lock OMEMO
-					</Button>
+					<div className="flex flex-wrap gap-2">
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							onClick={omemo.lock}
+						>
+							<RiLockLine />
+							Lock OMEMO
+						</Button>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							disabled={maintenance}
+							onClick={() => void repairKeys()}
+						>
+							Repair keys
+						</Button>
+						<Button
+							type="button"
+							size="sm"
+							variant="outline"
+							className="text-destructive"
+							onClick={() => setResetOpen(true)}
+						>
+							Reset OMEMO…
+						</Button>
+					</div>
 					{ownJid && (
 						<ContactInfoOmemo
 							jid={ownJid}
@@ -234,6 +273,8 @@ export function SettingsOmemoCard() {
 					)}
 				</div>
 			)}
+
+			<SettingsOmemoResetDialog open={resetOpen} onOpenChange={setResetOpen} />
 		</div>
 	);
 }

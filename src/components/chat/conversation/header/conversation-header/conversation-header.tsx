@@ -5,17 +5,15 @@ import {
 } from "@remixicon/react";
 import { HeaderActions } from "#/components/chat/conversation/header/header-actions/header-actions";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
-import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
 } from "#/components/ui/tooltip";
+import { conversationStatus } from "#/lib/format/conversation-status";
 import { presenceDotClassName } from "#/lib/format/presence";
-import { formatLastSeen } from "#/lib/format/time";
 import { cn } from "#/lib/utils";
-import { presenceLabel } from "#/lib/xmpp/presence";
 import { useRightSidebar } from "#/providers/right-sidebar-provider";
 import type { ConversationKind } from "#/types/chat";
 import type { PresenceState } from "#/types/xmpp";
@@ -45,17 +43,13 @@ export function ConversationHeader({
 }) {
 	const { open } = useRightSidebar();
 	const isGroup = kind === "group";
-	const status = isGroup
-		? memberPreview
-			? "Invite-only group"
-			: memberCount === 1
-				? "1 member"
-				: `${memberCount ?? 0} members`
-		: typing
-			? "typing…"
-			: presence.show === "offline" && presence.lastSeen
-				? formatLastSeen(presence.lastSeen)
-				: presence.status || presenceLabel(presence);
+	const status = conversationStatus({
+		kind,
+		memberPreview,
+		memberCount,
+		typing,
+		presence,
+	});
 
 	function openInfo() {
 		open(isGroup ? { kind: "room", jid } : { kind: "contact", jid });
@@ -74,54 +68,56 @@ export function ConversationHeader({
 				</Button>
 			)}
 
-			<button
-				type="button"
-				onClick={openInfo}
-				className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
-			>
-				<div className="relative shrink-0">
-					{isGroup ? (
-						<span className="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
-							<RiGroupLine className="size-5" />
-						</span>
-					) : (
-						<>
-							<UserAvatar jid={jid} name={name} />
-							<span
-								className={cn(
-									"absolute right-0 bottom-0 size-2.5 rounded-full border-2 border-background",
-									presenceDotClassName(presence.show),
-								)}
-							/>
-						</>
-					)}
-				</div>
-				<div className="min-w-0">
-					<div className="flex min-w-0 items-center gap-2">
-						<h2 className="truncate text-sm font-semibold">{name}</h2>
-						{isGroup && (
-							<Tooltip>
-								<TooltipTrigger
-									render={
-										<Badge
-											variant="outline"
-											aria-label="Not end-to-end encrypted"
-											className="shrink-0 gap-1 text-[10px] font-normal"
-										>
-											<RiLockUnlockLine className="size-3" />
-											<span className="hidden sm:inline">Not encrypted</span>
-										</Badge>
-									}
+			<div className="flex min-w-0 flex-1 items-center gap-2">
+				<button
+					type="button"
+					onClick={openInfo}
+					className="flex min-w-0 flex-1 items-center gap-3 rounded-lg text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+				>
+					<div className="relative shrink-0">
+						{isGroup ? (
+							<span className="grid size-10 place-items-center rounded-full bg-muted text-muted-foreground">
+								<RiGroupLine className="size-5" />
+							</span>
+						) : (
+							<>
+								<UserAvatar jid={jid} name={name} />
+								<span
+									className={cn(
+										"absolute right-0 bottom-0 size-2.5 rounded-full border-2 border-background",
+										presenceDotClassName(presence.show),
+									)}
 								/>
-								<TooltipContent>
-									Group messages are sent without end-to-end encryption.
-								</TooltipContent>
-							</Tooltip>
+							</>
 						)}
 					</div>
-					<p className="truncate text-xs text-muted-foreground">{status}</p>
-				</div>
-			</button>
+					<div className="min-w-0">
+						<h2 className="truncate text-sm font-semibold">{name}</h2>
+						<p className="truncate text-xs text-muted-foreground">{status}</p>
+					</div>
+				</button>
+
+				{isGroup && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									type="button"
+									variant="outline"
+									size="icon-sm"
+									aria-label="Not end-to-end encrypted"
+									className="size-5 shrink-0 rounded-full p-0 text-muted-foreground"
+								/>
+							}
+						>
+							<RiLockUnlockLine className="size-3" />
+						</TooltipTrigger>
+						<TooltipContent>
+							Group messages are sent without end-to-end encryption.
+						</TooltipContent>
+					</Tooltip>
+				)}
+			</div>
 
 			<HeaderActions
 				jid={jid}

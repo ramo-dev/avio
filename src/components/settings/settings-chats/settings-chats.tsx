@@ -4,7 +4,6 @@ import { Switch } from "#/components/ui/switch";
 import { useSettings } from "#/hooks/use-settings";
 import {
 	setEnterToSend,
-	setReadReceipts,
 	setTypingIndicators,
 } from "#/lib/settings/preferences";
 
@@ -35,17 +34,6 @@ export function SettingsChats() {
 						aria-label="Typing indicators"
 						checked={chats.typingIndicators}
 						onCheckedChange={setTypingIndicators}
-					/>
-				}
-			/>
-			<SettingRow
-				title="Read receipts"
-				description="Let contacts see when you have read their messages. Turning this off keeps your read state private."
-				control={
-					<Switch
-						aria-label="Send read receipts"
-						checked={chats.readReceipts}
-						onCheckedChange={setReadReceipts}
 					/>
 				}
 			/>

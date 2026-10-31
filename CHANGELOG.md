@@ -81,6 +81,16 @@ without a deprecation period.
 - Read state survives a refresh: delivered/read receipts are stored locally and
   re-applied when MAM replays the conversation. Add a Settings > Chats toggle to
   stop sending read receipts.
+- "Encrypt new direct chats by default" is now a guided switch: turning it on
+  before OMEMO is ready scrolls to setup/unlock and focuses the passphrase, and
+  the default is saved only once OMEMO can encrypt.
+- Settings > Security keeps only secondary passphrase-storage mechanics in a
+  tooltip. Warnings, current state, and irreversible consequences stay visible.
+- Added Repair keys (top up pre-keys and republish without changing identity) and
+  Reset OMEMO (new identity/device, fresh passphrase, old device removed from
+  the PEP list) to Security settings.
+- Nested dialogs opened from Settings (such as Reset OMEMO) now render a
+  dimming overlay above the parent dialog instead of inheriting its muted layer.
 - Reaction tooltips expose tooltip semantics, and the group "Not encrypted"
   badge becomes icon-only on narrow screens so group names fit.
 - README diagrams now show the federation trust boundary and the message/receipt

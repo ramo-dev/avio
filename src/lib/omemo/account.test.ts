@@ -1,102 +1,18 @@
 // @vitest-environment node
 
 import { describe, expect, it } from "vitest";
-import { OmemoAccount } from "#/lib/omemo/account";
+import {
+	ALICE,
+	BOB,
+	createAccount,
+	createReadyPair,
+	NEW_PASSPHRASE,
+	PASSPHRASE,
+	PepServer,
+	requireDeviceId,
+	WRONG_PASSPHRASE,
+} from "#/lib/omemo/account.fixtures";
 import { MemoryOmemoEnvelopePersistence } from "#/lib/omemo/memory-persistence";
-import type { OmemoPepBundle, OmemoPepClient } from "#/types/omemo";
-
-const ALICE = "alice@example.com";
-const BOB = "bob@example.com";
-const PASSPHRASE = "correct horse battery staple";
-const WRONG_PASSPHRASE = "incorrect horse battery staple";
-
-class PepServer {
-	private readonly deviceLists = new Map<string, number[]>();
-	private readonly bundles = new Map<string, Map<number, OmemoPepBundle>>();
-
-	publishDeviceList(accountJid: string, deviceIds: number[]): void {
-		this.deviceLists.set(
-			accountJid,
-			[...deviceIds].sort((left, right) => left - right),
-		);
-	}
-
-	getDeviceList(accountJid: string): number[] | null {
-		const deviceIds = this.deviceLists.get(accountJid);
-		return deviceIds ? [...deviceIds] : null;
-	}
-
-	publishBundle(accountJid: string, bundle: OmemoPepBundle): void {
-		const bundles = this.bundles.get(accountJid) ?? new Map();
-		bundles.set(bundle.deviceId, structuredClone(bundle));
-		this.bundles.set(accountJid, bundles);
-	}
-
-	getBundle(accountJid: string, deviceId: number): OmemoPepBundle | null {
-		const bundle = this.bundles.get(accountJid)?.get(deviceId);
-		return bundle ? structuredClone(bundle) : null;
-	}
-}
-
-class TestPepClient implements OmemoPepClient {
-	constructor(
-		private readonly server: PepServer,
-		private readonly accountJid: string,
-	) {}
-
-	async publishDeviceList(deviceIds: number[]): Promise<void> {
-		this.server.publishDeviceList(this.accountJid, deviceIds);
-	}
-
-	async fetchDeviceList(accountJid: string): Promise<number[] | null> {
-		return this.server.getDeviceList(accountJid);
-	}
-
-	async publishBundle(bundle: OmemoPepBundle): Promise<void> {
-		this.server.publishBundle(this.accountJid, bundle);
-	}
-
-	async fetchBundle(
-		accountJid: string,
-		deviceId: number,
-	): Promise<OmemoPepBundle | null> {
-		return this.server.getBundle(accountJid, deviceId);
-	}
-
-	async subscribeToDeviceList(): Promise<void> {}
-}
-
-function createAccount(
-	accountJid: string,
-	server: PepServer,
-	raw: MemoryOmemoEnvelopePersistence,
-): OmemoAccount {
-	return new OmemoAccount({
-		accountJid,
-		pep: new TestPepClient(server, accountJid),
-		raw,
-	});
-}
-
-async function createReadyPair(): Promise<{
-	server: PepServer;
-	raw: MemoryOmemoEnvelopePersistence;
-	alice: OmemoAccount;
-	bob: OmemoAccount;
-}> {
-	const server = new PepServer();
-	const raw = new MemoryOmemoEnvelopePersistence();
-	const alice = createAccount(ALICE, server, raw);
-	const bob = createAccount(BOB, server, raw);
-	await alice.setup(PASSPHRASE);
-	await bob.setup(PASSPHRASE);
-	return { server, raw, alice, bob };
-}
-
-function requireDeviceId(account: OmemoAccount): number {
-	if (account.deviceId === null) throw new Error("Expected a device ID");
-	return account.deviceId;
-}
 
 describe("OmemoAccount", { timeout: 60_000 }, () => {
 	it("probes setup, persists an envelope, then probes locked", async () => {
@@ -187,6 +103,66 @@ describe("OmemoAccount", { timeout: 60_000 }, () => {
 			code: "invalid-passphrase",
 		});
 		await expect(restored.probe()).resolves.toBe("locked");
+	});
+
+	it("repairs keys without changing the identity", async () => {
+		const server = new PepServer();
+		const raw = new MemoryOmemoEnvelopePersistence();
+		const alice = createAccount(ALICE, server, raw);
+		await alice.setup(PASSPHRASE);
+		const deviceId = requireDeviceId(alice);
+		const fingerprint = await alice.localFingerprint();
+
+		await alice.repair();
+
+		expect(alice.deviceId).toBe(deviceId);
+		expect(await alice.localFingerprint()).toBe(fingerprint);
+		expect(server.getDeviceList(ALICE)).toContain(deviceId);
+	});
+
+	it("resets to a new identity and removes the old device", async () => {
+		const server = new PepServer();
+		const raw = new MemoryOmemoEnvelopePersistence();
+		const alice = createAccount(ALICE, server, raw);
+		await alice.setup(PASSPHRASE);
+		const oldDeviceId = requireDeviceId(alice);
+		const oldFingerprint = await alice.localFingerprint();
+
+		const key = await alice.reset(NEW_PASSPHRASE);
+
+		expect(alice.status).toBe("ready");
+		expect(alice.deviceId).not.toBe(oldDeviceId);
+		expect(await alice.localFingerprint()).not.toBe(oldFingerprint);
+		expect(key.extractable).toBe(false);
+		const devices = server.getDeviceList(ALICE) ?? [];
+		expect(devices).toContain(alice.deviceId);
+		expect(devices).not.toContain(oldDeviceId);
+
+		const restored = createAccount(ALICE, server, raw);
+		await expect(restored.unlock(PASSPHRASE)).rejects.toMatchObject({
+			code: "invalid-passphrase",
+		});
+		await restored.unlock(NEW_PASSPHRASE);
+		expect(restored.deviceId).toBe(alice.deviceId);
+	});
+
+	it("rejects a reset that cannot proceed without touching the keys", async () => {
+		const server = new PepServer();
+		const raw = new MemoryOmemoEnvelopePersistence();
+		const alice = createAccount(ALICE, server, raw);
+		await alice.setup(PASSPHRASE);
+		const fingerprint = await alice.localFingerprint();
+
+		await expect(alice.reset("short")).rejects.toMatchObject({
+			code: "weak-passphrase",
+		});
+		expect(alice.status).toBe("ready");
+		expect(await alice.localFingerprint()).toBe(fingerprint);
+
+		alice.lock();
+		await expect(alice.reset(PASSPHRASE)).rejects.toMatchObject({
+			code: "locked",
+		});
 	});
 
 	it("produces a stable, grouped fingerprint without key bytes", async () => {
