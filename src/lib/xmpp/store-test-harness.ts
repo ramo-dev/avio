@@ -1,16 +1,18 @@
 import { vi } from "vitest";
+import { createMemoryMessageReceiptStore } from "#/lib/storage/message-receipts";
 import { createMemoryRoomInviteRequestStore } from "#/lib/storage/room-invite-requests";
 import { createMemoryRoomInviteStore } from "#/lib/storage/room-invites";
 import { createMemoryRoomReactionStore } from "#/lib/storage/room-reactions";
 import { createMemorySessionStore } from "#/lib/storage/session";
 import { createXmppStore } from "#/lib/xmpp/store";
-import type { RoomReactionStore } from "#/types/storage";
+import type { MessageReceiptStore, RoomReactionStore } from "#/types/storage";
 import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
 
 export function createStoreHarness(
 	options: {
 		idFactory?: () => string;
 		roomReactionStore?: RoomReactionStore;
+		messageReceiptStore?: MessageReceiptStore;
 	} = {},
 ) {
 	let listener: ((event: XmppEvent) => void) | null = null;
@@ -20,6 +22,8 @@ export function createStoreHarness(
 	const roomInviteRequestStore = createMemoryRoomInviteRequestStore();
 	const roomReactionStore =
 		options.roomReactionStore ?? createMemoryRoomReactionStore();
+	const messageReceiptStore =
+		options.messageReceiptStore ?? createMemoryMessageReceiptStore();
 
 	const adapter: XmppAdapter = {
 		connect: vi.fn(async () => undefined),
@@ -92,6 +96,7 @@ export function createStoreHarness(
 		roomInviteStore,
 		roomInviteRequestStore,
 		roomReactionStore,
+		messageReceiptStore,
 		now: () => 10_000,
 		idFactory: options.idFactory ?? (() => "fixed"),
 		reactionDelayMs: 0,

@@ -78,6 +78,13 @@ without a deprecation period.
   un-scrollable blank area. Fixed a nested button in the group info tooltip,
   canonicalized the `?panel=` URL, and clarified invite previews (invite-only
   member label, bare inviter JID, join hint in the composer).
+- Read state survives a refresh: delivered/read receipts are stored locally and
+  re-applied when MAM replays the conversation. Add a Settings > Chats toggle to
+  stop sending read receipts.
+- Reaction tooltips expose tooltip semantics, and the group "Not encrypted"
+  badge becomes icon-only on narrow screens so group names fit.
+- README diagrams now show the federation trust boundary and the message/receipt
+  lifecycle instead of the basic chain and state sketches.
 
 - Unified the conversation list for DMs and rooms, with stacked participant
   avatars and a group badge.

@@ -12,6 +12,7 @@ export interface SoundSettings {
 export interface ChatSettings {
 	enterToSend: boolean;
 	typingIndicators: boolean;
+	readReceipts: boolean;
 }
 
 export interface NotificationSettings {

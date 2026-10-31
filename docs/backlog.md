@@ -8,12 +8,10 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Retractions (XEP-0424)** — message actions currently remove a message locally; add protocol retraction with a tombstone.
 - **Upload cancellation and retry** — the XEP-0363 upload path stages files, reports progress, sends OOB links, and renders image/file/video cards. Add per-file cancel/retry controls for failed uploads.
 - **Message search** — local search over the in-memory conversation store first, then MAM search.
-- **Delivery/read receipt parity** — displayed markers are now sent for direct
-  chats while the conversation is open and the tab is visible. Remaining:
-  persist or replay read state so a refresh does not revert already-read
-  messages to sent (markers are not archived in MAM); verify group/room
-  receipts; and decide whether users can disable receipts from Settings > Chats
-  (privacy control).
+- **Delivery/read receipt parity** — displayed markers are sent for direct
+  chats while the conversation is open and the tab is visible, and delivered/read
+  state is stored locally so refresh replays show it. Settings > Chats can stop
+  sending receipts. Remaining: group/room receipts (not sent yet).
 
 ## Chat UI
 
@@ -97,8 +95,9 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
   characters, must not be common, and need at least four distinct characters
   (`src/lib/omemo/passphrase.ts`). Existing shorter passphrases still unlock.
   Not done: a full strength estimator, which would need a new dependency.
-- **Privacy controls** — block list, presence visibility, receipts/typing
-  policy, history retention, and clear-local-history.
+- **Privacy controls** — receipts and typing indicators are configurable in
+  Settings > Chats. Remaining: block list, presence visibility, history
+  retention, and clear-local-history.
 - **Accounts and connections** — multi-account, resource/priority, proxies, and
   custom CA/certificate handling.
 

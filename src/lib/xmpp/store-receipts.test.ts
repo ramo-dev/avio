@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createMemoryMessageReceiptStore } from "#/lib/storage/message-receipts";
 import { createMemoryRoomReactionStore } from "#/lib/storage/room-reactions";
 import { createStoreHarness } from "#/lib/xmpp/store-test-harness";
 
@@ -143,5 +144,61 @@ describe("xmpp read state and subscriptions", () => {
 
 		await store.disconnect();
 		expect(roomReactionStore.load()).toEqual({});
+	});
+
+	it("restores read state from receipts after history replay", async () => {
+		const messageReceiptStore = createMemoryMessageReceiptStore();
+		const { store, emit } = createStoreHarness({ messageReceiptStore });
+		await store.connect(credentials);
+
+		emit({
+			type: "message-status",
+			id: "server-1",
+			stanzaId: "server-1",
+			status: "read",
+		});
+		emit({
+			type: "history",
+			messages: [
+				{
+					id: "server-1",
+					stanzaId: "server-1",
+					conversationJid: "bob@example.com",
+					from: "alice@example.com",
+					to: "bob@example.com",
+					body: "hello",
+					timestamp: 1_000,
+					direction: "outgoing",
+					status: "sent",
+				},
+			],
+		});
+
+		expect(
+			store.getState().conversations["bob@example.com"]?.messages[0]?.status,
+		).toBe("read");
+	});
+
+	it("can mark a conversation read without sending a receipt", async () => {
+		const { store, adapter, emit } = createStoreHarness();
+		await store.connect(credentials);
+		emit({
+			type: "message",
+			message: {
+				id: "server-1",
+				stanzaId: "server-1",
+				conversationJid: "bob@example.com",
+				from: "bob@example.com/phone",
+				to: "alice@example.com",
+				body: "hello",
+				timestamp: 1_000,
+				direction: "incoming",
+				status: "delivered",
+			},
+		});
+
+		store.markConversationRead("bob@example.com", { sendReceipt: false });
+		expect(adapter.sendDisplayedMarker).not.toHaveBeenCalled();
+		expect(store.getState().conversations["bob@example.com"]?.unread).toBe(0);
 	});
 });

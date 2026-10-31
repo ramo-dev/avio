@@ -105,10 +105,11 @@ export function ConversationHeader({
 									render={
 										<Badge
 											variant="outline"
+											aria-label="Not end-to-end encrypted"
 											className="shrink-0 gap-1 text-[10px] font-normal"
 										>
 											<RiLockUnlockLine className="size-3" />
-											Not encrypted
+											<span className="hidden sm:inline">Not encrypted</span>
 										</Badge>
 									}
 								/>

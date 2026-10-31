@@ -59,6 +59,7 @@ describe("settings preferences", () => {
 		expect(settings.appearance.theme).toBe("system");
 		expect(settings.sounds).toEqual({ muted: false, volume: 1 });
 		expect(settings.chats.typingIndicators).toBe(true);
+		expect(settings.chats.readReceipts).toBe(true);
 		expect(settings.security).toEqual({
 			defaultEncryption: "none",
 			rememberOmemoUnlock: false,

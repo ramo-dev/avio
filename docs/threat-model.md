@@ -153,6 +153,8 @@ Verification status:
 - The XMPP password lives in `sessionStorage`, so XSS can read it while the tab
   is open. This follows the existing `AGENTS.md` exception for web refresh
   restore. Tauri must use the OS keychain.
+- Read receipts and typing indicators can be disabled in Settings > Chats; the
+  tradeoff is that contacts then cannot see read/typing activity.
 - Passphrases created before the 12-character rule still unlock. The app cannot
   check them without the passphrase, so it does not force a change.
 

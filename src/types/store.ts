@@ -16,7 +16,11 @@ import type {
 	RoomState,
 } from "#/types/chat";
 import type { OmemoEncryptedMessage, OmemoPepClient } from "#/types/omemo";
-import type { RoomReactionStore, StoredSession } from "#/types/storage";
+import type {
+	MessageReceiptStore,
+	RoomReactionStore,
+	StoredSession,
+} from "#/types/storage";
 import type {
 	Account,
 	ChatState,
@@ -234,7 +238,7 @@ export interface XmppStore {
 	setActiveConversation(jid: string | null): void;
 	ensureConversation(jid: string): void;
 	markConversationUnread(jid: string): void;
-	markConversationRead(jid: string): void;
+	markConversationRead(jid: string, options?: { sendReceipt?: boolean }): void;
 	markAllRead(): void;
 	deleteConversation(jid: string): void;
 	deleteMessage(jid: string, messageId: string): void;
@@ -265,6 +269,8 @@ export interface XmppStoreDeps {
 	roomInviteRequestStore: RoomInviteRequestStore;
 	/** Tab-scoped room reaction snapshots; default store uses sessionStorage. */
 	roomReactionStore?: RoomReactionStore;
+	/** Persisted delivery/read receipts; default store uses localStorage. */
+	messageReceiptStore?: MessageReceiptStore;
 	now?: () => number;
 	idFactory?: () => string;
 	reactionDelayMs?: number;

@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS: Settings = {
 	version: SETTINGS_VERSION,
 	appearance: { theme: "system" },
 	sounds: { muted: false, volume: 0.5 },
-	chats: { enterToSend: true, typingIndicators: true },
+	chats: { enterToSend: true, typingIndicators: true, readReceipts: true },
 	notifications: { enabled: false, previews: true },
 	security: { defaultEncryption: "none", rememberOmemoUnlock: false },
 };
@@ -125,6 +125,10 @@ export function normalizeSettings(value: unknown): Settings {
 			typingIndicators: asBoolean(
 				chats?.typingIndicators,
 				DEFAULT_SETTINGS.chats.typingIndicators,
+			),
+			readReceipts: asBoolean(
+				chats?.readReceipts,
+				DEFAULT_SETTINGS.chats.readReceipts,
 			),
 		},
 		notifications: {
@@ -247,6 +251,13 @@ export function setTypingIndicators(typingIndicators: boolean) {
 	settingsStore.update((current) => ({
 		...current,
 		chats: { ...current.chats, typingIndicators },
+	}));
+}
+
+export function setReadReceipts(readReceipts: boolean) {
+	settingsStore.update((current) => ({
+		...current,
+		chats: { ...current.chats, readReceipts },
 	}));
 }
 

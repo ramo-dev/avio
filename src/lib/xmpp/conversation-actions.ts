@@ -37,8 +37,12 @@ export function createConversationActions(deps: ConversationActionDeps) {
 	 * Marks a conversation read and tells the sender their latest message was
 	 * displayed (XEP-0333). The marker is sent once per stanza.
 	 */
-	function markConversationRead(jid: string) {
+	function markConversationRead(
+		jid: string,
+		options?: { sendReceipt?: boolean },
+	) {
 		deps.setState(reduceActive(deps.getState(), jid));
+		if (options?.sendReceipt === false) return;
 		const conversation = deps.getState().conversations[jid];
 		if (!conversation || conversation.kind === "group") return;
 		const latest = [...conversation.messages]

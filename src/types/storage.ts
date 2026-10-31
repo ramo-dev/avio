@@ -32,3 +32,15 @@ export interface RoomReactionStore {
 	/** Drops all room reaction state, e.g. on logout. */
 	clear(): void;
 }
+
+export type StoredReceiptStatus = "delivered" | "read";
+
+/** Persisted delivery/read state for messages this client sent. */
+export interface MessageReceiptStore {
+	load(accountJid: string): Record<string, StoredReceiptStatus>;
+	save(
+		accountJid: string,
+		messageId: string,
+		status: StoredReceiptStatus,
+	): void;
+}

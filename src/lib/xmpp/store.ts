@@ -1,3 +1,4 @@
+import { createMessageReceiptStore } from "#/lib/storage/message-receipts";
 import { uploadAttachmentWithErrors } from "#/lib/xmpp/attachment-actions";
 import { createConversationActions } from "#/lib/xmpp/conversation-actions";
 import {
@@ -15,6 +16,7 @@ import { bareJid, isValidAccountJid, toAccount } from "#/lib/xmpp/jid";
 import { createOmemoStoreBridge } from "#/lib/xmpp/omemo-store";
 import { createOutgoingActions } from "#/lib/xmpp/outgoing-actions";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
+import { applyReceiptContext } from "#/lib/xmpp/receipt-events";
 import { createInitialState, reduceEvent } from "#/lib/xmpp/reducers";
 import { createRoomReactionsKeeper } from "#/lib/xmpp/room-reactions-snapshot";
 import { restoreSavedSession } from "#/lib/xmpp/session-restore";
@@ -34,6 +36,8 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	const listeners = new Set<() => void>();
 	const now = deps.now ?? Date.now;
 	const reactions = createRoomReactionsKeeper(deps.roomReactionStore);
+	const messageReceipts =
+		deps.messageReceiptStore ?? createMessageReceiptStore();
 	const idFactory =
 		deps.idFactory ??
 		(() =>
@@ -80,7 +84,11 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			// Routed through the store action so the local request row clears too.
 			void acceptSubscription(event.jid);
 		}
-		const nextEvent = restoreRoomInvites(deps.roomInviteStore, state, event);
+		const nextEvent = applyReceiptContext(
+			restoreRoomInvites(deps.roomInviteStore, state, event),
+			state.account?.bareJid ?? null,
+			messageReceipts,
+		);
 
 		const final = reactions.note(
 			nextEvent,
