@@ -8,6 +8,7 @@ import {
 } from "react";
 import { toast } from "react-hot-toast";
 import { useEncryptionPreferences } from "#/hooks/use-encryption-preferences";
+import { useOmemoRetryMessages } from "#/hooks/use-omemo-retry";
 import { useOmemoSession } from "#/hooks/use-omemo-session";
 import { useSettings } from "#/hooks/use-settings";
 import { useXmppState } from "#/hooks/xmpp/use-xmpp";
@@ -28,6 +29,8 @@ export interface OmemoContextValue {
 	error: string | null;
 	setup(passphrase: string): Promise<boolean>;
 	unlock(passphrase: string): Promise<boolean>;
+	repair(): Promise<boolean>;
+	reset(passphrase: string): Promise<boolean>;
 	lock(): void;
 	isEncryptionEnabled(jid: string): boolean;
 	/** Whether encryption should be on for this chat, ignoring account state. */
@@ -60,7 +63,7 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 		rememberUnlock: security.rememberOmemoUnlock,
 	});
 	const { accountRef, status, resetIdle } = session;
-	const { preferences: encryptedJids, setPreference: setEncryptedPreference } =
+	const { preferences: encryptedJids, setPreference: setEncryptionEnabled } =
 		useEncryptionPreferences(accountJid);
 
 	const handleIncoming = useCallback(
@@ -77,9 +80,10 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 				});
 				return;
 			}
+			const outgoing = event.direction === "outgoing";
 			try {
 				const decrypted = await account.decrypt(event.from, event.envelope);
-				if (!decrypted.trusted) {
+				if (!decrypted.trusted && !outgoing) {
 					store.addMessage({
 						...message,
 						trusted: false,
@@ -92,6 +96,8 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 					...message,
 					body: decrypted.plaintext,
 					trusted: true,
+					decryptionError: undefined,
+					omemoEnvelope: undefined,
 				});
 			} catch (cause) {
 				store.addMessage({
@@ -108,10 +114,16 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 
 	useEffect(() => {
 		return store.subscribeOmemo((event) => {
-			if (event.direction !== "incoming") return;
 			void handleIncoming(event);
 		});
 	}, [handleIncoming, store]);
+
+	const retryMessages = useOmemoRetryMessages({
+		accountJid,
+		accountRef,
+		status,
+		store,
+	});
 
 	const isEncryptionIntended = useCallback(
 		(jid: string) => {
@@ -131,13 +143,6 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 	const isEncryptionEnabled = useCallback(
 		(jid: string) => status === "ready" && isEncryptionIntended(jid),
 		[isEncryptionIntended, status],
-	);
-
-	const setEncryptionEnabled = useCallback(
-		(jid: string, enabled: boolean) => {
-			setEncryptedPreference(jid, enabled);
-		},
-		[setEncryptedPreference],
 	);
 
 	const sendMessage = useCallback(
@@ -228,9 +233,10 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 				throw new OmemoStorageError("locked");
 			}
 			await account.trustDevice(jid, targetDeviceId, expectedFingerprint);
+			await retryMessages();
 			resetIdle();
 		},
-		[accountRef, resetIdle],
+		[accountRef, resetIdle, retryMessages],
 	);
 
 	const value = useMemo<OmemoContextValue>(
@@ -241,6 +247,8 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 			error: session.error,
 			setup: session.setup,
 			unlock: session.unlock,
+			repair: session.repair,
+			reset: session.reset,
 			lock: session.lock,
 			isEncryptionEnabled,
 			isEncryptionIntended,
@@ -257,6 +265,8 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 			session.error,
 			session.setup,
 			session.unlock,
+			session.repair,
+			session.reset,
 			session.lock,
 			isEncryptionEnabled,
 			isEncryptionIntended,

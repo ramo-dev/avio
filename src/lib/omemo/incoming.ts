@@ -17,16 +17,18 @@ export function createIncomingEncryptedMessage(
 	const id = event.id
 		? `omemo-${event.id}`
 		: `omemo-${event.from}-${event.envelope.sid}-${now}`;
+	const outgoing = event.direction === "outgoing";
 	return {
 		id,
 		stanzaId: event.id,
 		conversationJid: event.jid,
 		from: event.from,
-		to: accountJid,
+		to: outgoing ? event.jid : accountJid,
 		body: "Encrypted message",
 		timestamp: now,
-		direction: "incoming",
-		status: "delivered",
+		direction: event.direction,
+		status: outgoing ? "sent" : "delivered",
 		encrypted: true,
+		omemoEnvelope: event.envelope,
 	};
 }

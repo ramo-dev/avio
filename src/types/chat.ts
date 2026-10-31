@@ -1,4 +1,5 @@
 import type { MessageAttachment } from "#/types/attachment";
+import type { OmemoEncryptedMessage } from "#/types/omemo";
 import type { PresenceState } from "#/types/xmpp";
 
 export type MessageStatus =
@@ -86,6 +87,8 @@ export interface ChatMessage {
 	unencryptedFallback?: boolean;
 	/** Safe, human-readable decryption failure reason. */
 	decryptionError?: string;
+	/** Ciphertext retained so a locked message can be retried after unlock. */
+	omemoEnvelope?: OmemoEncryptedMessage;
 	error?: string;
 }
 

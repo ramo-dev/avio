@@ -81,6 +81,24 @@ without a deprecation period.
 - Read state survives a refresh: delivered/read receipts are stored locally and
   re-applied when MAM replays the conversation. Add a Settings > Chats toggle to
   stop sending read receipts.
+- "Encrypt new direct chats by default" is now a guided switch: turning it on
+  before OMEMO is ready scrolls to setup/unlock and focuses the passphrase, and
+  the default is saved only once OMEMO can encrypt.
+- Settings > Security keeps only secondary passphrase-storage mechanics in a
+  tooltip. Warnings, current state, and irreversible consequences stay visible.
+- Added Repair keys (top up pre-keys and republish without changing identity) and
+  Reset OMEMO (new identity/device, fresh passphrase, old device removed from
+  the PEP list) to Security settings.
+- Nested dialogs opened from Settings (such as Reset OMEMO) now render a
+  dimming overlay above the parent dialog instead of inheriting its muted layer.
+- Added repo Playwright smoke suites: `pnpm test:e2e` covers mutual presence,
+  DM/group delivery, group invite/join, reactions (including refresh restore),
+  transcript scrolling, and panel restore; `pnpm test:csp` checks the static
+  build for CSP violations. Added a GitHub Actions workflow for both.
+- OMEMO placeholders received while locked now decrypt automatically after
+  unlock or device verification. Outgoing encrypted carbons from your other
+  devices are decrypted and shown in the recipient conversation without
+  duplicating the originating device's copy.
 - Reaction tooltips expose tooltip semantics, and the group "Not encrypted"
   badge becomes icon-only on narrow screens so group names fit.
 - README diagrams now show the federation trust boundary and the message/receipt

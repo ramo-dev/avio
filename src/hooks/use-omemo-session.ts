@@ -7,12 +7,16 @@ import {
 	useState,
 } from "react";
 import { toast } from "react-hot-toast";
+import {
+	forgetRememberedUnlock,
+	rememberUnlockKey,
+	restoreRememberedUnlock,
+} from "#/hooks/omemo-unlock-helpers";
 import { useOmemoIdleLock } from "#/hooks/use-omemo-idle-lock";
 import { OmemoAccount } from "#/lib/omemo/account";
 import { omemoErrorMessage } from "#/lib/omemo/errors";
 import { createOmemoUnlockStore } from "#/lib/storage/omemo-unlock-key";
-import type { OmemoAccountStatus, OmemoUnlockSecret } from "#/types/omemo";
-import type { OmemoUnlockStore } from "#/types/storage";
+import type { OmemoAccountStatus } from "#/types/omemo";
 import type { XmppStore } from "#/types/store";
 import type { ConnectionStatus } from "#/types/xmpp";
 
@@ -24,6 +28,8 @@ export interface OmemoSession {
 	error: string | null;
 	setup(passphrase: string): Promise<boolean>;
 	unlock(passphrase: string): Promise<boolean>;
+	repair(): Promise<boolean>;
+	reset(passphrase: string): Promise<boolean>;
 	lock(): void;
 	resetIdle(): void;
 }
@@ -33,58 +39,6 @@ interface OmemoSessionOptions {
 	accountJid: string | null;
 	connectionStatus: ConnectionStatus;
 	rememberUnlock: boolean;
-}
-
-function forgetRememberedUnlock(store: OmemoUnlockStore, accountJid: string) {
-	store.clear(accountJid).catch(() => {
-		toast.error("Could not clear the remembered OMEMO unlock on this device.", {
-			id: "omemo-unlock-clear",
-		});
-	});
-}
-
-async function rememberUnlockKey(
-	store: OmemoUnlockStore,
-	accountJid: string,
-	key: CryptoKey,
-) {
-	try {
-		await store.save(accountJid, { type: "key", key });
-	} catch {
-		toast.error("Could not remember OMEMO unlock on this device.", {
-			id: "omemo-unlock-remember",
-		});
-	}
-}
-
-/**
- * Unlocks with a remembered key. Returns false when nothing usable is stored,
- * so the caller falls back to the passphrase prompt.
- */
-async function restoreRememberedUnlock(
-	account: OmemoAccount,
-	store: OmemoUnlockStore,
-	accountJid: string,
-): Promise<boolean> {
-	let secret: OmemoUnlockSecret | null;
-	try {
-		secret = await store.load(accountJid);
-	} catch {
-		return false;
-	}
-	if (!secret) return false;
-
-	try {
-		await account.unlockWithKey(secret.key);
-		// Refresh the TTL so an actively used remembered key does not expire
-		// mid-session; a force-closed tab still expires after 24 hours.
-		await store.save(accountJid, secret).catch(() => undefined);
-		return true;
-	} catch {
-		forgetRememberedUnlock(store, accountJid);
-		await account.probe().catch(() => undefined);
-		return false;
-	}
 }
 
 /** Creates, probes, unlocks, and locks the account-scoped OMEMO session. */
@@ -268,6 +222,51 @@ export function useOmemoSession({
 		[refreshIdentity, resetIdle, unlockKeys],
 	);
 
+	const repair = useCallback(async () => {
+		const account = accountRef.current;
+		if (!account || account.status !== "ready") return false;
+		try {
+			await account.repair();
+			resetIdle();
+			return true;
+		} catch (cause) {
+			toast.error(
+				omemoErrorMessage(cause, "OMEMO key repair could not be completed."),
+				{ id: "omemo-repair" },
+			);
+			return false;
+		}
+	}, [resetIdle]);
+
+	const reset = useCallback(
+		async (passphrase: string) => {
+			const account = accountRef.current;
+			if (!account) return false;
+			setStatus("unlocking");
+			setError(null);
+			try {
+				await unlockKeys.clear(account.accountJid).catch(() => undefined);
+				const key = await account.reset(passphrase);
+				await refreshIdentity(account);
+				if (remember.current) {
+					await rememberUnlockKey(unlockKeys, account.accountJid, key);
+				}
+				setStatus("ready");
+				resetIdle();
+				return true;
+			} catch (cause) {
+				setStatus(account.status);
+				setError(omemoErrorMessage(cause, "OMEMO could not be reinitialized."));
+				toast.error(
+					omemoErrorMessage(cause, "OMEMO could not be reinitialized."),
+					{ id: "omemo-reset" },
+				);
+				return false;
+			}
+		},
+		[refreshIdentity, resetIdle, unlockKeys],
+	);
+
 	const lock = useCallback(() => {
 		const account = accountRef.current;
 		if (!account) return;
@@ -287,6 +286,8 @@ export function useOmemoSession({
 		error,
 		setup,
 		unlock,
+		repair,
+		reset,
 		lock,
 		resetIdle,
 	};

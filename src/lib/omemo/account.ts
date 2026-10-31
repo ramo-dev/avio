@@ -1,3 +1,8 @@
+import {
+	publishReplacementDevice,
+	repairOwnDevice,
+} from "#/lib/omemo/device-maintenance";
+import { listAccountDevices } from "#/lib/omemo/devices";
 import { EncryptedOmemoPersistence } from "#/lib/omemo/encrypted-persistence";
 import { OmemoEngine } from "#/lib/omemo/engine";
 import {
@@ -5,10 +10,7 @@ import {
 	OmemoSessionError,
 	OmemoStorageError,
 } from "#/lib/omemo/errors";
-import {
-	fingerprintFromBase64,
-	fingerprintIdentityKey,
-} from "#/lib/omemo/fingerprint";
+import { fingerprintIdentityKey } from "#/lib/omemo/fingerprint";
 import { IndexedDbOmemoPersistence } from "#/lib/omemo/indexed-db-persistence";
 import { OmemoMessageCipher } from "#/lib/omemo/message";
 import { passphraseIssue } from "#/lib/omemo/passphrase";
@@ -159,29 +161,7 @@ export class OmemoAccount {
 
 	/** Lists published devices with fingerprints and local trust state. */
 	async listDevices(jid: string): Promise<OmemoDeviceInfo[]> {
-		const engine = this.requireEngine();
-		const target = bareJid(jid);
-		const deviceIds = await this.pep.fetchDeviceList(target);
-		if (!deviceIds) return [];
-
-		const devices: OmemoDeviceInfo[] = [];
-		for (const deviceId of deviceIds) {
-			let bundle: Awaited<ReturnType<OmemoPepClient["fetchBundle"]>>;
-			try {
-				bundle = await this.pep.fetchBundle(target, deviceId);
-			} catch {
-				continue;
-			}
-			if (!bundle) continue;
-			const fingerprint = await fingerprintFromBase64(bundle.identityKey);
-			if (!fingerprint) continue;
-			devices.push({
-				deviceId,
-				fingerprint,
-				trusted: await engine.isTrustedDevice(target, deviceId),
-			});
-		}
-		return devices;
+		return listAccountDevices(this.requireEngine(), this.pep, jid);
 	}
 
 	async trustDevice(
@@ -199,6 +179,39 @@ export class OmemoAccount {
 	/** Republishes the local device in the account's PEP device list. */
 	async refreshOwnDeviceList(): Promise<void> {
 		await this.requireEngine().publishDeviceList();
+	}
+
+	/**
+	 * Safe maintenance: tops up pre-keys and republishes the existing bundle and
+	 * device list without changing identity, fingerprint, or trust.
+	 */
+	async repair(): Promise<void> {
+		await repairOwnDevice(this.requireEngine());
+	}
+
+	/**
+	 * Destructive reset: replaces the identity, device ID, pre-keys, and trust
+	 * state. The new passphrase is validated before anything is deleted so a
+	 * rejected reset leaves the current account untouched.
+	 */
+	async reset(passphrase: string): Promise<CryptoKey> {
+		if (this.currentStatus !== "ready") {
+			throw new OmemoStorageError("locked");
+		}
+		if (passphraseIssue(passphrase)) {
+			throw new OmemoStorageError("weak-passphrase");
+		}
+		const previousDeviceId = this.currentDeviceId;
+		this.lock();
+		await this.raw.clear(this.accountJid);
+		const key = await this.setup(passphrase);
+		await publishReplacementDevice(
+			this.pep,
+			this.accountJid,
+			previousDeviceId,
+			this.currentDeviceId,
+		).catch(() => undefined);
+		return key;
 	}
 
 	private async open(passphrase: string): Promise<CryptoKey> {

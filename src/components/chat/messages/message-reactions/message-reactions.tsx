@@ -90,7 +90,7 @@ export function MessageReactions({
 					>
 						<span>{emoji}</span>
 						{users.length > 1 && (
-							<span className="absolute -top-1.5 left-1/2 flex size-4 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-[9px] font-medium leading-none text-primary-foreground ring-2 ring-background">
+							<span className="absolute -bottom-1.5 -right-3.5 flex size-4 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-[9px] font-medium leading-none text-primary-foreground ring-2 ring-background">
 								{users.length}
 							</span>
 						)}
