@@ -11,7 +11,7 @@ describe("side panel param", () => {
 			kind: "contact",
 			jid: "bob@example.com",
 		});
-		expect(contact).toBe("contact%3Abob%40example.com");
+		expect(contact).toBe("contact:bob@example.com");
 		expect(parseSidePanelParam(contact)).toEqual({
 			kind: "contact",
 			jid: "bob@example.com",
@@ -27,8 +27,12 @@ describe("side panel param", () => {
 		});
 	});
 
-	it("accepts raw values the router may hand back decoded", () => {
+	it("accepts raw values and legacy percent-encoded values", () => {
 		expect(parseSidePanelParam("room:dev@conference.example.com")).toEqual({
+			kind: "room",
+			jid: "dev@conference.example.com",
+		});
+		expect(parseSidePanelParam("room%3Adev%40conference.example.com")).toEqual({
 			kind: "room",
 			jid: "dev@conference.example.com",
 		});

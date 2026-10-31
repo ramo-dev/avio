@@ -25,6 +25,8 @@ type ComposerProps = {
 	jid: string;
 	disabled: boolean;
 	contactName: string;
+	/** Overrides the disabled-state placeholder, e.g. for invite previews. */
+	placeholderOverride?: string;
 	replyTo?: ChatMessage | null;
 	editing?: ChatMessage | null;
 	onContextDone?: () => void;
@@ -40,6 +42,7 @@ export function Composer({
 	jid,
 	disabled,
 	contactName,
+	placeholderOverride,
 	replyTo,
 	editing,
 	onContextDone,
@@ -164,12 +167,14 @@ export function Composer({
 		onContextDone?.();
 	}
 
-	const placeholder = composerPlaceholder({
-		disabled,
-		stagedCount: staged.length,
-		replyTo: replyTo ?? null,
-		editing: editing ?? null,
-	});
+	const placeholder =
+		placeholderOverride ??
+		composerPlaceholder({
+			disabled,
+			stagedCount: staged.length,
+			replyTo: replyTo ?? null,
+			editing: editing ?? null,
+		});
 
 	return (
 		<>

@@ -13,7 +13,7 @@ import { useMediaQuery } from "#/hooks/use-media-query";
 import { useSendFiles } from "#/hooks/use-send-files";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { findMessageMatches } from "#/lib/chat/search";
-import { displayJidName, jidResource } from "#/lib/xmpp/jid";
+import { bareJid, displayJidName, jidResource } from "#/lib/xmpp/jid";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import { selectRoomMembers } from "#/lib/xmpp/room-members";
 import { useOmemo } from "#/providers/omemo-provider";
@@ -176,7 +176,10 @@ export function ConversationView({
 				name={name}
 				presence={presence}
 				kind={kind}
-				memberCount={selectRoomMembers(room).length}
+				memberCount={
+					isInvitePreview ? undefined : selectRoomMembers(room).length
+				}
+				memberPreview={isInvitePreview}
 				typing={conversation?.typing ?? false}
 				searchOpen={searchOpen}
 				onToggleSearch={() => {
@@ -212,7 +215,7 @@ export function ConversationView({
 				<div className="shrink-0 border-b border-border bg-muted/30 px-4 py-3">
 					<p className="text-sm font-medium">{invite.roomName}</p>
 					<p className="mt-0.5 text-xs text-muted-foreground">
-						Invited by {invite.from}
+						Invited by {bareJid(invite.from)}
 						{invite.reason ? ` · ${invite.reason}` : ""}
 					</p>
 					<p className="mt-2 text-xs leading-relaxed text-muted-foreground">
@@ -279,6 +282,11 @@ export function ConversationView({
 				jid={jid}
 				disabled={!connected || isInvitePreview || !joined}
 				contactName={name}
+				placeholderOverride={
+					isInvitePreview && connected
+						? "Join the group to send messages"
+						: undefined
+				}
 				onSendFiles={isInvitePreview ? undefined : sendFiles}
 				replyTo={replyTo}
 				editing={editing}

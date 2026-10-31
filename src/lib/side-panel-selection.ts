@@ -23,11 +23,11 @@ export function validateSidePanelSearch(
 }
 
 /**
- * Encodes a selection for the `panel` search param, for example
- * `panel=room%3Adev%40conference.example.com`.
+ * Encodes a selection for the `panel` search param. The router serializes the
+ * search value, so do not percent-encode here or the URL is double-encoded.
  */
 export function encodeSidePanelParam(selection: SidePanelSelection): string {
-	return `${encodeURIComponent(`${selection.kind}:${selection.jid}`)}`;
+	return `${selection.kind}:${selection.jid}`;
 }
 
 /** Parses the `panel` search param. Anything invalid yields null. */

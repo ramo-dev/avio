@@ -126,7 +126,6 @@ export function MessageList({
 								<MessageScrollerItem
 									key={item.id}
 									messageId={item.group.id}
-									scrollAnchor={item.group.direction === "outgoing"}
 									style={{ contentVisibility: "visible" }}
 								>
 									<MessageGroupView

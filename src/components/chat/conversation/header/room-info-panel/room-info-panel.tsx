@@ -140,12 +140,14 @@ export function RoomInfoPanel({ jid }: { jid: string }) {
 						</h3>
 
 						<Tooltip>
-							<TooltipTrigger>
-								<CodeBlockCopyButton
-									variant="outline"
-									value={room?.name ?? jid}
-								/>
-							</TooltipTrigger>
+							<TooltipTrigger
+								render={
+									<CodeBlockCopyButton
+										variant="outline"
+										value={room?.name ?? jid}
+									/>
+								}
+							/>
 							<TooltipContent>{room?.name ?? jid}</TooltipContent>
 						</Tooltip>
 					</div>
