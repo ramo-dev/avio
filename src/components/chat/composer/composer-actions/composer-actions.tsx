@@ -1,9 +1,12 @@
 import {
 	RiAddCircleLine,
+	RiAlertLine,
 	RiArrowUpLine,
 	RiEmotionLine,
 	RiFileLine,
 	RiImageLine,
+	RiLockLine,
+	RiLockUnlockLine,
 	RiMusicLine,
 } from "@remixicon/react";
 import { useRef, useState } from "react";
@@ -30,11 +33,18 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "#/components/ui/tooltip";
+import type { EncryptionAttention } from "#/lib/omemo/attention";
+import { encryptionAttentionCopy } from "#/lib/omemo/attention";
+import { cn } from "#/lib/utils";
 
 export function ComposerActions({
 	disabled,
 	canSend,
 	canAttach,
+	showEncryption,
+	encryptionEnabled,
+	encryptionAttention,
+	onToggleEncryption,
 	onStage,
 	onEmojiSelect,
 	textareaRef,
@@ -42,6 +52,10 @@ export function ComposerActions({
 	disabled: boolean;
 	canSend: boolean;
 	canAttach: boolean;
+	showEncryption?: boolean;
+	encryptionEnabled?: boolean;
+	encryptionAttention?: EncryptionAttention | null;
+	onToggleEncryption?: () => void;
 	onStage: (files: FileList | null) => void;
 	onEmojiSelect: (emoji: string) => void;
 	textareaRef: React.RefObject<HTMLTextAreaElement | null>;
@@ -51,9 +65,56 @@ export function ComposerActions({
 	const audioInputRef = useRef<HTMLInputElement>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
+	const attention = encryptionAttention ?? null;
+	const attentionLabel = attention ? encryptionAttentionCopy(attention) : null;
+
 	return (
 		<div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-2">
 			<div className="flex items-center gap-1">
+				{showEncryption && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									type="button"
+									variant={
+										encryptionEnabled || attention ? "secondary" : "ghost"
+									}
+									size="icon"
+									disabled={disabled}
+									onClick={onToggleEncryption}
+									aria-label={
+										attentionLabel ??
+										(encryptionEnabled
+											? "Turn off message encryption"
+											: "Turn on message encryption")
+									}
+									aria-pressed={
+										attention ? undefined : Boolean(encryptionEnabled)
+									}
+									className={cn(
+										"size-9 shrink-0 rounded-full",
+										attention ? "text-destructive" : "text-muted-foreground",
+									)}
+								/>
+							}
+						>
+							{attention ? (
+								<RiAlertLine className="size-4" />
+							) : encryptionEnabled ? (
+								<RiLockLine className="size-4" />
+							) : (
+								<RiLockUnlockLine className="size-4" />
+							)}
+						</TooltipTrigger>
+						<TooltipContent>
+							{attentionLabel ??
+								(encryptionEnabled
+									? "Encryption on"
+									: "Encrypt this conversation")}
+						</TooltipContent>
+					</Tooltip>
+				)}
 				{canAttach && (
 					<>
 						<DropdownMenu>

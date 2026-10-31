@@ -5,6 +5,68 @@ import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import type { ChatMessage, Contact } from "#/types/chat";
 import type { XmppEvent } from "#/types/store";
 
+function reactionEventFromMessage(
+	message: StanzaProtocol.Message,
+	fallbackFrom: string,
+	fallbackTo: string,
+	accountBareJid: string,
+): XmppEvent | null {
+	if (!message.reactions?.id) return null;
+	const from = message.from ?? fallbackFrom;
+	const to = message.to ?? fallbackTo;
+	const outgoing = bareJid(from).toLowerCase() === accountBareJid.toLowerCase();
+	const jid = outgoing ? bareJid(to) : bareJid(from);
+	const isGroup = message.type === "groupchat";
+	const senderNick = jidResource(from);
+	return {
+		type: "reactions",
+		jid,
+		messageId: message.reactions.id,
+		// For groups, the reducer matches the nick against room occupants to
+		// attribute the reaction to the occupant's real JID.
+		senderJid: isGroup
+			? `${jid}/${senderNick ?? ""}`
+			: outgoing
+				? accountBareJid
+				: bareJid(from),
+		senderNick: isGroup ? senderNick : undefined,
+		reactions: message.reactions.reactions ?? [],
+	};
+}
+
+function editEventFromMessage(
+	message: StanzaProtocol.Message,
+	fallbackFrom: string,
+	fallbackTo: string,
+	accountBareJid: string,
+): XmppEvent | null {
+	if (!message.replace) return null;
+	const from = message.from ?? fallbackFrom;
+	const to = message.to ?? fallbackTo;
+	const outgoing = bareJid(from).toLowerCase() === accountBareJid.toLowerCase();
+	const jid = outgoing ? bareJid(to) : bareJid(from);
+	const body = message.body?.trim();
+	if (!body) return null;
+	return { type: "edit", jid, messageId: message.replace, body };
+}
+
+/** Live (or forwarded) reaction and edit stanzas mapped onto domain events. */
+export function mapMessageActions(
+	message: StanzaProtocol.Message,
+	fallbackFrom: string,
+	fallbackTo: string,
+	accountBareJid: string,
+): XmppEvent | null {
+	return (
+		reactionEventFromMessage(
+			message,
+			fallbackFrom,
+			fallbackTo,
+			accountBareJid,
+		) ?? editEventFromMessage(message, fallbackFrom, fallbackTo, accountBareJid)
+	);
+}
+
 export function normalizeStanzaMessage(
 	message: StanzaProtocol.Message,
 	accountBareJid: string,
@@ -45,6 +107,28 @@ export function mapHistory(
 		if (message.reactions || message.replace) continue;
 		const delay = result.item.delay?.timestamp ?? message.delay?.timestamp;
 		const normalized = normalizeStanzaMessage(
+			delay ? { ...message, delay: { timestamp: delay } } : message,
+			accountBareJid,
+		);
+		if (normalized) messages.push(normalized);
+	}
+	return messages.sort((a, b) => a.timestamp - b.timestamp);
+}
+
+/**
+ * Maps room MAM results into read-only room messages for invite previews.
+ */
+export function mapRoomHistory(
+	fin: StanzaProtocol.MAMFin,
+	accountBareJid: string,
+): ChatMessage[] {
+	const messages: ChatMessage[] = [];
+	for (const result of fin.results ?? []) {
+		const message = result.item.message;
+		if (!message || message.type !== "groupchat") continue;
+		if (message.reactions || message.replace) continue;
+		const delay = result.item.delay?.timestamp ?? message.delay?.timestamp;
+		const normalized = normalizeGroupMessage(
 			delay ? { ...message, delay: { timestamp: delay } } : message,
 			accountBareJid,
 		);

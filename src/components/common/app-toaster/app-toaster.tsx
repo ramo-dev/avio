@@ -4,6 +4,7 @@ export function AppToaster() {
 	return (
 		<Toaster
 			position="top-center"
+			containerClassName="z-[1000]"
 			toastOptions={{
 				duration: 5000,
 				style: {

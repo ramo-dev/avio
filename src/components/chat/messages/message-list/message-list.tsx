@@ -65,7 +65,7 @@ export function MessageList({
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
 				{isGroup ? (
 					<span className="grid size-16 place-items-center rounded-full bg-muted text-muted-foreground">
-						<RiGroupLine className="size-7" />
+						<RiGroupLine className="size-16" />
 					</span>
 				) : (
 					<UserAvatar
@@ -126,7 +126,6 @@ export function MessageList({
 								<MessageScrollerItem
 									key={item.id}
 									messageId={item.group.id}
-									scrollAnchor={item.group.direction === "outgoing"}
 									style={{ contentVisibility: "visible" }}
 								>
 									<MessageGroupView

@@ -5,6 +5,7 @@ import {
 	RiImageLine,
 } from "@remixicon/react";
 import { useState } from "react";
+import { MediaPlaceholder } from "#/components/chat/messages/media-placeholder/media-placeholder";
 import { MessageAudio } from "#/components/chat/messages/message-audio/message-audio";
 import { MessageVideo } from "#/components/chat/messages/message-video/message-video";
 import { Card } from "#/components/ui/card";
@@ -22,11 +23,16 @@ export function MessageAttachments({
 }) {
 	const [active, setActive] = useState<MessageAttachment | null>(null);
 	const [failed, setFailed] = useState<Record<string, boolean>>({});
+	const [revealed, setRevealed] = useState<Set<string>>(() => new Set());
 
 	if (attachments.length === 0) return null;
 
 	function markFailed(id: string) {
 		setFailed((current) => ({ ...current, [id]: true }));
+	}
+
+	function reveal(id: string) {
+		setRevealed((current) => new Set(current).add(id));
 	}
 
 	return (
@@ -35,6 +41,17 @@ export function MessageAttachments({
 				{attachments.map((attachment) => {
 					const isFailed = failed[attachment.id];
 					if (attachment.kind === "image" && !isFailed) {
+						if (!revealed.has(attachment.id)) {
+							return (
+								<MediaPlaceholder
+									key={attachment.id}
+									kind="image"
+									name={attachment.name}
+									size={attachment.size}
+									onLoad={() => reveal(attachment.id)}
+								/>
+							);
+						}
 						return (
 							<button
 								key={attachment.id}

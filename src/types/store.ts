@@ -15,7 +15,12 @@ import type {
 	RoomOccupant,
 	RoomState,
 } from "#/types/chat";
-import type { StoredSession } from "#/types/storage";
+import type { OmemoEncryptedMessage, OmemoPepClient } from "#/types/omemo";
+import type {
+	MessageReceiptStore,
+	RoomReactionStore,
+	StoredSession,
+} from "#/types/storage";
 import type {
 	Account,
 	ChatState,
@@ -29,6 +34,11 @@ import type {
 export interface RoomInviteStore {
 	load(accountJid: string): Record<string, RoomInvite[]>;
 	save(accountJid: string, rooms: Record<string, RoomInvite[]>): void;
+}
+
+export interface RoomInviteRequestStore {
+	load(accountJid: string): RoomInviteRequest[];
+	save(accountJid: string, requests: RoomInviteRequest[]): void;
 }
 
 export interface ConnectionState {
@@ -61,15 +71,34 @@ export type XmppEvent =
 	| { type: "presence"; jid: string; presence: PresenceState }
 	| { type: "message"; message: ChatMessage }
 	| {
+			type: "omemo-message";
+			/** Bare conversation JID. */
+			jid: string;
+			/** Full sender JID. */
+			from: string;
+			/** Stanza ID, when present. */
+			id?: string;
+			direction: "incoming" | "outgoing";
+			envelope: OmemoEncryptedMessage;
+	  }
+	| {
 			type: "reactions";
 			jid: string;
 			messageId: string;
 			senderJid: string;
+			/** Occupant nick for group reactions, resolved against room occupants. */
+			senderNick?: string;
 			reactions: string[];
 	  }
 	| { type: "edit"; jid: string; messageId: string; body: string }
 	| { type: "history"; messages: ChatMessage[] }
 	| { type: "room"; room: RoomState }
+	| {
+			type: "room-membership";
+			jid: string;
+			membership: RoomState["membership"];
+	  }
+	| { type: "room-members"; jid: string; memberJids: string[] }
 	| {
 			type: "room-occupant";
 			jid: string;
@@ -81,6 +110,7 @@ export type XmppEvent =
 	| { type: "room-invites"; jid: string; invites: RoomInvite[] }
 	| { type: "room-invite-request"; request: RoomInviteRequest }
 	| { type: "room-invite-request-cleared"; roomJid: string }
+	| { type: "room-invite-declined"; roomJid: string; from: string }
 	| {
 			type: "message-status";
 			id?: string;
@@ -107,6 +137,7 @@ export interface SendMessageInput {
 export interface SendMessageOptions {
 	replyTo?: MessageReply;
 	editId?: string;
+	unencryptedFallback?: boolean;
 }
 
 export interface RoomInfo {
@@ -115,14 +146,25 @@ export interface RoomInfo {
 	nick: string;
 }
 
+export type RoomPreviewResult =
+	| { status: "ok"; messages: ChatMessage[] }
+	| { status: "restricted" }
+	| { status: "unavailable" };
+
 export interface XmppAdapter {
 	connect(credentials: ConnectCredentials): Promise<void>;
 	disconnect(): Promise<void>;
 	sendMessage(input: SendMessageInput): Promise<void>;
+	sendEncryptedMessage(
+		to: string,
+		id: string,
+		envelope: OmemoEncryptedMessage,
+	): Promise<void>;
 	sendReaction(
 		to: string,
 		messageId: string,
 		reactions: string[],
+		roomType?: "chat" | "groupchat",
 	): Promise<void>;
 	forwardMessage(to: string, message: ChatMessage, id?: string): Promise<void>;
 	sendChatState(to: string, state: ChatState): Promise<void>;
@@ -134,8 +176,16 @@ export interface XmppAdapter {
 		memberJids: string[],
 		reason?: string,
 	): Promise<void>;
-	acceptRoomInvite(jid: string, reason?: string): Promise<void>;
-	declineRoomInvite(jid: string): Promise<void>;
+	acceptRoomInvite(
+		jid: string,
+		reason?: string,
+		invitedBy?: string,
+	): Promise<void>;
+	declineRoomInvite(
+		jid: string,
+		sender?: string,
+		reason?: string,
+	): Promise<void>;
 	getUploadService(): Promise<UploadService>;
 	getUploadSlot(
 		serviceJid: string,
@@ -143,6 +193,11 @@ export interface XmppAdapter {
 	): Promise<UploadSlot>;
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
+	/** Sends a XEP-0333 displayed marker for the latest read incoming message. */
+	sendDisplayedMarker(to: string, messageId: string): Promise<void>;
+	getOmemoPep(): Promise<OmemoPepClient>;
+	loadRoomPreview(jid: string): Promise<RoomPreviewResult>;
+	getRoomMemberJids(jid: string): Promise<string[]>;
 	subscribe(listener: (event: XmppEvent) => void): () => void;
 }
 
@@ -158,6 +213,20 @@ export interface XmppStore {
 		attachments?: MessageAttachment[],
 		options?: SendMessageOptions,
 	): Promise<ChatMessage | null>;
+	/** Sends an already-encrypted envelope. Never falls back to plaintext. */
+	sendEncryptedMessage(
+		to: string,
+		body: string,
+		envelope: OmemoEncryptedMessage,
+	): Promise<ChatMessage | null>;
+	/** Adds a decrypted or placeholder message to the conversation timeline. */
+	addMessage(message: ChatMessage): void;
+	getOmemoPep(): Promise<OmemoPepClient>;
+	loadRoomPreview(jid: string): Promise<RoomPreviewResult>;
+	refreshRoomMembers(jid: string): Promise<void>;
+	subscribeOmemo(
+		listener: (event: Extract<XmppEvent, { type: "omemo-message" }>) => void,
+	): () => void;
 	uploadAttachment(
 		file: File,
 		onProgress?: (percent: number) => void,
@@ -169,6 +238,7 @@ export interface XmppStore {
 	setActiveConversation(jid: string | null): void;
 	ensureConversation(jid: string): void;
 	markConversationUnread(jid: string): void;
+	markConversationRead(jid: string, options?: { sendReceipt?: boolean }): void;
 	markAllRead(): void;
 	deleteConversation(jid: string): void;
 	deleteMessage(jid: string, messageId: string): void;
@@ -196,6 +266,11 @@ export interface XmppStoreDeps {
 	uploader: AttachmentUploader;
 	sessionStore: SessionStore;
 	roomInviteStore: RoomInviteStore;
+	roomInviteRequestStore: RoomInviteRequestStore;
+	/** Tab-scoped room reaction snapshots; default store uses sessionStorage. */
+	roomReactionStore?: RoomReactionStore;
+	/** Persisted delivery/read receipts; default store uses localStorage. */
+	messageReceiptStore?: MessageReceiptStore;
 	now?: () => number;
 	idFactory?: () => string;
 	reactionDelayMs?: number;

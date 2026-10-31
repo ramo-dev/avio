@@ -44,9 +44,30 @@ message away, and neither server needs permission from a platform to deliver it.
 
 ```mermaid
 flowchart LR
-    A["Avio — browser or desktop"] --> B["Your server"]
-    B <-->|"federated delivery"| C["Their server"]
-    C --> D["Their app"]
+    subgraph you["Your side"]
+        direction TB
+        app["Avio<br/>browser or desktop"]
+        yourServer["Your XMPP server"]
+        app -- "WSS · TLS" --> yourServer
+    end
+
+    subgraph them["Their side"]
+        direction TB
+        theirServer["Their XMPP server"]
+        theirApp["Their client"]
+        theirServer -- "WSS · TLS" --> theirApp
+    end
+
+    yourServer <-- "server-to-server federation" --> theirServer
+    noService["There is no Avio service in the middle"]:::note
+    noService -.-> yourServer
+    noService -.-> theirServer
+
+    classDef client fill:#e8f5e9,stroke:#2e7d32,color:#1b5e20
+    classDef server fill:#e8eefc,stroke:#3f51b5,color:#1a237e
+    classDef note fill:#fff8e1,stroke:#b58900,color:#5a4500
+    class app,theirApp client
+    class yourServer,theirServer server
 ```
 
 That is the whole idea. You choose where your side of the conversation lives. Nobody
@@ -86,13 +107,24 @@ configuration, discovery, Tauri, and troubleshooting.
   receipts update as they happen, not on a refresh.
 
 ```mermaid
-stateDiagram-v2
-    [*] --> Connecting
-    Connecting --> Connected: signed in
-    Connected --> Reconnecting: connection drops
-    Reconnecting --> Connected: back online
-    Connecting --> Error: wrong password
-    Error --> Connecting: try again
+sequenceDiagram
+    autonumber
+    participant You as Avio user
+    participant YourServer as Your server
+    participant TheirServer as Their server
+    participant Them as Them
+
+    You->>You: Bubble appears immediately (pending)
+    You->>YourServer: Message over WSS
+    YourServer->>TheirServer: Federated delivery
+    Note over YourServer: Held for offline delivery if they are away
+    TheirServer->>Them: Message arrives
+    Them-->>TheirServer: Delivered
+    TheirServer-->>YourServer: Delivered
+    YourServer-->>You: Delivered tick
+    Them-->>TheirServer: Displayed marker
+    TheirServer-->>YourServer: Displayed marker
+    YourServer-->>You: Read tick
 ```
 
 A dropped connection is a pause, not an interruption.
@@ -114,9 +146,11 @@ A dropped connection is a pause, not an interruption.
   the session. It is never written to `localStorage`, and it is cleared on logout and
   auth failure. The Tauri build will use the OS keychain.
 - Avio remembers your address and connection details on your device, and nothing more.
-- **End-to-end encryption is not implemented yet.** Messages are protected in
-  transit by TLS, but the server can read them. OMEMO is planned; see
-  [`tmp/0001-encryption-and-licensing.md`](tmp/0001-encryption-and-licensing.md).
+- Read receipts and typing indicators can be turned off in Settings > Chats.
+- **End-to-end encryption is experimental.** OMEMO is opt-in per direct
+  conversation and requires a local passphrase. The implementation is not
+  independently audited, and messages remain readable by the server unless
+  OMEMO is enabled and every participating device is verified.
 - Messages render as plain text. Nothing inside a message can execute in your app.
 - Your history lives on your server, under your rules. Back it up, move it, or delete
   it on your own terms.

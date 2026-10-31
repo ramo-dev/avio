@@ -9,13 +9,23 @@ import {
 	sendReactionStanza,
 } from "#/lib/xmpp/message-stanzas";
 import { createMucAdapter } from "#/lib/xmpp/muc-adapter";
+import { createOmemoActions } from "#/lib/xmpp/omemo-actions";
 import { registerMessageExtensions } from "#/lib/xmpp/protocol";
+import { loadRoomPreview as loadRoomPreviewWithClient } from "#/lib/xmpp/room-preview";
 import { createRosterAdapter } from "#/lib/xmpp/roster-adapter";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
 import { mapHistory, mapHistoryActions } from "#/lib/xmpp/stanza-mappers";
-import type { UploadService, UploadSlot } from "#/types/attachment";
+import {
+	requestUploadService,
+	requestUploadSlot,
+} from "#/lib/xmpp/upload-adapter";
 import type { ChatMessage } from "#/types/chat";
-import type { SendMessageInput, XmppAdapter, XmppEvent } from "#/types/store";
+import type {
+	RoomPreviewResult,
+	SendMessageInput,
+	XmppAdapter,
+	XmppEvent,
+} from "#/types/store";
 import type { ChatState, ConnectCredentials, XmppError } from "#/types/xmpp";
 
 const CONNECT_TIMEOUT_MS = 30_000;
@@ -30,7 +40,6 @@ interface PendingConnection {
 function createResourceId(): string {
 	return `${RESOURCE_PREFIX}-${Math.random().toString(36).slice(2, 8)}`;
 }
-
 export function createStanzaAdapter(): XmppAdapter {
 	let client: Agent | null = null;
 	let credentials: ConnectCredentials | null = null;
@@ -46,6 +55,10 @@ export function createStanzaAdapter(): XmppAdapter {
 		getAccountBareJid: () => accountBareJid,
 		emit,
 	});
+	const omemo = createOmemoActions(
+		() => client,
+		() => accountBareJid,
+	);
 
 	function emit(event: XmppEvent) {
 		for (const listener of listeners) listener(event);
@@ -125,7 +138,6 @@ export function createStanzaAdapter(): XmppAdapter {
 			},
 		});
 	}
-
 	async function connect(nextCredentials: ConnectCredentials): Promise<void> {
 		manualDisconnect = false;
 		credentials = nextCredentials;
@@ -177,7 +189,6 @@ export function createStanzaAdapter(): XmppAdapter {
 			);
 		}
 	}
-
 	async function disconnectClient() {
 		if (reconnectTimer) {
 			clearTimeout(reconnectTimer);
@@ -189,7 +200,6 @@ export function createStanzaAdapter(): XmppAdapter {
 		current.removeAllListeners();
 		await Promise.resolve(current.disconnect());
 	}
-
 	async function disconnect(): Promise<void> {
 		manualDisconnect = true;
 		credentials = null;
@@ -197,7 +207,6 @@ export function createStanzaAdapter(): XmppAdapter {
 		await disconnectClient();
 		emit({ type: "connection", status: "disconnected" });
 	}
-
 	async function sendMessage(input: SendMessageInput) {
 		if (!client) throw createXmppError("not-connected");
 		const type = input.type ?? "chat";
@@ -218,16 +227,22 @@ export function createStanzaAdapter(): XmppAdapter {
 			})),
 		});
 	}
-
 	async function sendReaction(
 		to: string,
 		messageId: string,
 		reactions: string[],
+		roomType?: "chat" | "groupchat",
 	): Promise<void> {
 		if (!client) throw createXmppError("not-connected");
-		sendReactionStanza(client, to, messageId, reactions);
+		sendReactionStanza(client, to, messageId, reactions, roomType);
 	}
-
+	async function sendDisplayedMarker(
+		to: string,
+		messageId: string,
+	): Promise<void> {
+		if (!client) throw createXmppError("not-connected");
+		client.sendMessage({ to, marker: { id: messageId, type: "displayed" } });
+	}
 	async function forwardMessage(
 		to: string,
 		source: ChatMessage,
@@ -236,48 +251,39 @@ export function createStanzaAdapter(): XmppAdapter {
 		if (!client) throw createXmppError("not-connected");
 		sendForwardedStanza(client, to, source, id);
 	}
-
 	async function sendChatState(to: string, state: ChatState) {
 		if (!client) return;
 		client.sendMessage({ to, type: "chat", chatState: state });
 	}
-
-	async function getUploadService(): Promise<UploadService> {
+	async function loadRoomPreview(jid: string): Promise<RoomPreviewResult> {
 		if (!client) throw createXmppError("not-connected");
-		const service = await client.getUploadService();
-		return { jid: service.jid, maxSize: service.maxSize };
-	}
-
-	async function getUploadSlot(
-		serviceJid: string,
-		request: { name: string; size: number; mediaType?: string },
-	): Promise<UploadSlot> {
-		if (!client) throw createXmppError("not-connected");
-		const slot = await client.getUploadSlot(serviceJid, request);
-		return {
-			download: slot.download,
-			upload: {
-				url: slot.upload.url,
-				headers: slot.upload.headers,
-			},
-		};
+		return loadRoomPreviewWithClient(client, jid, accountBareJid);
 	}
 
 	return {
 		connect,
 		disconnect,
 		sendMessage,
+		...omemo,
 		sendReaction,
+		sendDisplayedMarker,
 		forwardMessage,
 		sendChatState,
 		...roster,
 		createRoom: muc.createRoom,
 		leaveRoom: muc.leaveRoom,
 		inviteToRoom: muc.inviteToRoom,
-		acceptRoomInvite: (jid, reason) => muc.joinInvitedRoom(jid, reason),
-		declineRoomInvite: async () => undefined,
-		getUploadService,
-		getUploadSlot,
+		acceptRoomInvite: (jid, reason, invitedBy) =>
+			muc.joinInvitedRoom(jid, reason, invitedBy),
+		declineRoomInvite: async (jid, sender, reason) => {
+			if (!sender) return;
+			muc.declineInvite(jid, sender, reason);
+		},
+		getUploadService: () => requestUploadService(client),
+		getUploadSlot: (serviceJid, request) =>
+			requestUploadSlot(client, serviceJid, request),
+		loadRoomPreview,
+		getRoomMemberJids: muc.getRoomMemberJids,
 		subscribe(listener) {
 			listeners.add(listener);
 			return () => listeners.delete(listener);

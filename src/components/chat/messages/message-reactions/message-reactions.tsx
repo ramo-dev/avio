@@ -5,8 +5,10 @@ import {
 	TooltipTrigger,
 } from "#/components/ui/tooltip";
 import { cn } from "#/lib/utils";
-import { displayJidName } from "#/lib/xmpp/jid";
-import { selectUserReactions } from "#/lib/xmpp/reactions";
+import {
+	reactionSenderSummary,
+	selectUserReactions,
+} from "#/lib/xmpp/reactions";
 
 export function MessageReactions({
 	reactions,
@@ -38,24 +40,23 @@ export function MessageReactions({
 	const previousGroups = useRef(groups);
 
 	useEffect(() => {
+		const previous = previousGroups.current;
+		previousGroups.current = groups;
 		const next = new Set(groups.map(([emoji]) => emoji));
-		const removed = previousGroups.current.filter(
-			([emoji]) => !next.has(emoji),
-		);
+		const removed = previous.filter(([emoji]) => !next.has(emoji));
 
 		if (removed.length === 0) {
-			previousGroups.current = groups;
 			setDisplayGroups(groups);
+			setLeaving(new Set());
 			return;
 		}
 
 		setDisplayGroups([...groups, ...removed]);
 		setLeaving(new Set(removed.map(([emoji]) => emoji)));
 		const timer = setTimeout(() => {
-			previousGroups.current = groups;
 			setDisplayGroups(groups);
 			setLeaving(new Set());
-		}, 150);
+		}, 200);
 		return () => clearTimeout(timer);
 	}, [groups]);
 
@@ -65,27 +66,23 @@ export function MessageReactions({
 		<div
 			data-slot="message-reactions"
 			className={cn(
-				"flex flex-wrap -mt-3 items-center gap-y-1 -space-x-1",
-				outgoing ? "justify-end" : "justify-start",
+				"flex w-fit max-w-full flex-wrap -mt-3 items-center gap-y-1 -space-x-1",
+				outgoing ? "justify-end self-end" : "justify-start self-start",
 			)}
 		>
 			{displayGroups.map(([emoji, users]) => {
 				const mine = myReactions.includes(emoji);
-				const names = users
-					.map((jid) => (jid === currentUserJid ? "You" : displayJidName(jid)))
-					.join(", ");
+				const names = reactionSenderSummary(users, currentUserJid);
 				const chip = (
 					<button
 						type="button"
 						aria-pressed={mine}
 						data-mine={mine}
-						aria-label={`${emoji} ${users.length} reaction${users.length === 1 ? "" : "s"}${mine ? ", yours" : ""}`}
+						aria-label={`${emoji} ${users.length} reaction${users.length === 1 ? "" : "s"}, ${names}`}
 						onClick={() => onToggle?.(emoji)}
 						className={cn(
 							"relative z-0 flex size-7 shrink-0 items-center justify-center rounded-full border text-sm leading-none transition-[transform,background-color,border-color] duration-150 hover:z-10 active:scale-90 focus-visible:z-10",
-							leaving.has(emoji)
-								? "pointer-events-none"
-								: "animate-in fade-in-0 zoom-in-75 duration-150",
+							leaving.has(emoji) && "pointer-events-none",
 							mine
 								? "border-border bg-muted text-foreground"
 								: "border-border bg-muted text-muted-foreground hover:bg-muted/80",
@@ -100,15 +97,14 @@ export function MessageReactions({
 					</button>
 				);
 
-				const content =
-					users.length === 1 ? (
-						chip
-					) : (
-						<Tooltip>
-							<TooltipTrigger render={chip} />
-							<TooltipContent>{names}</TooltipContent>
-						</Tooltip>
-					);
+				const content = (
+					<Tooltip>
+						<TooltipTrigger render={chip} />
+						<TooltipContent>
+							<span className="font-medium">{emoji}</span> {names}
+						</TooltipContent>
+					</Tooltip>
+				);
 
 				return (
 					<span
@@ -117,7 +113,7 @@ export function MessageReactions({
 							"inline-flex shrink-0 transition-[width,opacity,transform,margin] duration-200 ease-out",
 							leaving.has(emoji)
 								? "-ml-1 w-0 scale-75 opacity-0"
-								: "w-7 scale-100 opacity-100",
+								: "w-7 scale-100 opacity-100 starting:-ml-1 starting:w-0 starting:scale-75 starting:opacity-0",
 						)}
 					>
 						{content}

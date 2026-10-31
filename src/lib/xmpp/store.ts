@@ -1,89 +1,107 @@
+import { createMessageReceiptStore } from "#/lib/storage/message-receipts";
 import { uploadAttachmentWithErrors } from "#/lib/xmpp/attachment-actions";
-import {
-	deleteConversationState,
-	deleteMessageState,
-	ensureConversationState,
-	markAllReadState,
-	markConversationUnreadState,
-} from "#/lib/xmpp/conversation-state";
+import { createConversationActions } from "#/lib/xmpp/conversation-actions";
 import {
 	createXmppError,
 	isXmppError,
 	normalizeXmppError,
 } from "#/lib/xmpp/errors";
 import { createGroupActions } from "#/lib/xmpp/group-actions";
+import {
+	loadInviteRequests,
+	persistInviteState,
+	restoreRoomInvites,
+} from "#/lib/xmpp/invite-persistence";
 import { bareJid, isValidAccountJid, toAccount } from "#/lib/xmpp/jid";
+import { createOmemoStoreBridge } from "#/lib/xmpp/omemo-store";
 import { createOutgoingActions } from "#/lib/xmpp/outgoing-actions";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
-import {
-	createInitialState,
-	reduceActive,
-	reduceEvent,
-} from "#/lib/xmpp/reducers";
+import { applyReceiptContext } from "#/lib/xmpp/receipt-events";
+import { createInitialState, reduceEvent } from "#/lib/xmpp/reducers";
+import { createRoomReactionsKeeper } from "#/lib/xmpp/room-reactions-snapshot";
 import { restoreSavedSession } from "#/lib/xmpp/session-restore";
+import { hasOutgoingSubscription } from "#/lib/xmpp/subscriptions";
+import type { ChatMessage } from "#/types/chat";
 import type {
 	ConnectionState,
+	RoomPreviewResult,
 	XmppEvent,
 	XmppState,
 	XmppStore,
 	XmppStoreDeps,
 } from "#/types/store";
 import type { ConnectCredentials, XmppError } from "#/types/xmpp";
-
 export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	let state = createInitialState();
 	const listeners = new Set<() => void>();
 	const now = deps.now ?? Date.now;
+	const reactions = createRoomReactionsKeeper(deps.roomReactionStore);
+	const messageReceipts =
+		deps.messageReceiptStore ?? createMessageReceiptStore();
 	const idFactory =
 		deps.idFactory ??
 		(() =>
 			globalThis.crypto?.randomUUID?.() ??
 			`${now()}-${Math.random().toString(36).slice(2)}`);
 
-	deps.adapter.subscribe(handleEvent);
-
+	const omemo = createOmemoStoreBridge(deps.adapter, handleEvent);
 	function getState() {
 		return state;
 	}
+	function addMessage(message: ChatMessage) {
+		handleEvent({ type: "message", message });
+	}
+	async function loadRoomPreview(jid: string): Promise<RoomPreviewResult> {
+		const result = await deps.adapter.loadRoomPreview(jid);
+		if (result.status === "ok" && result.messages.length > 0) {
+			handleEvent({ type: "history", messages: result.messages });
+		}
+		return result;
+	}
 
+	async function refreshRoomMembers(jid: string): Promise<void> {
+		const memberJids = await deps.adapter.getRoomMemberJids(jid);
+		handleEvent({ type: "room-members", jid, memberJids });
+	}
 	function subscribe(listener: () => void) {
 		listeners.add(listener);
 		return () => listeners.delete(listener);
 	}
-
 	function setState(next: XmppState) {
 		if (next === state) return;
 		state = next;
 		for (const listener of listeners) listener();
 	}
 
-	function persistInvites(next: XmppState) {
-		const accountJid = next.account?.bareJid;
-		if (!accountJid) return;
-		const rooms = Object.fromEntries(
-			Object.entries(next.rooms).map(([roomJid, room]) => [
-				roomJid,
-				Object.values(room.invites),
-			]),
-		);
-		deps.roomInviteStore.save(accountJid, rooms);
-	}
-
 	function handleEvent(event: XmppEvent) {
-		let nextEvent = event;
-		if (event.type === "room" && state.account) {
-			const saved =
-				deps.roomInviteStore.load(state.account.bareJid)[event.room.jid] ?? [];
-			if (saved.length > 0) {
-				const invites = { ...event.room.invites };
-				for (const invite of saved) invites[invite.jid] = invite;
-				nextEvent = { ...event, room: { ...event.room, invites } };
-			}
+		// A subscribe from someone we already asked to see means both sides have
+		// opted in; accept it without a second confirmation.
+		if (
+			event.type === "subscription" &&
+			event.action === "subscribe" &&
+			hasOutgoingSubscription(state, event.jid)
+		) {
+			// Routed through the store action so the local request row clears too.
+			void acceptSubscription(event.jid);
 		}
+		const nextEvent = applyReceiptContext(
+			restoreRoomInvites(deps.roomInviteStore, state, event),
+			state.account?.bareJid ?? null,
+			messageReceipts,
+		);
 
-		const next = reduceEvent(state, nextEvent);
-		setState(next);
-		if (nextEvent.type.startsWith("room")) persistInvites(next);
+		const final = reactions.note(
+			nextEvent,
+			state,
+			reduceEvent(state, nextEvent),
+		);
+		setState(final);
+		persistInviteState(
+			deps.roomInviteStore,
+			deps.roomInviteRequestStore,
+			nextEvent,
+			final,
+		);
 	}
 
 	function setConnection(connection: ConnectionState) {
@@ -94,6 +112,12 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		setConnection({ ...state.connection, error });
 	}
 
+	const conversationActions = createConversationActions({
+		getState: () => state,
+		setState,
+		adapter: deps.adapter,
+		roomInviteStore: deps.roomInviteStore,
+	});
 	const outgoing = createOutgoingActions({
 		getState,
 		handleEvent,
@@ -109,7 +133,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		handleEvent,
 		setError,
 	);
-
 	async function connect(credentials: ConnectCredentials) {
 		if (!isValidAccountJid(credentials.jid)) {
 			setError(createXmppError("invalid-jid"));
@@ -129,11 +152,16 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			resource: credentials.resource,
 		});
 		deps.sessionStore.savePassword(credentials.password);
+		const savedRequests = loadInviteRequests(
+			deps.roomInviteRequestStore,
+			account.bareJid,
+		);
 
 		setState({
 			...createInitialState(),
 			restorePending: false,
 			account,
+			roomInviteRequests: savedRequests,
 			connection: { status: "connecting", error: null, jid: account.bareJid },
 		});
 
@@ -160,7 +188,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			});
 		}
 	}
-
 	async function restoreSession() {
 		await restoreSavedSession({
 			getState,
@@ -169,9 +196,11 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			connect,
 		});
 	}
-
 	async function disconnect() {
 		deps.sessionStore.clearPassword();
+		// Reaction snapshots contain room and participant identifiers; they must
+		// not outlive the signed-in session in this tab.
+		reactions.clear();
 		try {
 			await deps.adapter.disconnect();
 		} catch {
@@ -189,36 +218,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		});
 	}
 
-	function setActiveConversation(jid: string | null) {
-		setState(reduceActive(state, jid));
-	}
-
-	function ensureConversation(jid: string) {
-		setState(ensureConversationState(state, jid));
-	}
-
-	function markConversationUnread(jid: string) {
-		setState(markConversationUnreadState(state, jid));
-	}
-
-	function markAllRead() {
-		setState(markAllReadState(state));
-	}
-
-	function deleteConversation(jid: string) {
-		const key = bareJid(jid);
-		if (state.conversations[key]?.kind === "group") {
-			void deps.adapter.leaveRoom(key).catch(() => undefined);
-		}
-		const next = deleteConversationState(state, jid);
-		setState(next);
-		persistInvites(next);
-	}
-
-	function deleteMessage(jid: string, messageId: string) {
-		setState(deleteMessageState(state, jid, messageId));
-	}
-
 	async function addContact(jid: string) {
 		const contactJid = bareJid(jid);
 		if (contactJid.toLowerCase() === state.account?.bareJid.toLowerCase())
@@ -234,7 +233,6 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			setError(normalizeXmppError(error, "unknown"));
 		}
 	}
-
 	async function acceptSubscription(jid: string) {
 		const contactJid = bareJid(jid);
 		try {
@@ -261,6 +259,11 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		disconnect,
 		...outgoing,
 		...groups,
+		addMessage,
+		loadRoomPreview,
+		refreshRoomMembers,
+		getOmemoPep: omemo.getOmemoPep,
+		subscribeOmemo: omemo.subscribe,
 		uploadAttachment: (file, onProgress) =>
 			uploadAttachmentWithErrors({
 				uploader: deps.uploader,
@@ -268,12 +271,7 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 				onProgress,
 				onError: setError,
 			}),
-		setActiveConversation,
-		ensureConversation,
-		markConversationUnread,
-		markAllRead,
-		deleteConversation,
-		deleteMessage,
+		...conversationActions,
 		addContact,
 		acceptSubscription,
 		clearError,

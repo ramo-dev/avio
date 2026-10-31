@@ -7,6 +7,7 @@ import {
 } from "@remixicon/react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
+import { ContactInfoOmemo } from "#/components/chat/conversation/header/contact-info-panel/contact-info-omemo";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
 import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
@@ -75,7 +76,13 @@ function DetailRow({
 	);
 }
 
-export function ContactInfoPanel({ jid }: { jid: string }) {
+export function ContactInfoPanel({
+	jid,
+	showOmemo = true,
+}: {
+	jid: string;
+	showOmemo?: boolean;
+}) {
 	const state = useXmppState();
 	const contact = state.contacts[jid];
 	const name = displayJidName(jid, contact?.name);
@@ -174,6 +181,8 @@ export function ContactInfoPanel({ jid }: { jid: string }) {
 					</div>
 				</DetailRow>
 			</dl>
+
+			{showOmemo && <ContactInfoOmemo jid={jid} />}
 		</div>
 	);
 }

@@ -8,7 +8,10 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Retractions (XEP-0424)** — message actions currently remove a message locally; add protocol retraction with a tombstone.
 - **Upload cancellation and retry** — the XEP-0363 upload path stages files, reports progress, sends OOB links, and renders image/file/video cards. Add per-file cancel/retry controls for failed uploads.
 - **Message search** — local search over the in-memory conversation store first, then MAM search.
-- **Delivery/read receipt parity** — verify server support and surface `marker:displayed` consistently for all clients.
+- **Delivery/read receipt parity** — displayed markers are sent for direct
+  chats while the conversation is open and the tab is visible, and delivered/read
+  state is stored locally so refresh replays show it. Settings > Chats can stop
+  sending receipts. Remaining: group/room receipts (not sent yet).
 
 ## Chat UI
 
@@ -25,26 +28,76 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 
 ## Rooms and calls
 
+- **Room invites** — inviter-only pending invites, sidebar request actions, a
+  read-only MAM preview before joining, and an invite-only fallback are
+  implemented. Remaining: invite cancellation, server-specific MAM preview
+  edge cases, and live invite acceptance tests.
 - **MUC (XEP-0045)** — basic create/join, groupchat messages, invitations, bookmarks, and occupant info are implemented. Remaining: room discovery UI, room configuration, moderation, room MAM, and inviting by bare JID (Add members currently lists roster contacts only).
+- **Room reactions** — reaction stanzas are now broadcast as `groupchat` and
+  shown with author tooltips. Rooms created by Avio are non-anonymous so member
+  JIDs are visible. On refresh, reactions are restored from a tab-scoped
+  `sessionStorage` snapshot because Prosody does not replay body-less reaction
+  stanzas. The snapshot is cleared on logout. Pending: confirm other servers'
+  behavior, and replace the snapshot with room MAM once reaction archiving is
+  reliable.
 - **Jingle / WebRTC** — use `webrtc-adapter` before creating `RTCPeerConnection`; add audio/video call UI and permission handling.
 - **Screen sharing** — depends on Jingle negotiation.
 
 ## Security and encryption
 
 - **OMEMO 1:1 (XEP-0384)** — primary E2EE goal. The project is GPLv3, so
-  `libomemo.js` (GPLv3) is a candidate crypto engine. It is not audited yet.
-  See `tmp/0002-omemo-integration.md` for the integration plan.
+  `libomemo.js` (GPLv3) is the crypto engine. It is not audited yet. The key
+  store, passphrase-encrypted storage, legacy 0.3.0 device-list/bundle PEP
+  boundary, lifecycle engine, and message codec live in `src/lib/omemo` and
+  `src/lib/xmpp/omemo-*.ts`. The opt-in app layer is now wired: `OmemoAccount`
+  probes/sets up/unlocks per account, the provider decrypts incoming envelopes
+  and sends only encrypted envelopes, settings/contact UI expose device
+  fingerprints and trust (including your other devices), and the composer has a
+  per-chat lock. Remaining:
+  outgoing carbon decryption (currently ignored to avoid duplicates),
+  re-decrypting locked placeholders after unlock, encrypted replies/edits,
+  forwarding, attachments, and MAM history, live device-list PEP subscriptions,
+  and independent audit. Per-chat encryption choices are persisted.
+- **OMEMO2 PEP (XEP-0384)** — legacy 0.3.0 device lists and bundles are
+  implemented. Add the `urn:xmpp:omemo:2` device-list/bundle nodes and
+  version-aware selection after 1:1 messaging works.
 - **OpenPGP for XMPP (XEP-0374)** — Gajim supports it for 1:1, groups, and files.
   Defer until OMEMO 1:1 is stable; `openpgp` is LGPL-3.0+ and GPLv3-compatible.
-- **Key storage** — never use `localStorage` for private keys. Design an
-  IndexedDB/keychain boundary with a documented threat model and CSP first.
-- **Security settings surface** — show transport security, E2EE availability,
-  device trust, and unencrypted-send warnings.
-- **Security threat model and CSP** — document local compromise, XSS, hostile
-  server/stanza input, and key backup before adding E2EE. Converse.js is MPL-2.0,
-  but its OMEMO dependency `libomemo.js` is GPLv3 and unaudited.
-- **Privacy controls** — block list, presence visibility, receipts/typing
-  policy, history retention, and clear-local-history.
+- **Key storage** — passphrase-encrypted IndexedDB storage exists in
+  `src/lib/omemo` (PBKDF2-HMAC-SHA-256, AES-GCM, authenticated KDF metadata,
+  legacy plaintext store deleted) and is wired through `OmemoAccount` with a
+  10-minute idle auto-lock. Remaining: OS keychain for Tauri, explicit
+  passphrase recovery/backup design, browser IndexedDB upgrade coverage,
+  threat model/CSP, and independent audit.
+- **Remembered unlock on web (option B, done)** — "Remember unlock on this
+  device" stores the non-extractable AES-GCM key derived from the passphrase in
+  IndexedDB (`avio-omemo-unlock`), never the passphrase. The key is cleared by
+  Lock, logout, and auto-lock, and expires after 24 hours. Remaining: make the
+  expiry configurable, and rely on CSP because script running in the page can
+  still use the key.
+- **Native unlock via OS keychain (option C)** — Tauri should store the unlock
+  secret in the OS keychain, not IndexedDB. Add a `passphrase` variant to
+  `OmemoUnlockSecret`, handle it in `restoreRememberedUnlock`, and implement
+  `OmemoUnlockStore` on top of the keychain.
+- **Security settings surface** — transport status, OMEMO setup/unlock/status,
+  device ID/fingerprint, per-chat warning, contact device trust, and encrypted
+  message indicators are implemented. Remaining: unencrypted-send warnings for
+  contacts without devices and a broader audit checklist.
+- **Security threat model and CSP** — `docs/threat-model.md` is the working
+  draft. Done: attachment URLs are limited to http(s) at normalization; the app
+  is a static SPA with a generated CSP (`scripts/generate-csp.mjs`) that hashes
+  the shell's inline scripts. Browser-verified with Playwright: boot,
+  navigation, authenticated login, and Settings > Security have no violations.
+  The check found and fixed a blocked `wasm-eval` (OMEMO's libsignal), now
+  allowed narrowly via `'wasm-unsafe-eval'`. Converse.js is MPL-2.0, but its
+  OMEMO dependency `libomemo.js` is GPLv3 and unaudited.
+- **OMEMO passphrase policy (done)** — new passphrases need at least 12
+  characters, must not be common, and need at least four distinct characters
+  (`src/lib/omemo/passphrase.ts`). Existing shorter passphrases still unlock.
+  Not done: a full strength estimator, which would need a new dependency.
+- **Privacy controls** — receipts and typing indicators are configurable in
+  Settings > Chats. Remaining: block list, presence visibility, history
+  retention, and clear-local-history.
 - **Accounts and connections** — multi-account, resource/priority, proxies, and
   custom CA/certificate handling.
 
@@ -58,12 +111,20 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 
 ## Tauri
 
-- **Static/SPA build** — verify the TanStack Start output can run without the Nitro server.
+- **Static/SPA build (done for web)** — `pnpm build` produces a static
+  `.output/public` with a prerendered `_shell.html`, and `pnpm serve:static`
+  serves it with SPA fallback. Remaining: confirm the Tauri webview loads this
+  output with no Nitro server.
 - **Secure storage** — replace localStorage session persistence with a Tauri store/keychain adapter.
 - **CSP** — allow the configured `wss://` XMPP hosts and block everything else.
 - **Auto-update and packaging** — after the web MVP is signed off.
 
 ## Research notes
+
+- **Integration flake** — `client.integration.test.ts` intermittently times out
+  at its first 5-second "bob connected" wait when `pnpm test:integration` runs
+  all four live suites in parallel against one Prosody. It passes alone. Run the
+  suites serially or raise the connection wait before trusting a red run.
 
 - `staydown` is installed as requested, but v2.0.3 has no `destroy()` API and adds a non-removable `window.resize` listener. The app uses `@shadcn/react` `MessageScroller` instead. Revisit only if a Tauri-only, app-lifetime scroll container needs it.
 - Base UI portals require `.root { isolation: isolate }`, already applied in `src/styles/base.css`.

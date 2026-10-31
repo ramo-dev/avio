@@ -1,16 +1,22 @@
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { Textarea } from "#/components/ui/textarea";
 import { useFileDrop } from "#/hooks/use-file-drop";
 import { useSettings } from "#/hooks/use-settings";
 import { useStagedFiles } from "#/hooks/use-staged-files";
 import { useTyping } from "#/hooks/use-typing";
-import { useXmppActions } from "#/hooks/xmpp/use-xmpp";
+import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { cn } from "#/lib/utils";
+import { useOmemo } from "#/providers/omemo-provider";
+import { useSettings as useSettingsDialog } from "#/providers/settings-provider";
 import type { ChatMessage } from "#/types/chat";
 import { AttachmentTray } from "./attachment-tray";
 import { ComposerActions } from "./composer-actions/composer-actions";
 import { ComposerContext } from "./composer-context/composer-context";
+import { ComposerFallbackDialog } from "./composer-fallback-dialog";
 import { DropOverlay } from "./drop-overlay";
+import { useComposerEncryption } from "./use-composer-encryption";
+import { useComposerInsert } from "./use-composer-insert";
+import { composerPlaceholder, createComposerSend } from "./use-composer-send";
 
 /** scrollHeight above this means the text wrapped to a second line. */
 const SINGLE_LINE_MAX = 44;
@@ -19,6 +25,8 @@ type ComposerProps = {
 	jid: string;
 	disabled: boolean;
 	contactName: string;
+	/** Overrides the disabled-state placeholder, e.g. for invite previews. */
+	placeholderOverride?: string;
 	replyTo?: ChatMessage | null;
 	editing?: ChatMessage | null;
 	onContextDone?: () => void;
@@ -34,14 +42,20 @@ export function Composer({
 	jid,
 	disabled,
 	contactName,
+	placeholderOverride,
 	replyTo,
 	editing,
 	onContextDone,
 	onSendFiles,
 }: ComposerProps) {
 	const actions = useXmppActions();
+	const omemo = useOmemo();
+	const state = useXmppState();
 	const { chats } = useSettings();
+	const { openSettings } = useSettingsDialog();
 	const notifyTyping = useTyping(jid, !disabled && chats.typingIndicators);
+	const isDirect = state.conversations[jid]?.kind !== "group";
+	const encryptionEnabled = isDirect && omemo.isEncryptionEnabled(jid);
 
 	const [body, setBody] = useState("");
 	const [expanded, setExpanded] = useState(false);
@@ -50,9 +64,11 @@ export function Composer({
 	const prefilledEditId = useRef<string | null>(null);
 	const focusedContextId = useRef<string | null>(null);
 	const draftBeforeEdit = useRef("");
+	const insertAtCaret = useComposerInsert(textareaRef, body, setBody);
 	const contextActive = Boolean(replyTo || editing);
 
-	const canAttach = Boolean(onSendFiles) && !disabled && !contextActive;
+	const canAttach =
+		Boolean(onSendFiles) && !disabled && !contextActive && !encryptionEnabled;
 	const {
 		staged,
 		stage,
@@ -62,11 +78,27 @@ export function Composer({
 		setProgress,
 		resetUploading,
 	} = useStagedFiles(canAttach, () => textareaRef.current?.focus());
+	const {
+		encryptionAttention,
+		fallbackBody,
+		setFallbackBody,
+		toggleEncryption,
+		sendUnencryptedFallback,
+	} = useComposerEncryption({
+		jid,
+		isDirect,
+		omemo,
+		stagedCount: staged.length,
+		clearStaged: clear,
+		setBody,
+	});
 	const uploading = staged.some((item) => item.uploading);
 	const canSend =
 		!disabled &&
 		!uploading &&
-		(body.trim().length > 0 || (!contextActive && staged.length > 0));
+		(encryptionEnabled
+			? body.trim().length > 0
+			: body.trim().length > 0 || (!contextActive && staged.length > 0));
 
 	// Expand once the text wraps or contains a newline. Collapse only when
 	// empty, so the wider expanded layout can't flip it back and forth.
@@ -102,70 +134,47 @@ export function Composer({
 	}, [body, editing, expanded, replyTo]);
 
 	const { isDragging } = useFileDrop(stage, canAttach);
-
-	function insertAtCaret(text: string) {
-		const el = textareaRef.current;
-		const start = el?.selectionStart ?? body.length;
-		const end = el?.selectionEnd ?? body.length;
-		setBody(body.slice(0, start) + text + body.slice(end));
-		requestAnimationFrame(() => {
-			el?.focus();
-			el?.setSelectionRange(start + text.length, start + text.length);
-		});
-	}
-
 	function focusFromPill(event: React.MouseEvent<HTMLDivElement>) {
 		const target = event.target as HTMLElement;
 		if (target.closest("button, input, textarea, [role=button]")) return;
 		event.preventDefault();
 		textareaRef.current?.focus();
 	}
-
-	async function send() {
-		if (!canSend) return;
-		const value = body.trim();
-		if (staged.length > 0 && onSendFiles && !contextActive) {
-			markUploading();
-			try {
-				await onSendFiles(
-					staged.map((item) => item.file),
-					value,
-					setProgress,
-				);
-				clear();
-				setBody("");
-				onContextDone?.();
-			} catch {
-				resetUploading();
-			}
-			return;
-		}
-
-		if (value) {
-			const options = editing
-				? { editId: editing.id }
-				: replyTo
-					? { replyTo: { id: replyTo.id, to: replyTo.from } }
-					: undefined;
-			void actions.sendMessage(jid, value, undefined, options);
-			setBody("");
-			draftBeforeEdit.current = "";
-			onContextDone?.();
-		}
-	}
-
+	const send = createComposerSend({
+		jid,
+		encryptionEnabled,
+		encryptionAttention,
+		omemo,
+		actions,
+		staged,
+		onSendFiles,
+		markUploading,
+		resetUploading,
+		clear,
+		setProgress,
+		body,
+		setBody,
+		setFallbackBody,
+		contextActive,
+		replyTo: replyTo ?? null,
+		editing: editing ?? null,
+		onContextDone,
+		draftBeforeEdit,
+	});
 	function cancelContext() {
 		if (editing) setBody(draftBeforeEdit.current);
 		draftBeforeEdit.current = "";
 		onContextDone?.();
 	}
 
-	const placeholder = useMemo(() => {
-		if (disabled) return "Reconnect to send messages";
-		if (editing) return "Edit message";
-		if (replyTo) return "Write a reply";
-		return staged.length > 0 ? "Add a caption" : "Write a message";
-	}, [disabled, editing, replyTo, staged.length]);
+	const placeholder =
+		placeholderOverride ??
+		composerPlaceholder({
+			disabled,
+			stagedCount: staged.length,
+			replyTo: replyTo ?? null,
+			editing: editing ?? null,
+		});
 
 	return (
 		<>
@@ -229,6 +238,8 @@ export function Composer({
 							rows={1}
 							className={cn(
 								"max-h-40 min-h-9 w-full resize-none border-0 bg-transparent py-2 shadow-none [field-sizing:content] focus-visible:ring-0 dark:bg-transparent",
+								isDirect && canAttach ? "pl-24!" : "pl-12!",
+								(replyTo || editing) && encryptionEnabled ? "pl-4!" : "pl-12",
 								expanded ? "px-4" : canAttach ? "pl-12 pr-24" : "pl-4 pr-24",
 							)}
 						/>
@@ -237,6 +248,18 @@ export function Composer({
 							disabled={disabled}
 							canSend={canSend}
 							canAttach={canAttach}
+							showEncryption={isDirect}
+							encryptionEnabled={encryptionEnabled}
+							encryptionAttention={encryptionAttention}
+							onToggleEncryption={
+								encryptionAttention
+									? () =>
+											openSettings({
+												section: "security",
+												anchor: "omemo",
+											})
+									: toggleEncryption
+							}
 							onStage={stage}
 							onEmojiSelect={insertAtCaret}
 							textareaRef={textareaRef}
@@ -244,6 +267,12 @@ export function Composer({
 					</div>
 				</div>
 			</form>
+
+			<ComposerFallbackDialog
+				open={fallbackBody !== null}
+				onClose={() => setFallbackBody(null)}
+				onSend={() => void sendUnencryptedFallback()}
+			/>
 		</>
 	);
 }

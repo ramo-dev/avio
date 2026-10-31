@@ -21,6 +21,21 @@ export function kindFromName(name: string, mimeType?: string): StagedKind {
 	return "file";
 }
 
+const WEB_PROTOCOLS = new Set(["https:", "http:"]);
+
+/**
+ * Only http(s) URLs may reach an attachment `href` or `src`. Remote messages
+ * control these URLs, so `javascript:`, `data:`, `blob:`, and `file:` are
+ * rejected here at the normalization boundary.
+ */
+export function isSafeAttachmentUrl(url: string): boolean {
+	try {
+		return WEB_PROTOCOLS.has(new URL(url).protocol);
+	} catch {
+		return false;
+	}
+}
+
 export function fileNameFromUrl(url: string): string {
 	try {
 		const path = new URL(url).pathname;

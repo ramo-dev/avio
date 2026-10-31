@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { toast } from "react-hot-toast";
 import { Button } from "#/components/ui/button";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
+import { bareJid } from "#/lib/xmpp/jid";
 
 export function RoomInviteRequests() {
 	const state = useXmppState();
@@ -38,9 +39,21 @@ export function RoomInviteRequests() {
 								{request.roomName}
 							</span>
 							<span className="block truncate text-[0.7rem] text-muted-foreground">
-								{request.from}
+								{bareJid(request.from)}
 							</span>
 						</span>
+						<Button
+							size="xs"
+							variant="ghost"
+							onClick={() =>
+								void navigate({
+									to: "/chat/group/$room",
+									params: { room: request.roomJid },
+								})
+							}
+						>
+							Preview
+						</Button>
 						<Button
 							size="xs"
 							variant="secondary"

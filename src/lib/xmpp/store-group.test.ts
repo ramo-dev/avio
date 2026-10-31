@@ -95,12 +95,36 @@ describe("group chat store actions", () => {
 		expect(store.getState().roomInviteRequests).toHaveLength(1);
 		await store.acceptRoomInvite(roomJid);
 
-		expect(adapter.acceptRoomInvite).toHaveBeenCalledWith(roomJid, "Invite");
+		expect(adapter.acceptRoomInvite).toHaveBeenCalledWith(
+			roomJid,
+			"Invite",
+			"alice@example.com",
+		);
 		expect(store.getState().roomInviteRequests).toHaveLength(0);
 	});
 
+	it("persists and clears incoming invite requests", async () => {
+		const { store, emit, roomInviteRequestStore } = createStoreHarness();
+		await store.connect(credentials);
+		const roomJid = "persist@conference.example.com";
+		emit({
+			type: "room-invite-request",
+			request: {
+				roomJid,
+				roomName: "Persist",
+				from: "alice@example.com",
+				receivedAt: 1234,
+			},
+		});
+
+		expect(roomInviteRequestStore.load("alice@example.com")).toHaveLength(1);
+
+		await store.acceptRoomInvite(roomJid);
+		expect(roomInviteRequestStore.load("alice@example.com")).toHaveLength(0);
+	});
+
 	it("declines and clears an invite request", async () => {
-		const { store, emit } = createStoreHarness();
+		const { store, adapter, emit } = createStoreHarness();
 		await store.connect(credentials);
 		const roomJid = "decline@conference.example.com";
 		emit({
@@ -114,6 +138,11 @@ describe("group chat store actions", () => {
 		});
 
 		await store.declineRoomInvite(roomJid);
+		expect(adapter.declineRoomInvite).toHaveBeenCalledWith(
+			roomJid,
+			"alice@example.com",
+			undefined,
+		);
 		expect(store.getState().roomInviteRequests).toHaveLength(0);
 	});
 });

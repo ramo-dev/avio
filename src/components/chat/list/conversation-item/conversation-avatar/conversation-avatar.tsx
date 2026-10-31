@@ -18,18 +18,18 @@ export function ConversationAvatar({
 			(item.memberCount ?? participants.length) - participants.length,
 		);
 
-		if (participants.length <= 0) {
+		if (participants.length <= 1) {
 			return (
 				<div className="relative shrink-0">
 					<span
 						className={cn(
-							"grid size-12 place-items-center rounded-full",
+							"grid size-10 border-2 place-items-center rounded-full",
 							selected
-								? "bg-primary-foreground/15 text-primary-foreground"
-								: "bg-muted text-muted-foreground",
+								? "bg-card border-secondary text-primary-foreground"
+								: "bg-muted border-input  text-muted-foreground",
 						)}
 					>
-						<RiGroupLine className="size-12" />
+						<RiGroupLine className="size-4 text-foreground/50" />
 					</span>
 				</div>
 			);
@@ -42,7 +42,6 @@ export function ConversationAvatar({
 						key={participant.jid ?? participant.name}
 						jid={participant.jid ?? participant.name}
 						name={participant.name}
-						size="sm"
 						className={cn(
 							"size-8 ring-2",
 							selected ? "ring-primary" : "ring-card",

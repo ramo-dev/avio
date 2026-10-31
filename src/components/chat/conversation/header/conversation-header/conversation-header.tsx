@@ -1,9 +1,17 @@
-import { RiArrowLeftLine, RiGroupLine } from "@remixicon/react";
-import { ContactInfoPanel } from "#/components/chat/conversation/header/contact-info-panel/contact-info-panel";
+import {
+	RiArrowLeftLine,
+	RiGroupLine,
+	RiLockUnlockLine,
+} from "@remixicon/react";
 import { HeaderActions } from "#/components/chat/conversation/header/header-actions/header-actions";
-import { RoomInfoPanel } from "#/components/chat/conversation/header/room-info-panel/room-info-panel";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
+import { Badge } from "#/components/ui/badge";
 import { Button } from "#/components/ui/button";
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "#/components/ui/tooltip";
 import { presenceDotClassName } from "#/lib/format/presence";
 import { formatLastSeen } from "#/lib/format/time";
 import { cn } from "#/lib/utils";
@@ -18,6 +26,7 @@ export function ConversationHeader({
 	presence,
 	kind,
 	memberCount,
+	memberPreview,
 	typing,
 	searchOpen,
 	onToggleSearch,
@@ -28,6 +37,7 @@ export function ConversationHeader({
 	presence: PresenceState;
 	kind: ConversationKind;
 	memberCount?: number;
+	memberPreview?: boolean;
 	typing: boolean;
 	searchOpen: boolean;
 	onToggleSearch: () => void;
@@ -36,9 +46,11 @@ export function ConversationHeader({
 	const { open } = useRightSidebar();
 	const isGroup = kind === "group";
 	const status = isGroup
-		? memberCount === 1
-			? "1 member"
-			: `${memberCount ?? 0} members`
+		? memberPreview
+			? "Invite-only group"
+			: memberCount === 1
+				? "1 member"
+				: `${memberCount ?? 0} members`
 		: typing
 			? "typing…"
 			: presence.show === "offline" && presence.lastSeen
@@ -46,19 +58,7 @@ export function ConversationHeader({
 				: presence.status || presenceLabel(presence);
 
 	function openInfo() {
-		open(
-			isGroup
-				? {
-						title: name,
-						description: "Group chat",
-						content: <RoomInfoPanel jid={jid} />,
-					}
-				: {
-						title: "Contact info",
-						description: "Direct XMPP conversation",
-						content: <ContactInfoPanel jid={jid} />,
-					},
-		);
+		open(isGroup ? { kind: "room", jid } : { kind: "contact", jid });
 	}
 
 	return (
@@ -97,7 +97,28 @@ export function ConversationHeader({
 					)}
 				</div>
 				<div className="min-w-0">
-					<h2 className="truncate text-sm font-semibold">{name}</h2>
+					<div className="flex min-w-0 items-center gap-2">
+						<h2 className="truncate text-sm font-semibold">{name}</h2>
+						{isGroup && (
+							<Tooltip>
+								<TooltipTrigger
+									render={
+										<Badge
+											variant="outline"
+											aria-label="Not end-to-end encrypted"
+											className="shrink-0 gap-1 text-[10px] font-normal"
+										>
+											<RiLockUnlockLine className="size-3" />
+											<span className="hidden sm:inline">Not encrypted</span>
+										</Badge>
+									}
+								/>
+								<TooltipContent>
+									Group messages are sent without end-to-end encryption.
+								</TooltipContent>
+							</Tooltip>
+						)}
+					</div>
 					<p className="truncate text-xs text-muted-foreground">{status}</p>
 				</div>
 			</button>

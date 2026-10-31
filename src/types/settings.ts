@@ -12,11 +12,19 @@ export interface SoundSettings {
 export interface ChatSettings {
 	enterToSend: boolean;
 	typingIndicators: boolean;
+	readReceipts: boolean;
 }
 
 export interface NotificationSettings {
 	enabled: boolean;
 	previews: boolean;
+}
+
+export type DefaultEncryption = "none" | "omemo";
+
+export interface SecuritySettings {
+	defaultEncryption: DefaultEncryption;
+	rememberOmemoUnlock: boolean;
 }
 
 export interface Settings {
@@ -25,4 +33,5 @@ export interface Settings {
 	sounds: SoundSettings;
 	chats: ChatSettings;
 	notifications: NotificationSettings;
+	security: SecuritySettings;
 }

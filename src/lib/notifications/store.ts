@@ -94,6 +94,22 @@ export function markAllNotificationsRead(accountJid: string | null) {
 	notify();
 }
 
+/** Removes stale group-invite notifications after join or decline. */
+export function removeInviteNotifications(
+	accountJid: string | null,
+	roomJid: string,
+) {
+	const current = ensure(accountJid);
+	const next = current.filter(
+		(item) =>
+			!(item.invite && item.jid.toLowerCase() === roomJid.toLowerCase()),
+	);
+	if (next.length === current.length) return;
+	items = next;
+	write(accountJid, items);
+	notify();
+}
+
 export function clearNotifications(accountJid: string | null) {
 	ensure(accountJid);
 	items = EMPTY;

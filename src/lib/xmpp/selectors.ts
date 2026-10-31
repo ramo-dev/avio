@@ -1,6 +1,7 @@
 import { displayJidName } from "#/lib/xmpp/jid";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import { isSelfJid } from "#/lib/xmpp/reducers";
+import { selectRoomMembers } from "#/lib/xmpp/room-members";
 import type {
 	ChatMessage,
 	Conversation,
@@ -20,7 +21,13 @@ export function selectConversationSummaries(
 	}
 
 	for (const contact of Object.values(state.contacts)) {
-		if (seen.has(contact.jid) || isSelfJid(state, contact.jid)) continue;
+		if (
+			seen.has(contact.jid) ||
+			isSelfJid(state, contact.jid) ||
+			state.rooms[contact.jid]
+		) {
+			continue;
+		}
 		summaries.push(toSummary(contact.jid, undefined, state));
 	}
 
@@ -43,7 +50,7 @@ function toSummary(
 		conversation?.kind === "group" ||
 		Boolean(room) ||
 		Boolean(conversation?.messages.some((message) => message.senderNick));
-	const occupants = isGroup ? Object.values(room?.occupants ?? {}) : [];
+	const members = isGroup ? selectRoomMembers(room) : [];
 
 	return {
 		jid,
@@ -58,11 +65,11 @@ function toSummary(
 			? OFFLINE_PRESENCE
 			: (contact?.presence ?? OFFLINE_PRESENCE),
 		typing: conversation?.typing ?? false,
-		memberCount: isGroup ? occupants.length : undefined,
+		memberCount: isGroup ? members.length : undefined,
 		participants: isGroup
-			? occupants.slice(0, 2).map((occupant) => ({
-					jid: occupant.jid,
-					name: occupant.nick,
+			? members.slice(0, 2).map((member) => ({
+					jid: member.jid,
+					name: member.name,
 				}))
 			: undefined,
 	};

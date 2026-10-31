@@ -117,6 +117,19 @@ export function NotificationMenu() {
 										</span>
 									</div>
 									<div className="mt-2 flex gap-2 pl-11">
+										<Button
+											size="xs"
+											variant="ghost"
+											onClick={() => {
+												markNotificationRead(accountJid, item.id);
+												void navigate({
+													to: "/chat/group/$room",
+													params: { room: item.jid },
+												});
+											}}
+										>
+											Preview
+										</Button>
 										<Button size="xs" onClick={() => void acceptInvite(item)}>
 											Accept
 										</Button>
@@ -143,7 +156,6 @@ export function NotificationMenu() {
 										<UserAvatar
 											jid={item.jid}
 											name={item.name}
-											size="sm"
 											className="size-9"
 										/>
 									)}

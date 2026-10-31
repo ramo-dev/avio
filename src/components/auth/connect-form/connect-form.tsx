@@ -118,6 +118,7 @@ export function ConnectForm() {
 					render={
 						<Button
 							type="button"
+							size="lg"
 							variant="secondary"
 							className="w-full text-muted-foreground hover:text-foreground"
 							disabled={connecting}

@@ -5,6 +5,7 @@ import {
 	getNotifications,
 	markAllNotificationsRead,
 	markNotificationRead,
+	removeInviteNotifications,
 } from "#/lib/notifications/store";
 import type { StoredNotification } from "#/types/notification";
 
@@ -66,5 +67,23 @@ describe("notification store", () => {
 	it("isolates notifications per account", () => {
 		addNotification("one@example.com", note("m1"));
 		expect(getNotifications("two@example.com")).toHaveLength(0);
+	});
+
+	it("removes stale invite notifications for a room", () => {
+		const account = "invite@example.com";
+		addNotification(
+			account,
+			note("invite:room", {
+				jid: "room@conference.example.com",
+				invite: true,
+			}),
+		);
+		addNotification(account, note("message"));
+
+		removeInviteNotifications(account, "room@conference.example.com");
+
+		expect(getNotifications(account).map((item) => item.id)).toEqual([
+			"message",
+		]);
 	});
 });

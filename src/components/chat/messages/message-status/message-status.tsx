@@ -25,6 +25,20 @@ export function MessageStatus({
 	tone?: "default" | "inverse";
 }) {
 	if (status === "failed") {
+		if (!onRetry) {
+			return (
+				<span
+					className={cn(
+						"inline-flex items-center gap-1",
+						tone === "inverse" ? "text-primary-foreground" : "text-destructive",
+					)}
+					title={LABELS.failed}
+				>
+					<RiErrorWarningLine className="size-3.5" />
+					<span>Failed</span>
+				</span>
+			);
+		}
 		return (
 			<button
 				type="button"

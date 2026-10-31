@@ -3,8 +3,9 @@ import {
 	RiErrorWarningLine,
 	RiPlayFill,
 } from "@remixicon/react";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import { MediaControls } from "#/components/chat/messages/media-controls/media-controls";
+import { MediaPlaceholder } from "#/components/chat/messages/media-placeholder/media-placeholder";
 import { Card } from "#/components/ui/card";
 import { useMediaPlayer } from "#/hooks/use-media-player";
 import { formatBytes } from "#/lib/chat/attachments";
@@ -17,7 +18,19 @@ export function MessageVideo({
 	attachment: MessageAttachment;
 }) {
 	const mediaRef = useRef<HTMLVideoElement>(null);
-	const player = useMediaPlayer(mediaRef, attachment.url);
+	const [revealed, setRevealed] = useState(false);
+	const player = useMediaPlayer(mediaRef, attachment.url, revealed);
+
+	if (!revealed) {
+		return (
+			<MediaPlaceholder
+				kind="video"
+				name={attachment.name}
+				size={attachment.size}
+				onLoad={() => setRevealed(true)}
+			/>
+		);
+	}
 
 	function enterFullscreen() {
 		const media = mediaRef.current;

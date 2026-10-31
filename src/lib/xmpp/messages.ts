@@ -1,5 +1,9 @@
-import { fileNameFromUrl, kindFromName } from "#/lib/chat/attachments";
 import { bareJid } from "#/lib/xmpp/jid";
+import {
+	normalizeLinkAttachments,
+	type RawLink,
+} from "#/lib/xmpp/message-attachments";
+import { stableHash } from "#/lib/xmpp/stable-hash";
 import type { MessageAttachment } from "#/types/attachment";
 import type {
 	ChatMessage,
@@ -15,7 +19,7 @@ export interface RawMessage {
 	to: string;
 	body?: string;
 	delay?: { timestamp?: Date | string };
-	links?: Array<{ url?: string; description?: string }>;
+	links?: RawLink[];
 	reply?: { id?: string; to?: string };
 	forwarded?: boolean;
 }
@@ -41,19 +45,7 @@ export function normalizeMessage(
 	options: NormalizeMessageOptions,
 ): ChatMessage | null {
 	const body = raw.body?.trim() ?? "";
-	const attachments = (raw.links ?? [])
-		.filter((link): link is { url: string; description?: string } =>
-			Boolean(link.url),
-		)
-		.map((link) => {
-			const name = link.description?.trim() || fileNameFromUrl(link.url);
-			return {
-				id: `att-${hash(link.url)}`,
-				url: link.url,
-				name,
-				kind: kindFromName(name),
-			};
-		});
+	const attachments = normalizeLinkAttachments(raw.links);
 	if (!body && attachments.length === 0) return null;
 
 	const direction =
@@ -68,7 +60,8 @@ export function normalizeMessage(
 	const timestamp =
 		toTimestamp(raw.delay?.timestamp) ?? options.now ?? Date.now();
 	const stanzaId = raw.id?.trim() || undefined;
-	const id = stanzaId ?? `msg-${hash(`${raw.from}|${timestamp}|${body}`)}`;
+	const id =
+		stanzaId ?? `msg-${stableHash(`${raw.from}|${timestamp}|${body}`)}`;
 	const replyId = raw.reply?.id?.trim();
 	const replyTo = replyId
 		? { id: replyId, to: raw.reply?.to?.trim() || undefined }
@@ -286,12 +279,4 @@ function toTimestamp(value?: Date | string): number | undefined {
 	if (!value) return undefined;
 	const date = value instanceof Date ? value : new Date(value);
 	return Number.isNaN(date.getTime()) ? undefined : date.getTime();
-}
-
-function hash(value: string): string {
-	let result = 5381;
-	for (let index = 0; index < value.length; index += 1) {
-		result = (result * 33) ^ value.charCodeAt(index);
-	}
-	return (result >>> 0).toString(36);
 }

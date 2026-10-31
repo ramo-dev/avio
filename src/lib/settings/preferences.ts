@@ -10,8 +10,9 @@ export const DEFAULT_SETTINGS: Settings = {
 	version: SETTINGS_VERSION,
 	appearance: { theme: "system" },
 	sounds: { muted: false, volume: 0.5 },
-	chats: { enterToSend: true, typingIndicators: true },
+	chats: { enterToSend: true, typingIndicators: true, readReceipts: true },
 	notifications: { enabled: false, previews: true },
+	security: { defaultEncryption: "none", rememberOmemoUnlock: false },
 };
 
 export interface SettingsStorage {
@@ -105,6 +106,7 @@ export function normalizeSettings(value: unknown): Settings {
 	const sounds = asRecord(root?.sounds);
 	const chats = asRecord(root?.chats);
 	const notifications = asRecord(root?.notifications);
+	const security = asRecord(root?.security);
 
 	return {
 		version: SETTINGS_VERSION,
@@ -124,6 +126,10 @@ export function normalizeSettings(value: unknown): Settings {
 				chats?.typingIndicators,
 				DEFAULT_SETTINGS.chats.typingIndicators,
 			),
+			readReceipts: asBoolean(
+				chats?.readReceipts,
+				DEFAULT_SETTINGS.chats.readReceipts,
+			),
 		},
 		notifications: {
 			enabled: asBoolean(
@@ -133,6 +139,13 @@ export function normalizeSettings(value: unknown): Settings {
 			previews: asBoolean(
 				notifications?.previews,
 				DEFAULT_SETTINGS.notifications.previews,
+			),
+		},
+		security: {
+			defaultEncryption: asDefaultEncryption(security?.defaultEncryption),
+			rememberOmemoUnlock: asBoolean(
+				security?.rememberOmemoUnlock,
+				DEFAULT_SETTINGS.security.rememberOmemoUnlock,
 			),
 		},
 	};
@@ -174,6 +187,12 @@ function asTheme(value: unknown): ThemePreference {
 
 function asBoolean(value: unknown, fallback: boolean): boolean {
 	return typeof value === "boolean" ? value : fallback;
+}
+
+function asDefaultEncryption(value: unknown): "none" | "omemo" {
+	return value === "omemo"
+		? "omemo"
+		: DEFAULT_SETTINGS.security.defaultEncryption;
 }
 
 function asVolume(value: unknown): number {
@@ -235,6 +254,13 @@ export function setTypingIndicators(typingIndicators: boolean) {
 	}));
 }
 
+export function setReadReceipts(readReceipts: boolean) {
+	settingsStore.update((current) => ({
+		...current,
+		chats: { ...current.chats, readReceipts },
+	}));
+}
+
 export function setNotificationsEnabled(enabled: boolean) {
 	settingsStore.update((current) => ({
 		...current,
@@ -246,5 +272,19 @@ export function setNotificationPreviews(previews: boolean) {
 	settingsStore.update((current) => ({
 		...current,
 		notifications: { ...current.notifications, previews },
+	}));
+}
+
+export function setDefaultEncryption(defaultEncryption: "none" | "omemo") {
+	settingsStore.update((current) => ({
+		...current,
+		security: { ...current.security, defaultEncryption },
+	}));
+}
+
+export function setRememberOmemoUnlock(rememberOmemoUnlock: boolean) {
+	settingsStore.update((current) => ({
+		...current,
+		security: { ...current.security, rememberOmemoUnlock },
 	}));
 }

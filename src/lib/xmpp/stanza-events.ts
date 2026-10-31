@@ -1,8 +1,10 @@
 import type { Agent } from "stanza";
 import type * as StanzaProtocol from "stanza/protocol";
 import { bareJid, jidResource } from "#/lib/xmpp/jid";
+import { createOmemoEventEmitter } from "#/lib/xmpp/omemo-events";
 import { normalizePresence } from "#/lib/xmpp/presence";
 import {
+	mapMessageActions,
 	mapRoster,
 	normalizeGroupMessage,
 	normalizeStanzaMessage,
@@ -26,36 +28,22 @@ export function attachStanzaEvents(
 ) {
 	const { emit } = handlers;
 	const accountBareJid = () => handlers.getAccountBareJid();
+	const emitOmemo = createOmemoEventEmitter(emit, accountBareJid);
 
 	function emitExtended(
 		message: StanzaProtocol.Message,
 		fallbackFrom: string,
 		fallbackTo: string,
 	): boolean {
-		const from = message.from ?? fallbackFrom;
-		const to = message.to ?? fallbackTo;
-		const outgoing =
-			bareJid(from).toLowerCase() === accountBareJid().toLowerCase();
-		const jid = outgoing ? bareJid(to) : bareJid(from);
-
-		if (message.reactions?.id) {
-			emit({
-				type: "reactions",
-				jid,
-				messageId: message.reactions.id,
-				senderJid: outgoing ? accountBareJid() : bareJid(from),
-				reactions: message.reactions.reactions ?? [],
-			});
-			return true;
-		}
-
-		if (message.replace) {
-			const body = message.body?.trim();
-			if (body) emit({ type: "edit", jid, messageId: message.replace, body });
-			return true;
-		}
-
-		return false;
+		const event = mapMessageActions(
+			message,
+			fallbackFrom,
+			fallbackTo,
+			accountBareJid(),
+		);
+		if (!event) return false;
+		emit(event);
+		return true;
 	}
 
 	agent.on("session:started", handlers.onSessionStarted);
@@ -66,18 +54,21 @@ export function attachStanzaEvents(
 
 	agent.on("message", (message) => {
 		if (message.carbon) return;
+		if (emitOmemo(message, message.from ?? "", message.to ?? "")) return;
 		if (message.reactions || message.replace) {
 			emitExtended(message, message.from ?? "", message.to ?? "");
 		}
 	});
 
 	agent.on("chat", (message) => {
+		if (message.omemo) return;
 		if (message.reactions || message.replace) return;
 		const normalized = normalizeStanzaMessage(message, accountBareJid());
 		if (normalized) emit({ type: "message", message: normalized });
 	});
 
 	agent.on("groupchat", (message) => {
+		if (message.omemo) return;
 		const roomJid = bareJid(message.from ?? "");
 		const normalized = normalizeGroupMessage(
 			message,
@@ -90,6 +81,7 @@ export function attachStanzaEvents(
 	agent.on("carbon:received", (event) => {
 		const inner = event.carbon.forward.message;
 		if (!inner) return;
+		if (emitOmemo(inner, event.from, event.to, "incoming")) return;
 		if (emitExtended(inner, event.from, event.to)) return;
 		const normalized = normalizeStanzaMessage(
 			withFallbackAddress(inner, event.from, event.to),
@@ -102,6 +94,7 @@ export function attachStanzaEvents(
 	agent.on("carbon:sent", (event) => {
 		const inner = event.carbon.forward.message;
 		if (!inner) return;
+		if (emitOmemo(inner, event.from, event.to, "outgoing")) return;
 		if (emitExtended(inner, event.from, event.to)) return;
 		const normalized = normalizeStanzaMessage(
 			withFallbackAddress(inner, event.from, event.to),
@@ -170,6 +163,7 @@ export function attachStanzaEvents(
 	});
 
 	agent.on("available", (presence) => {
+		if (presence.muc) return;
 		emit({
 			type: "presence",
 			jid: presence.from,
@@ -182,6 +176,7 @@ export function attachStanzaEvents(
 	});
 
 	agent.on("unavailable", (presence) => {
+		if (presence.muc) return;
 		emit({
 			type: "presence",
 			jid: presence.from,
@@ -258,6 +253,17 @@ export function attachStanzaEvents(
 				reason: event.reason,
 				receivedAt: Date.now(),
 			},
+		});
+	});
+
+	agent.on("muc:declined", (event) => {
+		void agent
+			.setRoomAffiliation(bareJid(event.room), bareJid(event.from), "none")
+			.catch(() => undefined);
+		emit({
+			type: "room-invite-declined",
+			roomJid: bareJid(event.room),
+			from: bareJid(event.from),
 		});
 	});
 

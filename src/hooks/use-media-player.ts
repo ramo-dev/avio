@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 export function useMediaPlayer(
 	ref: React.RefObject<HTMLMediaElement | null>,
 	src: string,
+	enabled = true,
 ) {
 	const [playing, setPlaying] = useState(false);
 	const [currentTime, setCurrentTime] = useState(0);
@@ -12,7 +13,7 @@ export function useMediaPlayer(
 
 	useEffect(() => {
 		const media = ref.current;
-		if (!media || !src) return;
+		if (!enabled || !media || !src) return;
 
 		setPlaying(!media.paused);
 		setCurrentTime(media.currentTime || 0);
@@ -52,7 +53,7 @@ export function useMediaPlayer(
 			media.removeEventListener("ended", onEnded);
 			media.removeEventListener("error", onError);
 		};
-	}, [ref, src]);
+	}, [enabled, ref, src]);
 
 	const toggle = useCallback(() => {
 		const media = ref.current;

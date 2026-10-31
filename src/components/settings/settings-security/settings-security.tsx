@@ -1,14 +1,42 @@
 import {
 	RiAlertLine,
-	RiLockLine,
 	RiLockUnlockLine,
 	RiShieldCheckLine,
 } from "@remixicon/react";
 import type { ReactNode } from "react";
+import { useEffect, useState } from "react";
+import { SettingsOmemoCard } from "#/components/settings/settings-omemo-card/settings-omemo-card";
+import { SettingsOmemoPreferences } from "#/components/settings/settings-omemo-card/settings-omemo-preferences";
 import { SettingsSection } from "#/components/settings/settings-section/settings-section";
 import { Badge } from "#/components/ui/badge";
+import { cn } from "#/lib/utils";
+import { useSettings } from "#/providers/settings-provider";
 
-export function SettingsSecurity() {
+export const OMEMO_SETTINGS_ID = "settings-omemo";
+
+const OMEMO_FOCUS_MS = 1_600;
+
+export function SettingsSecurity({ anchor }: { anchor?: "omemo" }) {
+	const { clearTarget } = useSettings();
+	const [focusOmemo, setFocusOmemo] = useState(anchor === "omemo");
+
+	useEffect(() => {
+		if (!focusOmemo) return;
+		const frame = window.requestAnimationFrame(() => {
+			document
+				.getElementById(OMEMO_SETTINGS_ID)
+				?.scrollIntoView({ behavior: "smooth", block: "center" });
+		});
+		const timer = window.setTimeout(() => {
+			setFocusOmemo(false);
+			clearTarget();
+		}, OMEMO_FOCUS_MS);
+		return () => {
+			window.cancelAnimationFrame(frame);
+			window.clearTimeout(timer);
+		};
+	}, [clearTarget, focusOmemo]);
+
 	return (
 		<SettingsSection
 			title="Security"
@@ -25,16 +53,9 @@ export function SettingsSecurity() {
 				<StatusRow
 					icon={<RiLockUnlockLine className="size-4" />}
 					title="End-to-end encryption"
-					value="Not available"
-					tone="destructive"
-					description="The server and anyone with server access can read messages in this build."
-				/>
-				<StatusRow
-					icon={<RiLockLine className="size-4" />}
-					title="OMEMO"
-					value="Planned"
+					value="Opt-in"
 					tone="secondary"
-					description="Blocked on the licensing and key-storage decision in the encryption ADR."
+					description="OMEMO can be enabled per direct conversation after you set up and unlock it below."
 				/>
 				<StatusRow
 					icon={<RiAlertLine className="size-4" />}
@@ -45,9 +66,21 @@ export function SettingsSecurity() {
 				/>
 			</div>
 
+			<div
+				id={OMEMO_SETTINGS_ID}
+				className={cn(
+					"rounded-xl transition-[box-shadow] duration-300",
+					focusOmemo && "ring-2 ring-ring/60",
+				)}
+			>
+				<SettingsOmemoCard />
+			</div>
+			<SettingsOmemoPreferences />
+
 			<p className="text-xs leading-relaxed text-muted-foreground">
 				Do not use this development build for sensitive conversations. TLS
-				protects the connection, not the message contents.
+				protects the connection, not the message contents. OMEMO is experimental
+				and has not been independently audited.
 			</p>
 		</SettingsSection>
 	);

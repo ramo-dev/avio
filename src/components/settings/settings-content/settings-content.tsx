@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { SettingsAppearance } from "#/components/settings/settings-appearance/settings-appearance";
 import { SettingsChats } from "#/components/settings/settings-chats/settings-chats";
 import {
@@ -8,9 +8,17 @@ import {
 import { SettingsNotifications } from "#/components/settings/settings-notifications/settings-notifications";
 import { SettingsSecurity } from "#/components/settings/settings-security/settings-security";
 import { SettingsSounds } from "#/components/settings/settings-sounds/settings-sounds";
+import { useSettings } from "#/providers/settings-provider";
 
 export function SettingsContent() {
-	const [section, setSection] = useState<SettingsSectionId>("appearance");
+	const { target } = useSettings();
+	const [section, setSection] = useState<SettingsSectionId>(
+		target?.section ?? "appearance",
+	);
+
+	useEffect(() => {
+		if (target) setSection(target.section);
+	}, [target]);
 
 	return (
 		<div className="flex min-h-0 w-full flex-col gap-4 md:h-full md:flex-row md:gap-6">
@@ -20,7 +28,11 @@ export function SettingsContent() {
 				{section === "sounds" && <SettingsSounds />}
 				{section === "chats" && <SettingsChats />}
 				{section === "notifications" && <SettingsNotifications />}
-				{section === "security" && <SettingsSecurity />}
+				{section === "security" && (
+					<SettingsSecurity
+						anchor={target?.section === "security" ? target.anchor : undefined}
+					/>
+				)}
 			</div>
 		</div>
 	);

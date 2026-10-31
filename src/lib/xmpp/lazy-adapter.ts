@@ -39,9 +39,17 @@ export function createLazyAdapter(): XmppAdapter {
 			const adapter = await ensure();
 			await adapter.sendMessage(input);
 		},
-		async sendReaction(to, messageId, reactions) {
+		async sendEncryptedMessage(to, id, envelope) {
 			const adapter = await ensure();
-			await adapter.sendReaction(to, messageId, reactions);
+			await adapter.sendEncryptedMessage(to, id, envelope);
+		},
+		async sendReaction(to, messageId, reactions, roomType) {
+			const adapter = await ensure();
+			await adapter.sendReaction(to, messageId, reactions, roomType);
+		},
+		async sendDisplayedMarker(to, messageId) {
+			const adapter = await ensure();
+			await adapter.sendDisplayedMarker(to, messageId);
 		},
 		async forwardMessage(to, message, id) {
 			const adapter = await ensure();
@@ -67,13 +75,13 @@ export function createLazyAdapter(): XmppAdapter {
 			const adapter = await ensure();
 			await adapter.inviteToRoom(jid, memberJids, reason);
 		},
-		async acceptRoomInvite(jid, reason) {
+		async acceptRoomInvite(jid, reason, invitedBy) {
 			const adapter = await ensure();
-			await adapter.acceptRoomInvite(jid, reason);
+			await adapter.acceptRoomInvite(jid, reason, invitedBy);
 		},
-		async declineRoomInvite(jid) {
+		async declineRoomInvite(jid, sender, reason) {
 			const adapter = await ensure();
-			await adapter.declineRoomInvite(jid);
+			await adapter.declineRoomInvite(jid, sender, reason);
 		},
 		async getUploadService(): Promise<UploadService> {
 			const adapter = await ensure();
@@ -85,6 +93,18 @@ export function createLazyAdapter(): XmppAdapter {
 		): Promise<UploadSlot> {
 			const adapter = await ensure();
 			return adapter.getUploadSlot(serviceJid, request);
+		},
+		async getOmemoPep() {
+			const adapter = await ensure();
+			return adapter.getOmemoPep();
+		},
+		async loadRoomPreview(jid) {
+			const adapter = await ensure();
+			return adapter.loadRoomPreview(jid);
+		},
+		async getRoomMemberJids(jid) {
+			const adapter = await ensure();
+			return adapter.getRoomMemberJids(jid);
 		},
 		async addContact(jid) {
 			const adapter = await ensure();

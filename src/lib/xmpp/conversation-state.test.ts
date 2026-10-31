@@ -53,4 +53,28 @@ describe("conversation state", () => {
 		expect(state.conversations["bob@example.com"]).toBeUndefined();
 		expect(state.contacts["bob@example.com"]).toBeUndefined();
 	});
+
+	it("does not create a direct contact for group history", () => {
+		const state = reduceEvent(createInitialState(), {
+			type: "history",
+			messages: [
+				{
+					id: "room-m1",
+					conversationJid: "room@conference.example.com",
+					from: "room@conference.example.com/bob",
+					to: "alice@example.com/web",
+					body: "Hello room",
+					timestamp: 1000,
+					direction: "incoming",
+					status: "delivered",
+					senderNick: "bob",
+				},
+			],
+		});
+
+		expect(state.conversations["room@conference.example.com"]?.kind).toBe(
+			"group",
+		);
+		expect(state.contacts["room@conference.example.com"]).toBeUndefined();
+	});
 });

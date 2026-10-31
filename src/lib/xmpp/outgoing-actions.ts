@@ -5,6 +5,7 @@ import { createReactionActions } from "#/lib/xmpp/reaction-actions";
 import { findMessageById } from "#/lib/xmpp/selectors";
 import type { MessageAttachment } from "#/types/attachment";
 import type { ChatMessage } from "#/types/chat";
+import type { OmemoEncryptedMessage } from "#/types/omemo";
 import type {
 	SendMessageOptions,
 	XmppAdapter,
@@ -107,6 +108,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 			replyTo: options?.replyTo,
 			timestamp: now(),
 		});
+		if (options?.unencryptedFallback) message.unencryptedFallback = true;
 		if (type === "groupchat") message.status = "sent";
 		handleEvent({ type: "message", message });
 
@@ -127,9 +129,55 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 		}
 	}
 
+	/**
+	 * Sends an envelope encrypted by the OMEMO provider.
+	 *
+	 * This path never calls `sendMessage`, so a failed encrypted send cannot
+	 * silently downgrade to plaintext.
+	 */
+	async function sendEncryptedMessage(
+		to: string,
+		body: string,
+		envelope: OmemoEncryptedMessage,
+	): Promise<ChatMessage | null> {
+		const state = getState();
+		if (state.connection.status !== "connected") {
+			onError(createXmppError("not-connected"));
+			return null;
+		}
+
+		const target = bareJid(to);
+		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
+		const id = `local-${idFactory()}`;
+		const message: ChatMessage = {
+			...createOutgoingMessage({
+				id,
+				conversationJid: target,
+				from: accountJid,
+				to: target,
+				body,
+				timestamp: now(),
+			}),
+			encrypted: true,
+		};
+		handleEvent({ type: "message", message });
+
+		try {
+			await adapter.sendEncryptedMessage(target, id, envelope);
+			return message;
+		} catch (error) {
+			onError(normalizeXmppError(error, "send-failed"));
+			handleEvent({ type: "message-status", id, status: "failed" });
+			return findInConversation(getState(), target, id) ?? message;
+		}
+	}
+
 	async function retryMessage(messageId: string) {
 		const message = findMessageById(getState(), messageId);
 		if (!message || message.direction !== "outgoing") return;
+		// Retrying would not have the original envelope, and plaintext retry is
+		// never acceptable for an encrypted message.
+		if (message.encrypted) return;
 
 		const type =
 			getState().conversations[message.conversationJid]?.kind === "group"
@@ -175,6 +223,16 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 			onError(createXmppError("not-connected"));
 			return null;
 		}
+		if (source.encrypted) {
+			onError(
+				createXmppError(
+					"send-failed",
+					undefined,
+					"Encrypted messages cannot be forwarded yet.",
+				),
+			);
+			return null;
+		}
 
 		const target = bareJid(to);
 		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
@@ -205,6 +263,7 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 
 	return {
 		sendMessage,
+		sendEncryptedMessage,
 		retryMessage,
 		sendTyping,
 		toggleReaction: reactions.toggleReaction,
