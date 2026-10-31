@@ -95,6 +95,10 @@ without a deprecation period.
   DM/group delivery, group invite/join, reactions (including refresh restore),
   transcript scrolling, and panel restore; `pnpm test:csp` checks the static
   build for CSP violations. Added a GitHub Actions workflow for both.
+- OMEMO placeholders received while locked now decrypt automatically after
+  unlock or device verification. Outgoing encrypted carbons from your other
+  devices are decrypted and shown in the recipient conversation without
+  duplicating the originating device's copy.
 - Reaction tooltips expose tooltip semantics, and the group "Not encrypted"
   badge becomes icon-only on narrow screens so group names fit.
 - README diagrams now show the federation trust boundary and the message/receipt
