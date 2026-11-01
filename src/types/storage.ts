@@ -4,6 +4,10 @@ export interface StoredSession {
 	jid: string;
 	websocketUrl?: string;
 	boshUrl?: string;
+	/** Manual endpoint host used for WebSocket probing on restore. */
+	host?: string;
+	/** Manual endpoint port used for WebSocket probing on restore. */
+	port?: number;
 	resource?: string;
 }
 

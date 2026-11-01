@@ -7,6 +7,7 @@ import {
 } from "#/lib/xmpp/conversation-state";
 import { persistRoomInvites } from "#/lib/xmpp/invite-persistence";
 import { bareJid } from "#/lib/xmpp/jid";
+import { applyMessageEdit } from "#/lib/xmpp/messages";
 import { reduceActive } from "#/lib/xmpp/reducers";
 import type { RoomInviteStore, XmppAdapter, XmppState } from "#/types/store";
 
@@ -76,6 +77,22 @@ export function createConversationActions(deps: ConversationActionDeps) {
 		deps.setState(deleteMessageState(deps.getState(), jid, messageId));
 	}
 
+	/** Applies a decrypted edit received through OMEMO or MAM replay. */
+	function applyMessageEditById(jid: string, messageId: string, body: string) {
+		const state = deps.getState();
+		const conversation = state.conversations[jid];
+		if (!conversation) return;
+		const messages = applyMessageEdit(conversation.messages, messageId, body);
+		if (messages === conversation.messages) return;
+		deps.setState({
+			...state,
+			conversations: {
+				...state.conversations,
+				[jid]: { ...conversation, messages },
+			},
+		});
+	}
+
 	return {
 		setActiveConversation,
 		ensureConversation,
@@ -84,5 +101,6 @@ export function createConversationActions(deps: ConversationActionDeps) {
 		markAllRead,
 		deleteConversation,
 		deleteMessage,
+		applyMessageEdit: applyMessageEditById,
 	};
 }

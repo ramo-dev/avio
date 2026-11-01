@@ -2,6 +2,12 @@ import type { Agent } from "stanza";
 import * as XMPP from "stanza";
 import type * as StanzaProtocol from "stanza/protocol";
 import { reconnectDelay } from "#/lib/xmpp/backoff";
+import {
+	sendChatMessageStanza,
+	sendChatStateStanza,
+	sendDisplayedMarkerStanza,
+} from "#/lib/xmpp/client-stanzas";
+import { resolveConnectTransports } from "#/lib/xmpp/connection-resolver";
 import { createXmppError, isXmppError } from "#/lib/xmpp/errors";
 import { bareJid, toAccount } from "#/lib/xmpp/jid";
 import {
@@ -13,6 +19,7 @@ import { createOmemoActions } from "#/lib/xmpp/omemo-actions";
 import { registerMessageExtensions } from "#/lib/xmpp/protocol";
 import { loadRoomPreview as loadRoomPreviewWithClient } from "#/lib/xmpp/room-preview";
 import { createRosterAdapter } from "#/lib/xmpp/roster-adapter";
+import { detectServerCapabilities } from "#/lib/xmpp/server-capabilities";
 import { attachStanzaEvents } from "#/lib/xmpp/stanza-events";
 import { mapHistory, mapHistoryActions } from "#/lib/xmpp/stanza-mappers";
 import {
@@ -48,6 +55,7 @@ export function createStanzaAdapter(): XmppAdapter {
 	let reconnectAttempts = 0;
 	let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 	let pending: PendingConnection | null = null;
+	let activeWebsocketUrl: string | null = null;
 	const listeners = new Set<(event: XmppEvent) => void>();
 	const roster = createRosterAdapter(() => client);
 	const muc = createMucAdapter({
@@ -146,13 +154,18 @@ export function createStanzaAdapter(): XmppAdapter {
 
 		await disconnectClient();
 
+		const domain =
+			account?.domain ?? bareJid(nextCredentials.jid).split("@")[1] ?? "";
+		const transports = await resolveConnectTransports(nextCredentials, domain);
+		activeWebsocketUrl = transports.websocketUrl ?? null;
+
 		const agent = XMPP.createClient({
 			jid: nextCredentials.jid,
 			password: nextCredentials.password,
 			resource: nextCredentials.resource || createResourceId(),
 			transports: {
-				websocket: nextCredentials.websocketUrl || true,
-				bosh: nextCredentials.boshUrl || true,
+				websocket: transports.websocketUrl || true,
+				bosh: transports.websocketUrl ? false : transports.boshUrl || true,
 			},
 			useStreamManagement: true,
 			allowResumption: true,
@@ -189,6 +202,11 @@ export function createStanzaAdapter(): XmppAdapter {
 			);
 		}
 	}
+	function requireClient(): Agent {
+		if (!client) throw createXmppError("not-connected");
+		return client;
+	}
+
 	async function disconnectClient() {
 		if (reconnectTimer) {
 			clearTimeout(reconnectTimer);
@@ -208,24 +226,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		emit({ type: "connection", status: "disconnected" });
 	}
 	async function sendMessage(input: SendMessageInput) {
-		if (!client) throw createXmppError("not-connected");
-		const type = input.type ?? "chat";
-		client.sendMessage({
-			to: input.to,
-			body: input.body,
-			id: input.id,
-			type,
-			receipt:
-				type === "chat" && !input.editId ? { type: "request" } : undefined,
-			marker:
-				type === "chat" && !input.editId ? { type: "markable" } : undefined,
-			reply: input.replyTo,
-			replace: input.editId,
-			links: input.attachments?.map((attachment) => ({
-				url: attachment.url,
-				description: attachment.name,
-			})),
-		});
+		sendChatMessageStanza(requireClient(), input);
 	}
 	async function sendReaction(
 		to: string,
@@ -233,31 +234,35 @@ export function createStanzaAdapter(): XmppAdapter {
 		reactions: string[],
 		roomType?: "chat" | "groupchat",
 	): Promise<void> {
-		if (!client) throw createXmppError("not-connected");
-		sendReactionStanza(client, to, messageId, reactions, roomType);
+		sendReactionStanza(requireClient(), to, messageId, reactions, roomType);
 	}
 	async function sendDisplayedMarker(
 		to: string,
 		messageId: string,
 	): Promise<void> {
-		if (!client) throw createXmppError("not-connected");
-		client.sendMessage({ to, marker: { id: messageId, type: "displayed" } });
+		sendDisplayedMarkerStanza(requireClient(), to, messageId);
 	}
 	async function forwardMessage(
 		to: string,
 		source: ChatMessage,
 		id?: string,
 	): Promise<void> {
-		if (!client) throw createXmppError("not-connected");
-		sendForwardedStanza(client, to, source, id);
+		sendForwardedStanza(requireClient(), to, source, id);
 	}
 	async function sendChatState(to: string, state: ChatState) {
-		if (!client) return;
-		client.sendMessage({ to, type: "chat", chatState: state });
+		sendChatStateStanza(requireClient(), to, state);
 	}
 	async function loadRoomPreview(jid: string): Promise<RoomPreviewResult> {
-		if (!client) throw createXmppError("not-connected");
-		return loadRoomPreviewWithClient(client, jid, accountBareJid);
+		return loadRoomPreviewWithClient(requireClient(), jid, accountBareJid);
+	}
+	async function getServerCapabilities() {
+		return detectServerCapabilities({
+			client: requireClient(),
+			domain: accountBareJid.split("@")[1] ?? accountBareJid,
+			accountJid: accountBareJid,
+			transport: activeWebsocketUrl ? "websocket" : "bosh",
+			tls: activeWebsocketUrl?.startsWith("wss:") ?? false,
+		});
 	}
 
 	return {
@@ -283,6 +288,7 @@ export function createStanzaAdapter(): XmppAdapter {
 		getUploadSlot: (serviceJid, request) =>
 			requestUploadSlot(client, serviceJid, request),
 		loadRoomPreview,
+		getServerCapabilities,
 		getRoomMemberJids: muc.getRoomMemberJids,
 		subscribe(listener) {
 			listeners.add(listener);

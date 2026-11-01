@@ -51,6 +51,9 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 	function addMessage(message: ChatMessage) {
 		handleEvent({ type: "message", message });
 	}
+	async function getServerCapabilities() {
+		return deps.adapter.getServerCapabilities();
+	}
 	async function loadRoomPreview(jid: string): Promise<RoomPreviewResult> {
 		const result = await deps.adapter.loadRoomPreview(jid);
 		if (result.status === "ok" && result.messages.length > 0) {
@@ -149,6 +152,8 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 			jid: account.bareJid,
 			websocketUrl: credentials.websocketUrl,
 			boshUrl: credentials.boshUrl,
+			host: credentials.host,
+			port: credentials.port,
 			resource: credentials.resource,
 		});
 		deps.sessionStore.savePassword(credentials.password);
@@ -263,6 +268,7 @@ export function createXmppStore(deps: XmppStoreDeps): XmppStore {
 		loadRoomPreview,
 		refreshRoomMembers,
 		getOmemoPep: omemo.getOmemoPep,
+		getServerCapabilities,
 		subscribeOmemo: omemo.subscribe,
 		uploadAttachment: (file, onProgress) =>
 			uploadAttachmentWithErrors({

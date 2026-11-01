@@ -3,24 +3,24 @@ import {
 	type ReactNode,
 	useCallback,
 	useContext,
-	useEffect,
 	useMemo,
 } from "react";
 import { toast } from "react-hot-toast";
 import { useEncryptionPreferences } from "#/hooks/use-encryption-preferences";
+import { useOmemoIncoming } from "#/hooks/use-omemo-incoming";
 import { useOmemoRetryMessages } from "#/hooks/use-omemo-retry";
 import { useOmemoSession } from "#/hooks/use-omemo-session";
 import { useSettings } from "#/hooks/use-settings";
 import { useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { OmemoStorageError, omemoErrorMessage } from "#/lib/omemo/errors";
-import { createIncomingEncryptedMessage } from "#/lib/omemo/incoming";
 import { bareJid } from "#/lib/xmpp/jid";
 import { useXmppStore } from "#/providers/xmpp-provider";
 import type { ChatMessage } from "#/types/chat";
-import type { OmemoAccountStatus, OmemoDeviceInfo } from "#/types/omemo";
-import type { XmppEvent } from "#/types/store";
-
-type OmemoMessageEvent = Extract<XmppEvent, { type: "omemo-message" }>;
+import type {
+	OmemoAccountStatus,
+	OmemoDeviceInfo,
+	OmemoMessageContext,
+} from "#/types/omemo";
 
 export interface OmemoContextValue {
 	status: OmemoAccountStatus;
@@ -39,6 +39,7 @@ export interface OmemoContextValue {
 	sendMessage(
 		jid: string,
 		body: string,
+		context?: OmemoMessageContext,
 	): Promise<{ message: ChatMessage | null; error?: string }>;
 	sendUnencrypted(jid: string, body: string): Promise<ChatMessage | null>;
 	listDevices(jid: string): Promise<OmemoDeviceInfo[]>;
@@ -66,57 +67,7 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 	const { preferences: encryptedJids, setPreference: setEncryptionEnabled } =
 		useEncryptionPreferences(accountJid);
 
-	const handleIncoming = useCallback(
-		async (event: OmemoMessageEvent) => {
-			const account = accountRef.current;
-			const message = createIncomingEncryptedMessage(
-				event,
-				account?.accountJid ?? "",
-			);
-			if (!account || account.status !== "ready") {
-				store.addMessage({
-					...message,
-					decryptionError: "Unlock OMEMO to read this message.",
-				});
-				return;
-			}
-			const outgoing = event.direction === "outgoing";
-			try {
-				const decrypted = await account.decrypt(event.from, event.envelope);
-				if (!decrypted.trusted && !outgoing) {
-					store.addMessage({
-						...message,
-						trusted: false,
-						decryptionError:
-							"Encrypted from an unverified device. Verify it in contact info before reading.",
-					});
-					return;
-				}
-				store.addMessage({
-					...message,
-					body: decrypted.plaintext,
-					trusted: true,
-					decryptionError: undefined,
-					omemoEnvelope: undefined,
-				});
-			} catch (cause) {
-				store.addMessage({
-					...message,
-					decryptionError: omemoErrorMessage(
-						cause,
-						"This encrypted message could not be decrypted.",
-					),
-				});
-			}
-		},
-		[accountRef, store],
-	);
-
-	useEffect(() => {
-		return store.subscribeOmemo((event) => {
-			void handleIncoming(event);
-		});
-	}, [handleIncoming, store]);
+	useOmemoIncoming({ accountRef, store });
 
 	const retryMessages = useOmemoRetryMessages({
 		accountJid,
@@ -146,7 +97,7 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 	);
 
 	const sendMessage = useCallback(
-		async (jid: string, body: string) => {
+		async (jid: string, body: string, context?: OmemoMessageContext) => {
 			const account = accountRef.current;
 			const accountStatus = account?.status;
 			if (!account || accountStatus !== "ready") {
@@ -165,8 +116,13 @@ export function OmemoProvider({ children }: { children: ReactNode }) {
 				return { message: null };
 			}
 			try {
-				const envelope = await account.encryptFor(jid, body);
-				const message = await store.sendEncryptedMessage(jid, body, envelope);
+				const envelope = await account.encryptFor(jid, body, context);
+				const message = await store.sendEncryptedMessage(
+					jid,
+					body,
+					envelope,
+					context,
+				);
 				if (!message || message.status === "failed") {
 					toast.error("The encrypted message could not be sent.", {
 						id: "omemo-send",

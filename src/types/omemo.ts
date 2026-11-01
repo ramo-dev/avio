@@ -142,9 +142,22 @@ export interface OmemoEncryptedMessage {
 	payload: string;
 }
 
-/** Decrypted 1:1 message plus the sender and trust facts for the UI. */
+export interface OmemoReplyReference {
+	id: string;
+	to?: string;
+}
+
+/** Reply/edit metadata carried inside the encrypted payload. */
+export interface OmemoMessageContext {
+	replyTo?: OmemoReplyReference;
+	editId?: string;
+}
+
+/** Decrypted 1:1 message plus the sender, metadata, and trust facts for the UI. */
 export interface OmemoDecryptedMessage {
 	plaintext: string;
+	replyTo?: OmemoReplyReference;
+	editId?: string;
 	senderJid: string;
 	senderDeviceId: number;
 	trusted: boolean;

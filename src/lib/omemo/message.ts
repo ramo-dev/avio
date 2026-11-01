@@ -12,11 +12,13 @@ import {
 	OmemoSessionError,
 	OmemoStorageError,
 } from "#/lib/omemo/errors";
+import { decodePayload, encodePayload } from "#/lib/omemo/payload";
 import type { OmemoKeyStore } from "#/lib/omemo/store";
 import type {
 	OmemoCipherKey,
 	OmemoDecryptedMessage,
 	OmemoEncryptedMessage,
+	OmemoMessageContext,
 } from "#/types/omemo";
 
 const MAX_DEVICE_ID = 0x7fff_ffff;
@@ -156,6 +158,7 @@ export class OmemoMessageCipher {
 		to: string,
 		plaintext: string,
 		deviceIds: number[],
+		context?: OmemoMessageContext,
 	): Promise<OmemoEncryptedMessage> {
 		try {
 			const localDeviceId = await this.localDeviceId();
@@ -166,7 +169,7 @@ export class OmemoMessageCipher {
 				await this.engine.ensureSession(to, deviceId);
 			}
 
-			const content = await encryptContent(plaintext);
+			const content = await encryptContent(encodePayload(plaintext, context));
 			const keys: OmemoCipherKey[] = [];
 			for (const deviceId of recipients) {
 				const result = await this.sessionCipher(to, deviceId).encrypt(
@@ -219,11 +222,14 @@ export class OmemoMessageCipher {
 			parsed.iv,
 			parsed.payload,
 		);
+		const payload = decodePayload(plaintext);
 		const trusted = await this.engine.isTrustedDevice(senderJid, envelope.sid);
 		const bundleRefreshed = key.preKey ? await this.refreshBundle() : false;
 
 		return {
-			plaintext,
+			plaintext: payload.body,
+			replyTo: payload.replyTo,
+			editId: payload.editId,
 			senderJid,
 			senderDeviceId: envelope.sid,
 			trusted,

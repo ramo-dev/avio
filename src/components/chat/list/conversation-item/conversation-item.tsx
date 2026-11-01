@@ -1,3 +1,4 @@
+import { RiLockLine, RiLockUnlockLine } from "@remixicon/react";
 import { Link } from "@tanstack/react-router";
 import { cva } from "class-variance-authority";
 import { ConversationAvatar } from "#/components/chat/list/conversation-item/conversation-avatar/conversation-avatar";
@@ -26,12 +27,15 @@ const conversationItemVariants = cva(
 export function ConversationItem({
 	item,
 	selected,
+	encrypted,
 	onPreferenceChange,
 	onMarkUnread,
 	onDelete,
 }: {
 	item: ConversationListItem;
 	selected: boolean;
+	/** Whether messages in this conversation are end-to-end encrypted. */
+	encrypted: boolean;
 	onPreferenceChange: (patch: Partial<ChatPreference>) => void;
 	onMarkUnread: () => void;
 	onDelete: () => void;
@@ -61,14 +65,43 @@ export function ConversationItem({
 				<ConversationAvatar item={item} selected={selected} />
 
 				<div className="min-w-0 flex-1">
-					<div className="flex items-baseline justify-between gap-2">
-						<span
-							className={cn(
-								"truncate text-sm",
-								item.unread > 0 ? "font-semibold" : "font-medium",
-							)}
-						>
-							{item.name}
+					<div className="flex min-w-0 items-baseline justify-between gap-2">
+						<span className="flex min-w-0 items-center gap-1">
+							<span
+								className={cn(
+									"truncate text-sm",
+									item.unread > 0 ? "font-semibold" : "font-medium",
+								)}
+							>
+								{item.name}
+							</span>
+							<span
+								role="img"
+								aria-label={
+									encrypted
+										? "End-to-end encrypted"
+										: "Not end-to-end encrypted"
+								}
+								title={
+									encrypted
+										? "End-to-end encrypted"
+										: "Not end-to-end encrypted"
+								}
+								className={cn(
+									"inline-flex shrink-0",
+									selected
+										? "text-primary-foreground/70"
+										: encrypted
+											? "text-muted-foreground"
+											: "text-destructive/70",
+								)}
+							>
+								{encrypted ? (
+									<RiLockLine className="size-3" aria-hidden="true" />
+								) : (
+									<RiLockUnlockLine className="size-3" aria-hidden="true" />
+								)}
+							</span>
 						</span>
 					</div>
 					<div

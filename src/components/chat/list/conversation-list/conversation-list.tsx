@@ -8,6 +8,7 @@ import { ConversationItem } from "#/components/chat/list/conversation-item/conve
 import { CenteredEmptyState } from "#/components/common/centered-empty/centered-empty";
 import { Button } from "#/components/ui/button";
 import { ScrollArea } from "#/components/ui/scroll-area";
+import { useOmemo } from "#/providers/omemo-provider";
 import type {
 	ChatFilter,
 	ChatPreference,
@@ -33,6 +34,8 @@ export function ConversationList({
 	onMarkUnread: (jid: string) => void;
 	onDelete: (jid: string) => void;
 }) {
+	const omemo = useOmemo();
+
 	if (items.length === 0) {
 		return (
 			<div className="flex min-h-0 flex-1 items-center justify-center p-4">
@@ -56,6 +59,9 @@ export function ConversationList({
 						key={item.jid}
 						item={item}
 						selected={item.jid === activeJid}
+						encrypted={
+							item.kind === "direct" && omemo.isEncryptionEnabled(item.jid)
+						}
 						onPreferenceChange={(patch) => onPreferenceChange(item.jid, patch)}
 						onMarkUnread={() => onMarkUnread(item.jid)}
 						onDelete={() => onDelete(item.jid)}

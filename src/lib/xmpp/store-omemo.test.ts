@@ -43,6 +43,53 @@ describe("xmpp store OMEMO wiring", () => {
 		).toBe(true);
 	});
 
+	it("carries encrypted reply metadata on the optimistic message", async () => {
+		const { store } = createStoreHarness();
+		await store.connect(credentials);
+
+		const message = await store.sendEncryptedMessage(
+			"bob@example.com",
+			"Replying",
+			envelope,
+			{ replyTo: { id: "original-1", to: "bob@example.com" } },
+		);
+
+		expect(message?.replyTo).toEqual({
+			id: "original-1",
+			to: "bob@example.com",
+		});
+		expect(message?.encrypted).toBe(true);
+	});
+
+	it("applies an encrypted edit to the existing message", async () => {
+		const { store, adapter } = createStoreHarness();
+		await store.connect(credentials);
+		const original = await store.sendEncryptedMessage(
+			"bob@example.com",
+			"Original",
+			envelope,
+		);
+		if (!original) throw new Error("Expected an encrypted message");
+
+		await store.sendEncryptedMessage("bob@example.com", "Edited", envelope, {
+			editId: original.id,
+		});
+
+		const messages =
+			store.getState().conversations["bob@example.com"]?.messages ?? [];
+		expect(messages).toHaveLength(1);
+		expect(messages[0]).toMatchObject({
+			body: "Edited",
+			edited: true,
+			encrypted: true,
+		});
+		expect(adapter.sendEncryptedMessage).toHaveBeenLastCalledWith(
+			"bob@example.com",
+			"edit-fixed",
+			envelope,
+		);
+	});
+
 	it("marks a failed encrypted send without falling back to plaintext", async () => {
 		const { store, adapter } = createStoreHarness();
 		await store.connect(credentials);

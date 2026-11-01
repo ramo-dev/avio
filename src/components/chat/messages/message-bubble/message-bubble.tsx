@@ -46,6 +46,7 @@ export function MessageBubble({
 	position,
 	active,
 	footer,
+	encryption,
 	actions,
 	actionsOpen = false,
 	children,
@@ -54,6 +55,8 @@ export function MessageBubble({
 	position: MessagePosition;
 	active?: boolean;
 	footer?: ReactNode;
+	/** Rendered when a message has no footer, so every bubble shows its state. */
+	encryption?: ReactNode;
 	actions?: ReactNode;
 	actionsOpen?: boolean;
 	children: ReactNode;
@@ -82,9 +85,9 @@ export function MessageBubble({
 				)}
 			>
 				<div>{children}</div>
-				{footer && (
+				{(footer || encryption) && (
 					<div className="mt-1 flex items-center justify-end gap-1 text-[11px] leading-none opacity-70">
-						{footer}
+						{footer ?? encryption}
 					</div>
 				)}
 			</BubbleContent>

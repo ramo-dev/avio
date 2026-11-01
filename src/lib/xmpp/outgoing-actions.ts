@@ -1,3 +1,4 @@
+import { createEncryptedSender } from "#/lib/xmpp/encrypted-outgoing";
 import { createXmppError, normalizeXmppError } from "#/lib/xmpp/errors";
 import { bareJid } from "#/lib/xmpp/jid";
 import { createOutgoingMessage } from "#/lib/xmpp/messages";
@@ -5,7 +6,6 @@ import { createReactionActions } from "#/lib/xmpp/reaction-actions";
 import { findMessageById } from "#/lib/xmpp/selectors";
 import type { MessageAttachment } from "#/types/attachment";
 import type { ChatMessage } from "#/types/chat";
-import type { OmemoEncryptedMessage } from "#/types/omemo";
 import type {
 	SendMessageOptions,
 	XmppAdapter,
@@ -135,43 +135,6 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 	 * This path never calls `sendMessage`, so a failed encrypted send cannot
 	 * silently downgrade to plaintext.
 	 */
-	async function sendEncryptedMessage(
-		to: string,
-		body: string,
-		envelope: OmemoEncryptedMessage,
-	): Promise<ChatMessage | null> {
-		const state = getState();
-		if (state.connection.status !== "connected") {
-			onError(createXmppError("not-connected"));
-			return null;
-		}
-
-		const target = bareJid(to);
-		const accountJid = state.account?.bareJid ?? state.connection.jid ?? "";
-		const id = `local-${idFactory()}`;
-		const message: ChatMessage = {
-			...createOutgoingMessage({
-				id,
-				conversationJid: target,
-				from: accountJid,
-				to: target,
-				body,
-				timestamp: now(),
-			}),
-			encrypted: true,
-		};
-		handleEvent({ type: "message", message });
-
-		try {
-			await adapter.sendEncryptedMessage(target, id, envelope);
-			return message;
-		} catch (error) {
-			onError(normalizeXmppError(error, "send-failed"));
-			handleEvent({ type: "message-status", id, status: "failed" });
-			return findInConversation(getState(), target, id) ?? message;
-		}
-	}
-
 	async function retryMessage(messageId: string) {
 		const message = findMessageById(getState(), messageId);
 		if (!message || message.direction !== "outgoing") return;
@@ -260,6 +223,16 @@ export function createOutgoingActions(deps: OutgoingActionDeps) {
 			return message;
 		}
 	}
+
+	const sendEncryptedMessage = createEncryptedSender({
+		getState,
+		handleEvent,
+		adapter,
+		now,
+		idFactory,
+		onError,
+		findInConversation,
+	});
 
 	return {
 		sendMessage,

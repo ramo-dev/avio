@@ -2,18 +2,19 @@ import { useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "react-hot-toast";
 import { Composer } from "#/components/chat/composer/composer";
+import { InvitePreviewBanner } from "#/components/chat/conversation/conversation-view/invite-preview-banner";
 import { useMarkConversationRead } from "#/components/chat/conversation/conversation-view/use-mark-read";
 import { useRoomInvitePreview } from "#/components/chat/conversation/conversation-view/use-room-invite-preview";
 import { ConversationHeader } from "#/components/chat/conversation/header/conversation-header/conversation-header";
 import { InThreadSearch } from "#/components/chat/conversation/search/in-thread-search/in-thread-search";
 import { MessageList } from "#/components/chat/messages/message-list/message-list";
-import { Button } from "#/components/ui/button";
 import { Spinner } from "#/components/ui/spinner";
 import { useMediaQuery } from "#/hooks/use-media-query";
+import { useOmemoTrustReminder } from "#/hooks/use-omemo-trust-reminder";
 import { useSendFiles } from "#/hooks/use-send-files";
 import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { findMessageMatches } from "#/lib/chat/search";
-import { bareJid, displayJidName, jidResource } from "#/lib/xmpp/jid";
+import { displayJidName, jidResource } from "#/lib/xmpp/jid";
 import { OFFLINE_PRESENCE } from "#/lib/xmpp/presence";
 import { selectRoomMembers } from "#/lib/xmpp/room-members";
 import { useOmemo } from "#/providers/omemo-provider";
@@ -81,6 +82,17 @@ export function ConversationView({
 	);
 	const activeMatch = matches[matchIndex];
 	useMarkConversationRead(jid, messages, actions.markConversationRead);
+	useOmemoTrustReminder({
+		jid,
+		name,
+		isGroup,
+		hasUnverifiedMessages: messages.some(
+			(message) =>
+				message.encrypted &&
+				message.direction === "incoming" &&
+				message.trusted !== true,
+		),
+	});
 
 	useEffect(() => {
 		if (!hasJoinedRoom) return;
@@ -90,8 +102,8 @@ export function ConversationView({
 	}, [actions, hasJoinedRoom, jid]);
 
 	function startReply(message: ChatMessage) {
-		if (message.encrypted || omemo.isEncryptionEnabled(jid)) {
-			toast.error("Replies to encrypted messages are not available yet.", {
+		if (message.encrypted && !omemo.isEncryptionEnabled(jid)) {
+			toast.error("Turn on encryption to reply to this message.", {
 				id: "omemo-context",
 			});
 			return;
@@ -101,8 +113,8 @@ export function ConversationView({
 	}
 
 	function startEdit(message: ChatMessage) {
-		if (message.encrypted || omemo.isEncryptionEnabled(jid)) {
-			toast.error("Edits to encrypted messages are not available yet.", {
+		if (message.encrypted && !omemo.isEncryptionEnabled(jid)) {
+			toast.error("Turn on encryption to edit this message.", {
 				id: "omemo-context",
 			});
 			return;
@@ -176,6 +188,7 @@ export function ConversationView({
 				name={name}
 				presence={presence}
 				kind={kind}
+				encrypted={!isGroup && omemo.isEncryptionEnabled(jid)}
 				memberCount={
 					isInvitePreview ? undefined : selectRoomMembers(room).length
 				}
@@ -212,34 +225,13 @@ export function ConversationView({
 			)}
 
 			{isInvitePreview && invite && (
-				<div className="shrink-0 border-b border-border bg-muted/30 px-4 py-3">
-					<p className="text-sm font-medium">{invite.roomName}</p>
-					<p className="mt-0.5 text-xs text-muted-foreground">
-						Invited by {bareJid(invite.from)}
-						{invite.reason ? ` · ${invite.reason}` : ""}
-					</p>
-					<p className="mt-2 text-xs leading-relaxed text-muted-foreground">
-						{previewStatus === "loading"
-							? "Loading a read-only preview…"
-							: previewStatus === "restricted"
-								? "This private group hides its history until you join."
-								: previewStatus === "ok" && messages.length > 0
-									? "Read-only preview. Join to participate."
-									: "Join this group to see its messages and send replies."}
-					</p>
-					<div className="mt-3 flex gap-2">
-						<Button size="sm" onClick={() => void acceptInvite()}>
-							Join group
-						</Button>
-						<Button
-							size="sm"
-							variant="outline"
-							onClick={() => void declineInvite()}
-						>
-							Decline
-						</Button>
-					</div>
-				</div>
+				<InvitePreviewBanner
+					invite={invite}
+					status={previewStatus}
+					hasMessages={messages.length > 0}
+					onAccept={() => void acceptInvite()}
+					onDecline={() => void declineInvite()}
+				/>
 			)}
 
 			<div className="min-h-0 flex-1">

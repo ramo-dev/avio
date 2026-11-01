@@ -1,4 +1,4 @@
-import { RiLockLine, RiLockUnlockLine } from "@remixicon/react";
+import { MessageEncryptionMarker } from "#/components/chat/messages/message-row/message-encryption-marker";
 import { MessageStatus } from "#/components/chat/messages/message-status/message-status";
 import { formatMessageTime } from "#/lib/format/time";
 import { cn } from "#/lib/utils";
@@ -13,7 +13,6 @@ export function MessageFooter({
 	onRetry?: () => void;
 }) {
 	const outgoing = message.direction === "outgoing";
-	const trusted = outgoing || message.trusted === true;
 
 	return (
 		<>
@@ -21,28 +20,7 @@ export function MessageFooter({
 				{formatMessageTime(message.timestamp)}
 			</span>
 			{message.edited && <span>edited</span>}
-			{message.unencryptedFallback && (
-				<span
-					className="inline-flex items-center gap-0.5"
-					title="Sent without end-to-end encryption"
-				>
-					<RiLockUnlockLine className="size-3" aria-hidden="true" />
-					<span>Unencrypted</span>
-				</span>
-			)}
-			{message.encrypted && (
-				<span
-					className="inline-flex items-center gap-0.5"
-					title={
-						trusted
-							? "End-to-end encrypted with a trusted device"
-							: "End-to-end encrypted with an unverified device"
-					}
-				>
-					<RiLockLine className="size-3" aria-hidden="true" />
-					<span>{trusted ? "Encrypted" : "Unverified"}</span>
-				</span>
-			)}
+			<MessageEncryptionMarker message={message} />
 			{outgoing && (
 				<MessageStatus
 					status={message.status}

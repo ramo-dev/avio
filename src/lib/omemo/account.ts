@@ -22,6 +22,7 @@ import type {
 	OmemoDeviceInfo,
 	OmemoEncryptedMessage,
 	OmemoEnvelopePersistence,
+	OmemoMessageContext,
 	OmemoPepClient,
 } from "#/types/omemo";
 
@@ -130,7 +131,11 @@ export class OmemoAccount {
 	 * Trust is enforced by the message cipher, so an unknown device makes the
 	 * whole send fail instead of silently skipping it.
 	 */
-	async encryptFor(to: string, text: string): Promise<OmemoEncryptedMessage> {
+	async encryptFor(
+		to: string,
+		text: string,
+		context?: OmemoMessageContext,
+	): Promise<OmemoEncryptedMessage> {
 		const cipher = this.requireCipher();
 		const localDeviceId = this.currentDeviceId;
 		const target = bareJid(to);
@@ -149,7 +154,7 @@ export class OmemoAccount {
 		}
 		if (recipients.size === 0) throw new OmemoMessageError("no-recipients");
 
-		return cipher.encryptMessage(target, text, [...recipients]);
+		return cipher.encryptMessage(target, text, [...recipients], context);
 	}
 
 	async decrypt(

@@ -13,6 +13,7 @@ import { MessageBubble } from "#/components/chat/messages/message-bubble/message
 import { MessageReactions } from "#/components/chat/messages/message-reactions/message-reactions";
 import { MessageReplyQuote } from "#/components/chat/messages/message-reply-quote/message-reply-quote";
 import { MessageDecryptionError } from "#/components/chat/messages/message-row/message-encryption";
+import { MessageEncryptionMarker } from "#/components/chat/messages/message-row/message-encryption-marker";
 import { MessageFooter } from "#/components/chat/messages/message-row/message-footer";
 import { MessageToolbar } from "#/components/chat/messages/message-toolbar/message-toolbar";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
@@ -239,6 +240,7 @@ export function MessageRow({
 					active={active}
 					actions={toolbar}
 					actionsOpen={actionsOpen}
+					encryption={<MessageEncryptionMarker message={message} />}
 					footer={
 						showMeta ? (
 							<MessageFooter

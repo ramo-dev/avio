@@ -1,16 +1,8 @@
-import {
-	RiArrowLeftLine,
-	RiGroupLine,
-	RiLockUnlockLine,
-} from "@remixicon/react";
+import { RiArrowLeftLine, RiGroupLine } from "@remixicon/react";
+import { EncryptionBadge } from "#/components/chat/conversation/header/conversation-header/encryption-badge";
 import { HeaderActions } from "#/components/chat/conversation/header/header-actions/header-actions";
 import { UserAvatar } from "#/components/common/user-avatar/user-avatar";
 import { Button } from "#/components/ui/button";
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from "#/components/ui/tooltip";
 import { conversationStatus } from "#/lib/format/conversation-status";
 import { presenceDotClassName } from "#/lib/format/presence";
 import { cn } from "#/lib/utils";
@@ -23,6 +15,7 @@ export function ConversationHeader({
 	name,
 	presence,
 	kind,
+	encrypted,
 	memberCount,
 	memberPreview,
 	typing,
@@ -34,6 +27,8 @@ export function ConversationHeader({
 	name: string;
 	presence: PresenceState;
 	kind: ConversationKind;
+	/** Direct chats only: whether messages are currently end-to-end encrypted. */
+	encrypted?: boolean;
 	memberCount?: number;
 	memberPreview?: boolean;
 	typing: boolean;
@@ -97,25 +92,10 @@ export function ConversationHeader({
 					</div>
 				</button>
 
-				{isGroup && (
-					<Tooltip>
-						<TooltipTrigger
-							render={
-								<Button
-									type="button"
-									variant="outline"
-									size="icon-sm"
-									aria-label="Not end-to-end encrypted"
-									className="size-5 shrink-0 rounded-full p-0 text-muted-foreground"
-								/>
-							}
-						>
-							<RiLockUnlockLine className="size-3" />
-						</TooltipTrigger>
-						<TooltipContent>
-							Group messages are sent without end-to-end encryption.
-						</TooltipContent>
-					</Tooltip>
+				{isGroup ? (
+					<EncryptionBadge scope="group" />
+				) : (
+					!encrypted && <EncryptionBadge scope="direct" />
 				)}
 			</div>
 

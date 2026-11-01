@@ -65,7 +65,7 @@ export function MessageList({
 			<div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
 				{isGroup ? (
 					<span className="grid size-16 place-items-center rounded-full bg-muted text-muted-foreground">
-						<RiGroupLine className="size-16" />
+						<RiGroupLine className="size-7" />
 					</span>
 				) : (
 					<UserAvatar

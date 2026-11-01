@@ -74,12 +74,6 @@ export function createComposerSend(options: ComposerSendOptions): () => void {
 		}
 
 		if (encryptionEnabled) {
-			if (contextActive) {
-				toast.error("Encrypted replies and edits are not available yet.", {
-					id: "omemo-context",
-				});
-				return;
-			}
 			if (omemo.status !== "ready") {
 				toast.error(
 					"Unlock OMEMO in Security settings to send encrypted messages.",
@@ -87,13 +81,30 @@ export function createComposerSend(options: ComposerSendOptions): () => void {
 				);
 				return;
 			}
-			const result = await omemo.sendMessage(jid, body);
+			const encryptedContext = editing
+				? { editId: editing.stanzaId ?? editing.id }
+				: replyTo
+					? {
+							replyTo: {
+								id: replyTo.stanzaId ?? replyTo.id,
+								to: replyTo.from,
+							},
+						}
+					: undefined;
+			const result = await omemo.sendMessage(jid, body, encryptedContext);
 			if (result.message) {
 				setBody("");
+				onContextDone?.();
 				return;
 			}
 			if (result.error === "no-recipients") {
-				setFallbackBody(body);
+				if (encryptedContext) {
+					toast.error("No OMEMO devices are available for this message.", {
+						id: "omemo-send",
+					});
+				} else {
+					setFallbackBody(body);
+				}
 			}
 			return;
 		}

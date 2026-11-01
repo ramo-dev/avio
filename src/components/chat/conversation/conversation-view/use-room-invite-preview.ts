@@ -3,7 +3,12 @@ import { toast } from "react-hot-toast";
 import type { RoomInviteRequest } from "#/types/chat";
 import type { XmppStore } from "#/types/store";
 
-type PreviewStatus = "idle" | "loading" | "ok" | "restricted" | "unavailable";
+export type RoomPreviewStatus =
+	| "idle"
+	| "loading"
+	| "ok"
+	| "restricted"
+	| "unavailable";
 
 /** Loads read-only room history and handles accept/decline for an invite. */
 export function useRoomInvitePreview({
@@ -19,7 +24,7 @@ export function useRoomInvitePreview({
 	actions: XmppStore;
 	navigate: (opts: { to: "/chat" }) => void;
 }) {
-	const [status, setStatus] = useState<PreviewStatus>("idle");
+	const [status, setStatus] = useState<RoomPreviewStatus>("idle");
 	const loaded = useRef<string | null>(null);
 
 	useEffect(() => {

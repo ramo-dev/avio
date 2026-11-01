@@ -239,7 +239,7 @@ export function Composer({
 							className={cn(
 								"max-h-40 min-h-9 w-full resize-none border-0 bg-transparent py-2 shadow-none [field-sizing:content] focus-visible:ring-0 dark:bg-transparent",
 								isDirect && canAttach ? "pl-24!" : "pl-12!",
-								(replyTo || editing) && encryptionEnabled ? "pl-4!" : "pl-12",
+								(replyTo || editing) && !encryptionEnabled ? "pl-4!" : "pl-24",
 								expanded ? "px-4" : canAttach ? "pl-12 pr-24" : "pl-4 pr-24",
 							)}
 						/>
