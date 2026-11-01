@@ -1,6 +1,46 @@
 import { getKind } from "#/lib/chat/attachments";
+import { isDesktopShell } from "#/lib/platform/desktop-shell";
 import type { AttachmentUploader, UploadSlot } from "#/types/attachment";
 import type { XmppAdapter } from "#/types/store";
+
+const NO_SERVICE_PATTERN = /no upload service discovered/i;
+
+/** Turns discovery failures into a message that names the actual cause. */
+export function uploadServiceErrorMessage(error: unknown): string {
+	const detail = error instanceof Error ? error.message : "";
+	if (NO_SERVICE_PATTERN.test(detail)) {
+		return "This server does not advertise file uploads (XEP-0363). Enable the upload component under this account's domain.";
+	}
+	return detail || "The file upload service could not be discovered.";
+}
+
+/**
+ * Upload and download URLs must use HTTPS: the app runs in a secure context,
+ * so plain http:// URLs are blocked by mixed-content rules and the CSP.
+ */
+export function insecureServiceUrlMessage(
+	uploadUrl: string,
+	downloadUrl: string,
+): string | null {
+	const insecure = [uploadUrl, downloadUrl].find((url) =>
+		url.startsWith("http://"),
+	);
+	if (!insecure) return null;
+	if (typeof window === "undefined") return null;
+	const secure = isDesktopShell() || window.location.protocol === "https:";
+	if (!secure) return null;
+	return "The upload service returned an insecure http:// URL, which this app blocks. Configure the server's public upload URL as https://.";
+}
+
+export function uploadFailureMessage(status: number): string {
+	if (status === 404) {
+		return "Upload failed with status 404: the upload endpoint is not reachable. Check that the reverse proxy routes the upload path to the server.";
+	}
+	if (status === 413) {
+		return "Upload failed with status 413: the server rejected the file as too large.";
+	}
+	return `Upload failed with status ${status}.`;
+}
 
 export function createAttachmentUploader(
 	adapter: XmppAdapter,
@@ -10,8 +50,8 @@ export function createAttachmentUploader(
 			let service: Awaited<ReturnType<typeof adapter.getUploadService>>;
 			try {
 				service = await adapter.getUploadService();
-			} catch {
-				throw new Error("This XMPP server does not support file uploads.");
+			} catch (error) {
+				throw new Error(uploadServiceErrorMessage(error));
 			}
 
 			if (service.maxSize && file.size > service.maxSize) {
@@ -25,6 +65,9 @@ export function createAttachmentUploader(
 				size: file.size,
 				mediaType: file.type || undefined,
 			});
+
+			const blocked = insecureServiceUrlMessage(slot.upload.url, slot.download);
+			if (blocked) throw new Error(blocked);
 
 			await putFile(file, slot, onProgress);
 			onProgress?.(100);
@@ -63,7 +106,7 @@ function putFile(
 			if (request.status >= 200 && request.status < 300) {
 				resolve();
 			} else {
-				reject(new Error(`Upload failed with status ${request.status}.`));
+				reject(new Error(uploadFailureMessage(request.status)));
 			}
 		};
 		request.onerror = () => reject(new Error("The upload connection failed."));
