@@ -1,6 +1,7 @@
 import {
 	RiChat3Line,
 	RiNotification3Line,
+	RiServerLine,
 	RiShieldCheckLine,
 	RiSunLine,
 	RiVolumeUpLine,
@@ -13,7 +14,8 @@ export type SettingsSectionId =
 	| "sounds"
 	| "chats"
 	| "notifications"
-	| "security";
+	| "security"
+	| "server";
 
 const SECTIONS: Array<{
 	id: SettingsSectionId;
@@ -25,6 +27,7 @@ const SECTIONS: Array<{
 	{ id: "chats", label: "Chats", icon: RiChat3Line },
 	{ id: "notifications", label: "Notifications", icon: RiNotification3Line },
 	{ id: "security", label: "Security", icon: RiShieldCheckLine },
+	{ id: "server", label: "Server", icon: RiServerLine },
 ];
 
 export function SettingsNav({

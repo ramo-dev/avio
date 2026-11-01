@@ -16,6 +16,7 @@ import type {
 	RoomState,
 } from "#/types/chat";
 import type { OmemoEncryptedMessage, OmemoPepClient } from "#/types/omemo";
+import type { ServerCapabilities } from "#/types/server-capabilities";
 import type {
 	MessageReceiptStore,
 	RoomReactionStore,
@@ -197,6 +198,7 @@ export interface XmppAdapter {
 	sendDisplayedMarker(to: string, messageId: string): Promise<void>;
 	getOmemoPep(): Promise<OmemoPepClient>;
 	loadRoomPreview(jid: string): Promise<RoomPreviewResult>;
+	getServerCapabilities(): Promise<ServerCapabilities>;
 	getRoomMemberJids(jid: string): Promise<string[]>;
 	subscribe(listener: (event: XmppEvent) => void): () => void;
 }
@@ -218,11 +220,13 @@ export interface XmppStore {
 		to: string,
 		body: string,
 		envelope: OmemoEncryptedMessage,
+		options?: SendMessageOptions,
 	): Promise<ChatMessage | null>;
 	/** Adds a decrypted or placeholder message to the conversation timeline. */
 	addMessage(message: ChatMessage): void;
 	getOmemoPep(): Promise<OmemoPepClient>;
 	loadRoomPreview(jid: string): Promise<RoomPreviewResult>;
+	getServerCapabilities(): Promise<ServerCapabilities>;
 	refreshRoomMembers(jid: string): Promise<void>;
 	subscribeOmemo(
 		listener: (event: Extract<XmppEvent, { type: "omemo-message" }>) => void,
@@ -242,6 +246,7 @@ export interface XmppStore {
 	markAllRead(): void;
 	deleteConversation(jid: string): void;
 	deleteMessage(jid: string, messageId: string): void;
+	applyMessageEdit(jid: string, messageId: string, body: string): void;
 	addContact(jid: string): Promise<void>;
 	acceptSubscription(jid: string): Promise<void>;
 	createGroupChat(name: string, memberJids: string[]): Promise<RoomInfo>;

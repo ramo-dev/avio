@@ -2,7 +2,7 @@ import { RiArrowRightLine, RiSettings3Line } from "@remixicon/react";
 import { Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-
+import { ConnectDiscovery } from "#/components/auth/connect-discovery/connect-discovery";
 import { Button } from "#/components/ui/button";
 import {
 	Dialog,
@@ -33,6 +33,8 @@ export function ConnectForm() {
 	const [password, setPassword] = useState("");
 	const [websocketUrl, setWebsocketUrl] = useState("");
 	const [boshUrl, setBoshUrl] = useState("");
+	const [host, setHost] = useState("");
+	const [port, setPort] = useState("");
 	const [resource, setResource] = useState("");
 	const [optionsOpen, setOptionsOpen] = useState(false);
 
@@ -43,6 +45,8 @@ export function ConnectForm() {
 		setJid((value) => value || saved.jid);
 		setWebsocketUrl((value) => value || saved.websocketUrl || "");
 		setBoshUrl((value) => value || saved.boshUrl || "");
+		setHost((value) => value || saved.host || "");
+		setPort((value) => value || (saved.port ? String(saved.port) : ""));
 		setResource((value) => value || saved.resource || "");
 	}, [sessionStore]);
 
@@ -133,12 +137,60 @@ export function ConnectForm() {
 					<DialogHeader>
 						<DialogTitle>Connection options</DialogTitle>
 						<DialogDescription>
-							Configure custom endpoints if your XMPP server requires them.
-							Leave these fields empty to use server discovery.
+							Most servers work automatically. Set custom endpoints only if
+							discovery fails.
 						</DialogDescription>
 					</DialogHeader>
 
 					<div className="grid gap-5 py-2">
+						<ConnectDiscovery
+							jid={jid}
+							host={host.trim() || undefined}
+							port={
+								Number.isFinite(Number.parseInt(port, 10))
+									? Number.parseInt(port, 10)
+									: undefined
+							}
+							websocketUrl={websocketUrl}
+							boshUrl={boshUrl}
+							disabled={connecting}
+							onUse={(endpoints) => {
+								if (endpoints.websocket !== undefined) {
+									setWebsocketUrl(endpoints.websocket);
+								}
+								if (endpoints.bosh !== undefined) setBoshUrl(endpoints.bosh);
+							}}
+						/>
+
+						<div className="grid grid-cols-2 gap-3">
+							<Field>
+								<FieldLabel htmlFor="host">Host (optional)</FieldLabel>
+								<Input
+									id="host"
+									name="host"
+									type="text"
+									placeholder="chat.example.com"
+									value={host}
+									onChange={(event) => setHost(event.target.value)}
+									disabled={connecting}
+								/>
+							</Field>
+							<Field>
+								<FieldLabel htmlFor="port">Port (optional)</FieldLabel>
+								<Input
+									id="port"
+									name="port"
+									type="number"
+									min={1}
+									max={65535}
+									placeholder="443"
+									value={port}
+									onChange={(event) => setPort(event.target.value)}
+									disabled={connecting}
+								/>
+							</Field>
+						</div>
+
 						<Field>
 							<FieldLabel htmlFor="websocket">WebSocket URL</FieldLabel>
 							<Input

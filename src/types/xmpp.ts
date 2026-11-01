@@ -34,6 +34,10 @@ export interface ConnectCredentials {
 	password: string;
 	websocketUrl?: string;
 	boshUrl?: string;
+	/** Manual endpoint host, Gajim-style; used for WebSocket probing. */
+	host?: string;
+	/** Manual endpoint port, Gajim-style; used for WebSocket probing. */
+	port?: number;
 	resource?: string;
 }
 

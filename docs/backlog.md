@@ -54,11 +54,14 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
   and sends only encrypted envelopes, settings/contact UI expose device
   fingerprints and trust (including your other devices), and the composer has a
   per-chat lock. Remaining:
-  encrypted replies/edits, forwarding, attachments, and MAM history, live
-  device-list PEP subscriptions, and independent audit. Per-chat encryption
-  choices are persisted; locked placeholders retry automatically after unlock
-  or device verification; outgoing encrypted carbons are decrypted without
-  duplicating the originating device's copy.
+  forwarding, attachments, and MAM history, and independent audit. Per-chat encryption choices are persisted; locked
+  placeholders retry automatically after unlock or device verification;
+  outgoing encrypted carbons are decrypted without duplicating the originating
+  device's copy.
+- **Live OMEMO device-list updates** — device lists are fetched on each encrypted
+  send and when contact info opens, so trust works without reconnecting. Add PEP
+  subscriptions to surface new/removed devices proactively and avoid discovering
+  them only through a failed send or an opened contact panel.
 - **OMEMO2 PEP (XEP-0384)** — legacy 0.3.0 device lists and bundles are
   implemented. Add the `urn:xmpp:omemo:2` device-list/bundle nodes and
   version-aware selection after 1:1 messaging works.
@@ -67,9 +70,9 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Key storage** — passphrase-encrypted IndexedDB storage exists in
   `src/lib/omemo` (PBKDF2-HMAC-SHA-256, AES-GCM, authenticated KDF metadata,
   legacy plaintext store deleted) and is wired through `OmemoAccount` with a
-  10-minute idle auto-lock. Remaining: OS keychain for Tauri, explicit
-  passphrase recovery/backup design, browser IndexedDB upgrade coverage,
-  threat model/CSP, and independent audit.
+  10-minute idle auto-lock, repair/reset, and remembered unlock. Remaining:
+  OS keychain for Tauri, explicit passphrase recovery/backup design, browser
+  IndexedDB upgrade coverage, and independent audit.
 - **Remembered unlock on web (option B, done)** — "Remember unlock on this
   device" stores the non-extractable AES-GCM key derived from the passphrase in
   IndexedDB (`avio-omemo-unlock`), never the passphrase. The key is cleared by
@@ -81,9 +84,11 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
   `OmemoUnlockSecret`, handle it in `restoreRememberedUnlock`, and implement
   `OmemoUnlockStore` on top of the keychain.
 - **Security settings surface** — transport status, OMEMO setup/unlock/status,
-  device ID/fingerprint, per-chat warning, contact device trust, and encrypted
-  message indicators are implemented. Remaining: unencrypted-send warnings for
-  contacts without devices and a broader audit checklist.
+  device ID/fingerprint, per-chat warning, contact device trust, encrypted
+  message indicators, repair/reset, and a Server capabilities panel grouped by
+  security status (insecure transport callout, active/upcoming services,
+  browser limits) are implemented. Remaining: a broader audit checklist and
+  unencrypted-send warnings for rare edge cases.
 - **Security threat model and CSP** — `docs/threat-model.md` is the working
   draft. Done: attachment URLs are limited to http(s) at normalization; the app
   is a static SPA with a generated CSP (`scripts/generate-csp.mjs`) that hashes
@@ -92,6 +97,15 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
   The check found and fixed a blocked `wasm-eval` (OMEMO's libsignal), now
   allowed narrowly via `'wasm-unsafe-eval'`. Converse.js is MPL-2.0, but its
   OMEMO dependency `libomemo.js` is GPLv3 and unaudited.
+- **Storage privacy** — `docs/storage-privacy.md` analyzes everything the web
+  client persists (cookies, localStorage, sessionStorage, IndexedDB) and who
+  can read it. Remaining follow-ups, ranked there: gate the sessionStorage
+  password so crash-restored tabs do not revive it and make refresh-restore
+  opt-in; encrypt the password blob with a non-extractable WebCrypto key
+  instead of plaintext; encrypt the metadata stores (receipts, invites,
+  reactions, encryption preferences) at rest with a device key; verify SCRAM
+  negotiation in the pinned Stanza; surface session-storage state in the
+  security settings.
 - **OMEMO passphrase policy (done)** — new passphrases need at least 12
   characters, must not be common, and need at least four distinct characters
   (`src/lib/omemo/passphrase.ts`). Existing shorter passphrases still unlock.
@@ -99,8 +113,14 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 - **Privacy controls** — receipts and typing indicators are configurable in
   Settings > Chats. Remaining: block list, presence visibility, history
   retention, and clear-local-history.
-- **Accounts and connections** — multi-account, resource/priority, proxies, and
-  custom CA/certificate handling.
+- **Accounts and connections** — Gajim-style onboarding is implemented:
+  XEP-0156 autodiscovery with a discovery panel, conventional-endpoint probing,
+  and optional host/port overrides used for WebSocket probing. Remaining:
+  multi-account, resource/priority, proxies, and custom CA/certificate
+  handling.
+- **Hosted web deployment (removed)** — Avio no longer ships a container or hosted
+  web build. The Docker deployment and `docs/deployment.md` were deleted; the
+  static build remains the Tauri frontend and the browser test harness.
 
 ## Client features
 

@@ -31,6 +31,8 @@ export async function restoreSavedSession({
 			password,
 			websocketUrl: session.websocketUrl,
 			boshUrl: session.boshUrl,
+			host: session.host,
+			port: session.port,
 			resource: session.resource,
 		});
 	} finally {
