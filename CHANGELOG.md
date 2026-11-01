@@ -99,6 +99,15 @@ without a deprecation period.
   unlock or device verification. Outgoing encrypted carbons from your other
   devices are decrypted and shown in the recipient conversation without
   duplicating the originating device's copy.
+- Encrypted replies and edits now carry their metadata inside the OMEMO
+  payload, so reply references and edit targets are not exposed in cleartext.
+- Added a static Docker image and Compose example. The container runs Avio's
+  Node static server with generated security headers; nginx/TLS/proxying stay
+  outside the app container. See `docs/deployment.md`.
+- Gajim-style onboarding: the connect screen discovers server endpoints
+  (XEP-0156 host-meta with conventional-path probing) and supports optional
+  host/port overrides. Settings gains a Server panel detecting TLS, MUC, XEP-0363
+  upload, MAM, carbons, block list, PEP/vCard, and STUN/TURN (XEP-0215).
 - Reaction tooltips expose tooltip semantics, and the group "Not encrypted"
   badge becomes icon-only on narrow screens so group names fit.
 - README diagrams now show the federation trust boundary and the message/receipt

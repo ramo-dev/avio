@@ -12,6 +12,8 @@
     "generate-routes": "tsr generate",
     "build": "vite build && node scripts/generate-csp.mjs",
     "serve:static": "node scripts/serve-static.mjs",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "preview": "vite preview",
     "format": "biome format --write .",
     "lint": "biome lint .",
@@ -22,13 +24,14 @@
     "test:watch": "vitest",
     "audit:rules": "node scripts/audit-rules.mjs",
     "verify": "pnpm check && pnpm typecheck && pnpm audit:rules && pnpm test && pnpm build",
-    "xmpp:up": "docker compose -f dev/xmpp/compose.yml up -d",
+    "xmpp:up": "docker compose -f dev/xmpp/compose.yml up -d --build",
     "xmpp:down": "docker compose -f dev/xmpp/compose.yml down",
     "xmpp:wipe": "docker compose -f dev/xmpp/compose.yml down -v",
     "test:integration": "XMPP_INTEGRATION=1 vitest run src/lib/xmpp/client.integration.test.ts src/lib/xmpp/omemo-pep.integration.test.ts src/lib/xmpp/omemo-message.integration.test.ts src/lib/xmpp/group-invite.integration.test.ts src/lib/xmpp/group-reactions.integration.test.ts",
     "react:doctor": "pnpm dlx react-doctor@latest .",
     "test:e2e": "node scripts/e2e/live-smoke.mjs",
-    "test:csp": "node scripts/e2e/csp-smoke.mjs"
+    "test:csp": "node scripts/e2e/csp-smoke.mjs",
+    "test:e2e:attachments": "node scripts/e2e/attachments-smoke.mjs"
   },
   "dependencies": {
     "@base-ui/react": "^1.9.0",
@@ -72,6 +75,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@tanstack/devtools-vite": "0.8.5",
     "@tanstack/router-cli": "^1.132.0",
+    "@tauri-apps/cli": "^2.12.4",
     "@types/node": "^22.10.2",
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",

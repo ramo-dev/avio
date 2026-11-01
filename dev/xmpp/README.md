@@ -1,5 +1,9 @@
 # Local XMPP test server
 
+> **Dev/test only.** This container has no TLS, test-only credentials, permissive
+> MUC settings, and local-only endpoints. Never use it in production; point Avio
+> at a real XMPP server you administer instead. See `docs/connections.md`.
+
 A minimal Prosody container for developing Avio against a real XMPP server.
 
 ## Start
@@ -43,6 +47,10 @@ pnpm test:integration
 ```
 
 The test connects two Stanza clients, sends a message, and waits for the delivery receipt.
+
+The image is a Debian Prosody 0.12 build with `prosody-modules`, which adds
+`mod_http_upload` for attachment testing. After switching images once, run
+`pnpm xmpp:wipe` before `pnpm xmpp:up` if old accounts behave oddly.
 
 ## End-to-end smoke
 

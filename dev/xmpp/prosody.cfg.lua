@@ -51,3 +51,9 @@ VirtualHost "localhost"
 Component "conference.localhost" "muc"
 	restrict_room_creation = false
 	modules_enabled = { "muc_mam" }
+
+-- Dev-only HTTP upload (XEP-0363). Production servers configure their own.
+Component "upload.localhost" "http_upload"
+	http_upload_file_size_limit = 10485760
+	http_upload_expire_after = 3600
+	http_external_url = "http://upload.localhost:5280/"

@@ -76,10 +76,14 @@ async function run() {
 				"connect-src 'self' wss: https:",
 				"connect-src 'self' wss: https: ws://localhost:5280",
 			);
+			const headers = { ...response.headers() };
+			// Test-only: drop the header CSP (which forbids plain ws://) and rely on
+			// the rewritten meta tag. The shipped build keeps both.
+			delete headers["content-security-policy"];
 			await route.fulfill({
 				response,
 				body,
-				headers: { ...response.headers(), "content-type": "text/html; charset=utf-8" },
+				headers: { ...headers, "content-type": "text/html; charset=utf-8" },
 			});
 		});
 		const page = await context.newPage();

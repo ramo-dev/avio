@@ -87,6 +87,7 @@ messages.
   server and use Avio like any other messenger.
 
 Self-hosting is a choice here, not a requirement. Avio works the same either way.
+For a static container plus your own TLS proxy, see [`docs/deployment.md`](docs/deployment.md).
 
 For server operators: Avio needs a browser-friendly endpoint (WebSocket or BOSH) and
 your app's origin allowed. When discovery is not configured, the advanced fields take
@@ -132,6 +133,8 @@ A dropped connection is a pause, not an interruption.
 ## Simple by default
 
 - Sign in with your address and password. There is nothing else to configure.
+- Avio discovers your server's connection settings automatically. Manual
+  endpoints are only for unusual setups, with one-click use from discovery.
 - Advanced connection settings exist for servers that need them. Most people never
   open that panel.
 - Enter sends. Shift+Enter starts a new line.

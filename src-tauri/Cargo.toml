@@ -1,0 +1,19 @@
+[package]
+name = "avio-desktop"
+version = "0.1.0"
+description = "Avio desktop shell"
+authors = ["Avio contributors"]
+license = "GPL-3.0-only"
+edition = "2024"
+rust-version = "1.90"
+
+[lib]
+name = "avio_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"

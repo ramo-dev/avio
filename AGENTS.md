@@ -1,10 +1,11 @@
 # Avio — Agent Rules
 
-Avio is a web-first XMPP client. The web app must work before any Tauri packaging work begins.
+Avio is a desktop XMPP client for macOS, Windows, and Linux. The app is a static single-page build loaded by a Tauri v2 shell. The same build runs in a browser; that is the development and test harness, not a hosted product. There is no Avio-hosted web deployment and no Avio server.
 
 ## Stack
 
-- TanStack Start, React 19, TypeScript, Vite, Tailwind CSS v4
+- TanStack Start (SPA mode), React 19, TypeScript, Vite, Tailwind CSS v4
+- Tauri v2 desktop shell in `src-tauri/` (Rust): window, CSP, navigation guard, OS keychain commands
 - shadcn/ui with the **Base UI** registry (`base-nova`), never Radix
 - `@remixicon/react` for icons, never Lucide or inline SVGs
 - `stanza` for XMPP, `@shadcn/react` for message scrolling
@@ -23,6 +24,8 @@ pnpm audit:rules     # file-size, TODO, forbidden deps
 pnpm react:doctor    # react-doctor scan of src
 pnpm build           # production build
 pnpm verify          # all of the above, in order
+pnpm tauri:dev       # desktop shell against the dev server
+pnpm tauri:build     # desktop bundles for the current OS (unsigned)
 
 pnpm xmpp:up         # start local Prosody with alice/bob test accounts
 pnpm xmpp:down       # stop local Prosody
@@ -51,6 +54,7 @@ src/
   config/        app and XMPP defaults
   routes/        thin TanStack route files
   styles/        CSS split by responsibility
+src-tauri/       Tauri v2 shell: window, CSP, navigation guard, keychain commands
 docs/
   architecture.md
   backlog.md
@@ -136,4 +140,4 @@ Never import stanza types into components. Normalize at the adapter boundary.
 
 ## Backlog
 
-All deferred work goes in `docs/backlog.md`. Current out-of-scope items include advanced MUC features (room configuration, moderation, room MAM), OMEMO, Jingle/WebRTC calls, push notifications, IndexedDB caching, multi-account support, and Tauri packaging.
+All deferred work goes in `docs/backlog.md`. Current out-of-scope items include advanced MUC features (room configuration, moderation, room MAM), OMEMO, Jingle/WebRTC calls, push notifications, IndexedDB caching, and multi-account support.

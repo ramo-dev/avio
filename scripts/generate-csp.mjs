@@ -44,7 +44,9 @@ function buildDirectives(scriptHashes) {
 		"img-src": ["'self'", "blob:", "data:", "https:"],
 		"media-src": ["'self'", "blob:", "https:"],
 		"font-src": ["'self'"],
-		"connect-src": ["'self'", "wss:", "https:"],
+		// Tauri sends IPC calls to `ipc:` (macOS, Linux) or `http://ipc.localhost`
+		// (Windows). Browsers never resolve either, so the web harness is unaffected.
+		"connect-src": ["'self'", "wss:", "https:", "ipc:", "http://ipc.localhost"],
 		"worker-src": ["'none'"],
 		"frame-src": ["'none'"],
 		"manifest-src": ["'self'"],
@@ -86,9 +88,19 @@ async function main() {
 		throw new Error("Could not find <head> in the shell to insert the CSP.")
 	}
 
+	const headers = [
+		["Content-Security-Policy", headerPolicy],
+		["X-Content-Type-Options", "nosniff"],
+		["Referrer-Policy", "no-referrer"],
+		["Permissions-Policy", "camera=(), microphone=(), geolocation=()"],
+		["Cross-Origin-Opener-Policy", "same-origin"],
+	];
 	await writeFile(SHELL_PATH, patched)
 	await writeFile(INDEX_PATH, patched)
-	await writeFile(HEADERS_PATH, `/*\n  Content-Security-Policy: ${headerPolicy}\n`)
+	await writeFile(
+		HEADERS_PATH,
+		`/*\n${headers.map(([name, value]) => `  ${name}: ${value}`).join("\n")}\n`,
+	)
 
 	console.log(
 		`CSP written: ${scriptHashes.length} inline script hash(es), ${Object.keys(directives).length} directives.`,

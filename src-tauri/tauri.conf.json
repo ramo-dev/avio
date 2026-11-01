@@ -1,0 +1,33 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "Avio",
+  "version": "0.1.0-dev.0",
+  "identifier": "chat.avio.desktop",
+  "build": {
+    "frontendDist": "../.output/public",
+    "devUrl": "http://localhost:3000",
+    "beforeDevCommand": "pnpm dev",
+    "beforeBuildCommand": "pnpm build"
+  },
+  "app": {
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "SocialNetworking",
+    "shortDescription": "A federated XMPP chat client",
+    "longDescription": "Avio is an XMPP client. Messages travel directly between your device, your server, and the servers of the people you talk to.",
+    "copyright": "Copyright (C) 2026 Avio contributors. Licensed under GPL-3.0-only.",
+    "license": "GPL-3.0-only",
+    "targets": ["app", "dmg", "nsis", "msi", "appimage", "deb"],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ]
+  }
+}

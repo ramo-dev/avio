@@ -22,6 +22,7 @@ jobs:
       - run: pnpm xmpp:up
       - run: sleep 5
       - run: pnpm test:e2e
+      - run: pnpm test:e2e:attachments
       - run: pnpm build
       - run: pnpm test:csp
       - if: always()
