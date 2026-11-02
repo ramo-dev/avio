@@ -1,5 +1,7 @@
 import type { ConversationKind } from "#/types/chat";
 
+export type NotificationTab = "all" | "direct" | "group";
+
 export interface StoredNotification {
 	id: string;
 	jid: string;
