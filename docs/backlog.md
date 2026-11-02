@@ -45,7 +45,7 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 
 ## Security and encryption
 
-- **OMEMO 1:1 (XEP-0384)** — primary E2EE goal. The project is GPLv3, so
+- **OMEMO 1:1 (XEP-0384)** — active, in-scope work and the primary E2EE goal. The project is GPLv3, so
   `libomemo.js` (GPLv3) is the crypto engine. It is not audited yet. The key
   store, passphrase-encrypted storage, legacy 0.3.0 device-list/bundle PEP
   boundary, lifecycle engine, and message codec live in `src/lib/omemo` and
@@ -126,7 +126,6 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
 
 - **IndexedDB cache** — persist messages and roster for offline startup; keep MAM as the source of truth.
 - **Multi-account** — extend `SessionStore` to an account list and key store state by account.
-- **Theme toggle** — the CSS already supports `.dark`; add a persisted preference.
 - **Accessibility pass** — verify message log announcements, dialog focus traps, and keyboard navigation with a screen reader.
 - **Typing indicator polish** — stop composing on blur and on conversation switch.
 
@@ -138,7 +137,7 @@ Deferred work lives here instead of `TODO` comments. Each item should include en
   output with no Nitro server.
 - **Secure storage** — replace localStorage session persistence with a Tauri store/keychain adapter.
 - **CSP** — allow the configured `wss://` XMPP hosts and block everything else.
-- **Auto-update and packaging** — after the web MVP is signed off.
+- **Auto-update and packaging** — after the desktop MVP is signed off.
 
 ## Research notes
 

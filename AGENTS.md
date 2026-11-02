@@ -140,4 +140,4 @@ Never import stanza types into components. Normalize at the adapter boundary.
 
 ## Backlog
 
-All deferred work goes in `docs/backlog.md`. Current out-of-scope items include advanced MUC features (room configuration, moderation, room MAM), OMEMO, Jingle/WebRTC calls, push notifications, IndexedDB caching, and multi-account support.
+All deferred work goes in `docs/backlog.md`. OMEMO 1:1 is active, in-scope work; OMEMO2/OpenPGP remain deferred. Current out-of-scope items include advanced MUC features (room configuration, moderation, room MAM), OMEMO2/OpenPGP, Jingle/WebRTC calls, push notifications, IndexedDB caching, and multi-account support.
