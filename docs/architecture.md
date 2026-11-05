@@ -26,9 +26,10 @@ connected -> reconnecting -> connected
 connected -> disconnected (manual)
 ```
 
-- The adapter owns the stanza client, event subscriptions, timeout, and reconnect timer.
-- Reconnect uses exponential backoff with jitter (`lib/xmpp/backoff.ts`).
-- Manual disconnect cancels pending reconnects.
+- The adapter owns the stanza client, event subscriptions, timeout, and reconnect controller.
+- Reconnect uses exponential backoff with jitter (`lib/xmpp/backoff.ts`), one timer,
+  one in-flight attempt, and a five-attempt limit (`lib/xmpp/reconnect.ts`).
+- Auth and stream errors are terminal. Manual disconnect cancels pending reconnects.
 - Stream management and resumption are enabled.
 
 ## Store

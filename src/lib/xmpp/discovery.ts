@@ -97,23 +97,22 @@ export async function discoverConnectionEndpoints(
 
 	const jsonUrl = `https://${domain}/.well-known/host-meta.json`;
 	const xmlUrl = `https://${domain}/.well-known/host-meta`;
-	const failures: string[] = [];
 
 	try {
 		const result = fromJsonLinks(await fetchText(jsonUrl));
 		if (result.websocket || result.bosh) return { ...result, found: true };
-	} catch (error) {
-		failures.push(`host-meta.json: ${String(error)}`);
+	} catch {
+		// Try the XML fallback below.
 	}
 
 	try {
 		const result = fromHostMetaXml(await fetchText(xmlUrl));
 		if (result.websocket || result.bosh) return { ...result, found: true };
-	} catch (error) {
-		failures.push(`host-meta: ${String(error)}`);
+	} catch {
+		// Report the combined result below.
 	}
 
 	throw new Error(
-		`No WebSocket or BOSH endpoint was published for ${domain}. Enter the endpoint manually.`,
+		`No WebSocket or BOSH endpoint was found for ${domain}. The server may block cross-origin discovery (CORS) or publish no endpoint. Enter the WebSocket URL manually.`,
 	);
 }

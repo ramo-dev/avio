@@ -1,6 +1,9 @@
 mod navigation;
 
-use tauri::{webview::NewWindowResponse, AppHandle, Config, Url, WebviewUrl, WebviewWindowBuilder};
+use tauri::{
+    webview::NewWindowResponse, window::Color, AppHandle, Config, Theme, Url, WebviewUrl,
+    WebviewWindowBuilder,
+};
 use tauri_plugin_opener::OpenerExt;
 
 pub fn run() {
@@ -12,22 +15,28 @@ pub fn run() {
             let new_window_app = app.handle().clone();
             let navigation_dev_origin = dev_origin.clone();
 
-            WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
-                .title("Avio")
-                .inner_size(1100.0, 760.0)
-                .min_inner_size(360.0, 480.0)
-                .on_navigation(move |url| {
-                    if navigation::is_app_url(url, navigation_dev_origin.as_deref()) {
-                        return true;
-                    }
-                    open_external(&navigation_app, url);
-                    false
-                })
-                .on_new_window(move |url, _features| {
-                    open_external(&new_window_app, &url);
-                    NewWindowResponse::Deny
-                })
-                .build()?;
+            let window =
+                WebviewWindowBuilder::new(app, "main", WebviewUrl::App("index.html".into()))
+                    .title("Avio")
+                    .inner_size(1100.0, 760.0)
+                    .min_inner_size(360.0, 480.0)
+                    .background_color(Color(255, 255, 255, 255))
+                    .on_navigation(move |url| {
+                        if navigation::is_app_url(url, navigation_dev_origin.as_deref()) {
+                            return true;
+                        }
+                        open_external(&navigation_app, url);
+                        false
+                    })
+                    .on_new_window(move |url, _features| {
+                        open_external(&new_window_app, &url);
+                        NewWindowResponse::Deny
+                    })
+                    .build()?;
+
+            if matches!(window.theme(), Ok(Theme::Dark)) {
+                let _ = window.set_background_color(Some(Color(10, 10, 11, 255)));
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

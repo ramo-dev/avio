@@ -1,17 +1,12 @@
-import { RiArrowRightLine, RiSettings3Line } from "@remixicon/react";
+import { RiArrowRightLine } from "@remixicon/react";
 import { Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { toast } from "react-hot-toast";
-import { ConnectDiscovery } from "#/components/auth/connect-discovery/connect-discovery";
-import { Button } from "#/components/ui/button";
 import {
-	Dialog,
-	DialogContent,
-	DialogDescription,
-	DialogHeader,
-	DialogTitle,
-	DialogTrigger,
-} from "#/components/ui/dialog";
+	ConnectOptions,
+	type ConnectOptionsValue,
+} from "#/components/auth/connect-options/connect-options";
+import { Button } from "#/components/ui/button";
 import {
 	Field,
 	FieldDescription,
@@ -24,6 +19,14 @@ import { useXmppActions, useXmppState } from "#/hooks/xmpp/use-xmpp";
 import { createSessionStore } from "#/lib/storage/session";
 import { isValidAccountJid } from "#/lib/xmpp/jid";
 
+const EMPTY_OPTIONS: ConnectOptionsValue = {
+	host: "",
+	port: "",
+	websocketUrl: "",
+	boshUrl: "",
+	resource: "",
+};
+
 export function ConnectForm() {
 	const state = useXmppState();
 	const actions = useXmppActions();
@@ -31,23 +34,20 @@ export function ConnectForm() {
 	const [sessionStore] = useState(() => createSessionStore());
 	const [jid, setJid] = useState("");
 	const [password, setPassword] = useState("");
-	const [websocketUrl, setWebsocketUrl] = useState("");
-	const [boshUrl, setBoshUrl] = useState("");
-	const [host, setHost] = useState("");
-	const [port, setPort] = useState("");
-	const [resource, setResource] = useState("");
-	const [optionsOpen, setOptionsOpen] = useState(false);
+	const [options, setOptions] = useState(EMPTY_OPTIONS);
 
 	useEffect(() => {
 		const saved = sessionStore.load();
 		if (!saved) return;
 
 		setJid((value) => value || saved.jid);
-		setWebsocketUrl((value) => value || saved.websocketUrl || "");
-		setBoshUrl((value) => value || saved.boshUrl || "");
-		setHost((value) => value || saved.host || "");
-		setPort((value) => value || (saved.port ? String(saved.port) : ""));
-		setResource((value) => value || saved.resource || "");
+		setOptions((value) => ({
+			host: value.host || saved.host || "",
+			port: value.port || (saved.port ? String(saved.port) : ""),
+			websocketUrl: value.websocketUrl || saved.websocketUrl || "",
+			boshUrl: value.boshUrl || saved.boshUrl || "",
+			resource: value.resource || saved.resource || "",
+		}));
 	}, [sessionStore]);
 
 	if (state.connection.status === "connected") {
@@ -55,6 +55,19 @@ export function ConnectForm() {
 	}
 
 	const connecting = state.connection.status === "connecting";
+
+	function updateOptions(patch: Partial<ConnectOptionsValue>) {
+		setOptions((current) => ({ ...current, ...patch }));
+	}
+
+	function selectEndpoint(endpoint: { websocket?: string; bosh?: string }) {
+		if (endpoint.websocket !== undefined) {
+			updateOptions({ websocketUrl: endpoint.websocket, boshUrl: "" });
+		}
+		if (endpoint.bosh !== undefined) {
+			updateOptions({ boshUrl: endpoint.bosh, websocketUrl: "" });
+		}
+	}
 
 	function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
 		event.preventDefault();
@@ -69,14 +82,17 @@ export function ConnectForm() {
 			return;
 		}
 
+		const parsedPort = Number.parseInt(options.port, 10);
 		actions.clearError();
 
 		void actions.connect({
 			jid: jid.trim(),
 			password,
-			websocketUrl: websocketUrl.trim() || undefined,
-			boshUrl: boshUrl.trim() || undefined,
-			resource: resource.trim() || undefined,
+			websocketUrl: options.websocketUrl.trim() || undefined,
+			boshUrl: options.boshUrl.trim() || undefined,
+			host: options.host.trim() || undefined,
+			port: Number.isFinite(parsedPort) ? parsedPort : undefined,
+			resource: options.resource.trim() || undefined,
 		});
 	}
 
@@ -117,132 +133,13 @@ export function ConnectForm() {
 				</Field>
 			</FieldGroup>
 
-			<Dialog open={optionsOpen} onOpenChange={setOptionsOpen}>
-				<DialogTrigger
-					render={
-						<Button
-							type="button"
-							size="lg"
-							variant="secondary"
-							className="w-full text-muted-foreground hover:text-foreground"
-							disabled={connecting}
-						/>
-					}
-				>
-					<RiSettings3Line data-icon="inline-start" />
-					Connection options
-				</DialogTrigger>
-
-				<DialogContent className="sm:max-w-md">
-					<DialogHeader>
-						<DialogTitle>Connection options</DialogTitle>
-						<DialogDescription>
-							Most servers work automatically. Set custom endpoints only if
-							discovery fails.
-						</DialogDescription>
-					</DialogHeader>
-
-					<div className="grid gap-5 py-2">
-						<ConnectDiscovery
-							jid={jid}
-							host={host.trim() || undefined}
-							port={
-								Number.isFinite(Number.parseInt(port, 10))
-									? Number.parseInt(port, 10)
-									: undefined
-							}
-							websocketUrl={websocketUrl}
-							boshUrl={boshUrl}
-							disabled={connecting}
-							onUse={(endpoints) => {
-								if (endpoints.websocket !== undefined) {
-									setWebsocketUrl(endpoints.websocket);
-								}
-								if (endpoints.bosh !== undefined) setBoshUrl(endpoints.bosh);
-							}}
-						/>
-
-						<div className="grid grid-cols-2 gap-3">
-							<Field>
-								<FieldLabel htmlFor="host">Host (optional)</FieldLabel>
-								<Input
-									id="host"
-									name="host"
-									type="text"
-									placeholder="chat.example.com"
-									value={host}
-									onChange={(event) => setHost(event.target.value)}
-									disabled={connecting}
-								/>
-							</Field>
-							<Field>
-								<FieldLabel htmlFor="port">Port (optional)</FieldLabel>
-								<Input
-									id="port"
-									name="port"
-									type="number"
-									min={1}
-									max={65535}
-									placeholder="443"
-									value={port}
-									onChange={(event) => setPort(event.target.value)}
-									disabled={connecting}
-								/>
-							</Field>
-						</div>
-
-						<Field>
-							<FieldLabel htmlFor="websocket">WebSocket URL</FieldLabel>
-							<Input
-								id="websocket"
-								name="websocket"
-								type="url"
-								placeholder="wss://example.com/xmpp-websocket"
-								value={websocketUrl}
-								onChange={(event) => setWebsocketUrl(event.target.value)}
-								disabled={connecting}
-							/>
-						</Field>
-
-						<Field>
-							<FieldLabel htmlFor="bosh">BOSH URL</FieldLabel>
-							<Input
-								id="bosh"
-								name="bosh"
-								type="url"
-								placeholder="https://example.com/http-bind"
-								value={boshUrl}
-								onChange={(event) => setBoshUrl(event.target.value)}
-								disabled={connecting}
-							/>
-						</Field>
-
-						<Field>
-							<FieldLabel htmlFor="resource">Resource</FieldLabel>
-							<Input
-								id="resource"
-								name="resource"
-								type="text"
-								placeholder="avio-web"
-								value={resource}
-								onChange={(event) => setResource(event.target.value)}
-								disabled={connecting}
-							/>
-							<FieldDescription>
-								Optional identifier for this client session.
-							</FieldDescription>
-						</Field>
-					</div>
-
-					<Button
-						type="button"
-						className="w-full"
-						onClick={() => setOptionsOpen(false)}
-					>
-						Done
-					</Button>
-				</DialogContent>
-			</Dialog>
+			<ConnectOptions
+				jid={jid}
+				value={options}
+				onChange={updateOptions}
+				onSelectEndpoint={selectEndpoint}
+				disabled={connecting}
+			/>
 
 			<Button type="submit" size="lg" disabled={connecting}>
 				{connecting ? (

@@ -205,7 +205,11 @@ Checklist:
 - The JID, transport URLs, and resource are stored in `localStorage`.
 - The password is stored in `sessionStorage` only, so it survives a refresh
   and disappears with the tab. It is cleared on logout and on auth failure.
-- Reconnect uses exponential backoff with jitter and stream management.
+- Reconnect uses exponential backoff with jitter and stream management. It is
+  single-flight, keeps at most one timer, and stops after five failed attempts.
+  Authentication and stream errors are terminal; they never start a retry loop.
+- Browsers and the Tauri webview can only use WebSocket (`wss://`) or BOSH
+  (`https://`). XMPP TCP port 5222 is not reachable.
 - Messages render as text; attachments are links. Never render XHTML-IM.
 - Production endpoints must be `wss://` or `https://`. A `ws://` endpoint on
   an HTTPS page is blocked by the browser and would expose credentials.
@@ -216,7 +220,8 @@ Checklist:
 |---|---|---|
 | “Could not reach the XMPP server” | Wrong endpoint, DNS, or proxy | Check the WSS URL and proxy upgrade headers |
 | “Server rejected those credentials” | Wrong JID/domain or password | Use the full JID; check app-specific passwords |
-| Stuck on “Connecting” | Discovery found no endpoint | Fill in **Connection options** |
+| Stuck on “Connecting” | Discovery found no endpoint | Fill in **Connection options**; use a WebSocket/BOSH URL, not TCP 5222 |
+| Reconnect stopped | Five retries failed or the stream rejected the session | Check the server/network, then connect again |
 | Connects, then closes immediately | TLS or origin rejection | Check server logs and `cross_domain_websocket` |
 | Connects but the roster is empty | Roster fetch failed or is pending | Reconnect; check server permissions |
 | “No group chat service was found” | No MUC component or disco items | Add a `conference.*` MUC component and check `disco#items` |

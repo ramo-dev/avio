@@ -1,5 +1,7 @@
 export const RECONNECT_BASE_MS = 1000;
 export const RECONNECT_MAX_MS = 30_000;
+/** Stop reconnecting after this many failed attempts instead of looping forever. */
+export const MAX_RECONNECT_ATTEMPTS = 5;
 
 export function reconnectDelay(attempt: number): number {
 	const exponential = Math.min(

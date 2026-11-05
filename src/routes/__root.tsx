@@ -11,11 +11,11 @@ import { AppErrorBoundary } from "#/components/common/error-boundary/error-bound
 import { ErrorFallback } from "#/components/common/error-fallback/error-fallback";
 import { NotificationBridge } from "#/components/common/notification-bridge/notification-bridge";
 import { SoundEffects } from "#/components/common/sound/sound";
+import { SplashScreen } from "#/components/common/splash-screen/splash-screen";
 import { ThemeSync } from "#/components/common/theme-sync/theme-sync";
 import { XmppErrorToaster } from "#/components/common/xmpp-error-toaster/xmpp-error-toaster";
 import { TooltipProvider } from "#/components/ui/tooltip";
 import { THEME_INIT_SCRIPT } from "#/lib/settings/theme";
-import { OmemoProvider } from "#/providers/omemo-provider";
 import { XmppProvider } from "#/providers/xmpp-provider";
 import TanStackQueryDevtools from "../integrations/tanstack-query/devtools";
 import appCss from "../styles.css?url";
@@ -67,17 +67,16 @@ function RootDocument({ children }: { children: React.ReactNode }) {
 				<script>{THEME_INIT_SCRIPT}</script>
 			</head>
 			<body>
+				<SplashScreen />
 				<div className="root min-h-svh">
 					<AppErrorBoundary>
 						<ThemeSync />
 						<TooltipProvider>
 							<SoundEffects>
 								<XmppProvider>
-									<OmemoProvider>
-										{children}
-										<NotificationBridge />
-										<XmppErrorToaster />
-									</OmemoProvider>
+									{children}
+									<NotificationBridge />
+									<XmppErrorToaster />
 								</XmppProvider>
 							</SoundEffects>
 						</TooltipProvider>

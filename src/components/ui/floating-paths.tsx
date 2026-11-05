@@ -1,23 +1,18 @@
-import type { CSSProperties } from "react";
+import { type CSSProperties, useEffect, useRef, useState } from "react";
 
-const PATH_COUNT = 36;
+const PATH_COUNT = 24;
 
-/**
- * Decorative flowing lines.
- *
- * Two rendering rules keep this cheap in every engine:
- *
- * 1. CSS keyframes, not a JS animation loop. The old motion/react version wrote
- *    3 attributes to 72 paths on every frame, so any other repaint on the page
- *    (hover, focus, scroll) collided with it and the frame flickered.
- * 2. Never animate `opacity` on an SVG child. Chrome has to render every
- *    translucent SVG element into its own offscreen transparency group the
- *    size of the element's bounds — here 72 near-full-column buffers per
- *    frame — which is what made Chrome flicker while Safari was fine.
- *    `stroke-opacity` is just alpha in the stroke paint, so we animate that.
- */
-export function FloatingPaths({ position }: { position: number }) {
-	const paths = Array.from({ length: PATH_COUNT }, (_, i) => ({
+interface FloatingPath {
+	id: number;
+	d: string;
+	width: number;
+	opacity: string;
+	duration: number;
+	delay: number;
+}
+
+function buildPaths(position: number): FloatingPath[] {
+	return Array.from({ length: PATH_COUNT }, (_, i) => ({
 		id: i,
 		d: `M-${380 - i * 5 * position} -${189 + i * 6}C-${
 			380 - i * 5 * position
@@ -33,25 +28,64 @@ export function FloatingPaths({ position }: { position: number }) {
 		duration: 20 + (i % 6) * 2,
 		delay: -(i * 0.7),
 	}));
+}
+
+const FORWARD_PATHS = buildPaths(1);
+const REVERSE_PATHS = buildPaths(-1);
+
+/**
+ * Decorative flowing lines.
+ *
+ * The path data is built once at module scope; re-renders only read it. The
+ * animations are paused while the window is hidden or the layer is offscreen,
+ * so a backgrounded app does not keep repainting 48 SVG strokes.
+ */
+export function FloatingPaths({ position }: { position: number }) {
+	const paths = position === 1 ? FORWARD_PATHS : REVERSE_PATHS;
+	const containerRef = useRef<HTMLDivElement>(null);
+	const [inView, setInView] = useState(true);
+	const [documentVisible, setDocumentVisible] = useState(true);
+
+	useEffect(() => {
+		const element = containerRef.current;
+		if (!element || typeof IntersectionObserver === "undefined") return;
+
+		const observer = new IntersectionObserver(([entry]) => {
+			setInView(entry?.isIntersecting ?? true);
+		});
+		observer.observe(element);
+		return () => observer.disconnect();
+	}, []);
+
+	useEffect(() => {
+		const update = () => {
+			setDocumentVisible(document.visibilityState !== "hidden");
+		};
+		update();
+		document.addEventListener("visibilitychange", update);
+		return () => document.removeEventListener("visibilitychange", update);
+	}, []);
+
+	const paused = !inView || !documentVisible;
 
 	return (
 		// `isolate` + `contain-strict` keep the per-frame stroke repaints from
 		// invalidating anything outside this box.
-		<div className="pointer-events-none absolute inset-0 isolate contain-strict">
-			<style href="floating-paths-keyframes" precedence="default">
-				{
-					"@keyframes floating-path{0%{stroke-dashoffset:1;stroke-opacity:0}15%,85%{stroke-opacity:var(--stroke-opacity)}100%{stroke-dashoffset:-1;stroke-opacity:0}}"
-				}
-			</style>
+		<div
+			className="pointer-events-none absolute inset-0 isolate contain-strict"
+			data-floating-paused={paused ? "true" : undefined}
+			ref={containerRef}
+		>
 			<svg
+				aria-hidden="true"
 				className="h-full w-full text-primary"
 				fill="none"
+				focusable="false"
 				viewBox="0 0 696 316"
 			>
-				<title>Background Paths</title>
 				{paths.map((path) => (
 					<path
-						className="motion-safe:animate-[floating-path_var(--duration)_linear_infinite]"
+						className="floating-path"
 						d={path.d}
 						key={path.id}
 						// Normalise every path to length 1 so dash values are relative.

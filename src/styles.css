@@ -4,6 +4,8 @@
 @import "./styles/fonts.css";
 @import "./styles/tokens.css";
 @import "./styles/base.css";
+@import "./styles/floating-paths.css";
+@import "./styles/splash.css";
 @import "./styles/sound.css";
 
 @plugin "@tailwindcss/typography";

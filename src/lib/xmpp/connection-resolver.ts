@@ -4,6 +4,8 @@ export interface ConnectionTargets {
 	websocket?: string;
 	bosh?: string;
 	source: "explicit" | "discovered" | "probed" | "fallback";
+	/** Why host-meta lookup failed, when it did. */
+	discoveryError?: string;
 }
 
 const WS_PATHS = ["/xmpp-websocket", "/ws", "/websocket", "/"];
@@ -20,8 +22,9 @@ const CONVENTIONAL: Array<{ scheme: "wss" | "ws"; port?: number }> = [
 	{ scheme: "ws", port: 5280 },
 ];
 
-const PROBE_TIMEOUT_MS = 3_500;
+const PROBE_TIMEOUT_MS = 2_500;
 const MAX_PROBES = 12;
+const PROBE_CONCURRENCY = 4;
 
 /** Deterministic candidate list; custom host/port takes priority over the domain. */
 export function buildWebSocketCandidates({
@@ -111,11 +114,14 @@ export async function resolveConnectionTargets({
 	let discovered: Awaited<
 		ReturnType<typeof discoverConnectionEndpoints>
 	> | null = null;
+	let discoveryError: string | undefined;
 	if (!skipDiscovery) {
 		try {
 			discovered = await discoverConnectionEndpoints(domain);
-		} catch {
+		} catch (cause) {
 			discovered = null;
+			discoveryError =
+				cause instanceof Error ? cause.message : "Host-meta discovery failed.";
 		}
 	}
 
@@ -126,11 +132,20 @@ export async function resolveConnectionTargets({
 	if (discovered?.websocket) candidates.push(discovered.websocket);
 	candidates.push(...buildWebSocketCandidates({ domain }));
 
-	const tried: string[] = [];
-	for (const candidate of candidates.slice(0, MAX_PROBES)) {
-		tried.push(candidate);
-		if (await probeWebSocket(candidate)) {
-			return { websocket: candidate, bosh: discovered?.bosh, source: "probed" };
+	// Probe in small parallel batches. This keeps the worst case to three
+	// handshakes instead of twelve sequential 2.5 s timeouts.
+	const queue = candidates.slice(0, MAX_PROBES);
+	for (let index = 0; index < queue.length; index += PROBE_CONCURRENCY) {
+		const batch = queue.slice(index, index + PROBE_CONCURRENCY);
+		const results = await Promise.all(batch.map((url) => probeWebSocket(url)));
+		const found = results.findIndex(Boolean);
+		if (found >= 0) {
+			return {
+				websocket: batch[found],
+				bosh: discovered?.bosh,
+				source: "probed",
+				discoveryError,
+			};
 		}
 	}
 
@@ -139,14 +154,21 @@ export async function resolveConnectionTargets({
 			websocket: discovered.websocket,
 			bosh: discovered.bosh,
 			source: "discovered",
+			discoveryError,
 		};
 	}
-	return { websocket: undefined, bosh: discovered?.bosh, source: "fallback" };
+	return {
+		websocket: undefined,
+		bosh: discovered?.bosh,
+		source: "fallback",
+		discoveryError,
+	};
 }
 
 export interface ResolvedTransports {
 	websocketUrl?: string;
 	boshUrl?: string;
+	discoveryError?: string;
 }
 
 /** Keeps client.connect free of discovery logic. */
@@ -171,5 +193,9 @@ export async function resolveConnectTransports(
 		host: credentials.host,
 		port: credentials.port,
 	});
-	return { websocketUrl: targets.websocket, boshUrl: targets.bosh };
+	return {
+		websocketUrl: targets.websocket,
+		boshUrl: targets.bosh,
+		discoveryError: targets.discoveryError,
+	};
 }
